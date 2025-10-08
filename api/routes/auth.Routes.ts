@@ -27,4 +27,9 @@ router.post('/auth', async (req: Request, res: Response) => {
   }
 });
 
+// Ajoutez une route GET pour /auth
+router.get('/auth', (req: Request, res: Response) => {
+  res.send('This is the auth route');
+});
+
 export default router;
