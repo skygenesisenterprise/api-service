@@ -1,12 +1,15 @@
 import express from 'express';
+import authRoutes from './routes/auth.Routes';
+import logger from './utils/logger';
 
 const app = express();
-const port = 3001;
+const port = 3000;
 
-app.get('/', (req, res) => {
-  res.send('Hello World!');
-});
+app.use(express.json()); 
+app.use('/api', authRoutes);
 
 app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+  logger.info(`Server is running on http://localhost:${port}`);
 });
+
+export default app;
