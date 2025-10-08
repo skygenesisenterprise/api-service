@@ -1,6 +1,6 @@
-# Commercial Use of Company Website
+# Commercial Use of API Service
 
-Company Website is released under the [GNU Affero General Public License v3.0 (AGPLv3)](https://www.gnu.org/licenses/agpl-3.0.html).
+API Service is released under the **MIT Licence** [LICENCE](LICENSE)
 
 ## ✅ What You Can Do
 
