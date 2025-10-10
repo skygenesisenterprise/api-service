@@ -1,107 +1,248 @@
-# Sky Genesis Enterprise API
+# Sky Genesis Enterprise API Service
 
-Welcome to the Sky Genesis Enterprise API! This API provides a robust backend service for managing users, products, orders, and more. It is built using Node.js with Express and uses PostgreSQL as the database.
+A comprehensive messaging and API management platform built with Node.js, Express, TypeScript, and PostgreSQL. Includes both a REST API and a web-based admin portal for managing API keys and monitoring usage.
 
-## Table of Contents
+## 🚀 Features
 
-- [Getting Started](#getting-started)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Running the Server](#running-the-server)
-- [API Endpoints](#api-endpoints)
-- [Database Schema](#database-schema)
-- [Contributing](#contributing)
-- [License](#license)
+- **API Key Authentication**: Secure API access with granular permissions
+- **Real-time Messaging**: Full-featured messaging system with conversations, messages, reactions, and read receipts
+- **Multi-Organization Support**: Isolated data and permissions per organization
+- **Rate Limiting & Quotas**: Built-in API usage controls
+- **Audit Logging**: Complete API access tracking
+- **Admin Portal**: Web-based interface for API key management and analytics
+- **TypeScript**: Full type safety throughout the application
+- **RESTful API**: Clean, consistent API design
 
-## Getting Started
+## 📁 Project Structure
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
-
-## Prerequisites
-
-Make sure you have the following installed on your machine:
-
-- Node.js (v14 or later)
-- npm (v6 or later)
-- PostgreSQL (v12 or later)
-
-## Installation
-
-1. Clone the repository:
-
-```sh
-git clone https://github.com/skygenesisenterprise/api-service.git
-cd api-service
+```
+├── api/                          # Backend API
+│   ├── config/                   # Database configuration
+│   ├── controllers/              # HTTP request handlers
+│   ├── middlewares/              # Authentication & validation
+│   ├── models/                   # TypeScript interfaces
+│   ├── routes/                   # API route definitions
+│   ├── services/                 # Business logic
+│   ├── tests/                    # Test files
+│   └── utils/                    # Utilities
+├── app/                          # Next.js admin portal
+│   ├── admin/                    # Admin pages
+│   ├── lib/                      # API client utilities
+│   └── ...                       # Next.js configuration
+├── data/                         # Database schemas
+├── docs/                         # Documentation
+└── public/                       # Static assets
 ```
 
-2. Install the dependencies:
+## 🛠️ Tech Stack
 
-```sh
+### Backend
+- **Runtime**: Node.js v18+
+- **Framework**: Express.js
+- **Language**: TypeScript
+- **Database**: PostgreSQL v12+
+- **Testing**: Jest + Supertest
+
+### Frontend (Admin Portal)
+- **Framework**: Next.js 15
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: React hooks
+
+### Development Tools
+- **Package Manager**: pnpm
+- **Linting**: ESLint
+- **Process Manager**: PM2
+- **Container**: Docker
+
+## 📚 Documentation
+
+- [Getting Started](./docs/getting-started.md)
+- [API Reference](./docs/api-reference.md)
+- [Authentication Guide](./docs/authentication.md)
+- [Database Schema](./docs/database-schema.md)
+- [Deployment Guide](./docs/deployment.md)
+- [Admin Portal Guide](./ADMIN_PORTAL_README.md)
+- [Troubleshooting](./docs/troubleshooting.md)
+
+## 🔧 Quick Start
+
+### 1. Prerequisites
+
+- Node.js v18 or later
+- PostgreSQL v12 or later
+- pnpm v8 or later
+
+### 2. Installation
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd api-service
+
+# Install dependencies
 pnpm install
 ```
 
-3. Set up the PostgreSQL database:
+### 3. Database Setup
 
-- Create a new database in PostgreSQL.
-- Update the database configuration in the `.env` file (create this file if it doesn't exist):
+```bash
+# Create database
+createdb api_service
 
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=your_database_name
-DB_USER=your_database_user
-DB_PASSWORD=your_database_password
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your database credentials
+
+# Run schema
+psql -U your_user -d api_service -f data/schema-pgsql.sql
 ```
 
-4. Run the database migrations to set up the schema:
+### 4. Create Initial Data
 
-```sh
-npm run migrate
+```sql
+-- Create organization
+INSERT INTO api_service.organizations (name, country_code)
+VALUES ('Your Company', 'US');
+
+-- Create admin API key
+INSERT INTO api_service.api_keys (organization_id, key_value, label, permissions)
+VALUES (
+  (SELECT id FROM api_service.organizations WHERE name = 'Your Company'),
+  'sk_admin_' || encode(gen_random_bytes(32), 'hex'),
+  'Admin Key',
+  ARRAY['read', 'write', 'admin']
+);
 ```
 
-## Running the Server
+### 5. Start Services
 
-To start the server, run the following command:
+```bash
+# Start API backend
+pnpm run dev:backend
 
-```sh
-npm start
+# In another terminal, start admin portal
+pnpm run dev:admin
 ```
 
-The server will start on `http://localhost:3000`.
+### 6. Access the Application
 
-## API Endpoints
+- **API**: `http://localhost:3001/api/v1`
+- **Admin Portal**: `http://localhost:3000`
 
-Here are some of the main API endpoints available:
+## 🏗️ API Architecture
 
-- **GET /api/users**: Get a list of all users.
-- **POST /api/users**: Create a new user.
-- **GET /api/products**: Get a list of all products.
-- **POST /api/products**: Create a new product.
-- **GET /api/orders**: Get a list of all orders.
-- **POST /api/orders**: Create a new order.
+### Authentication Flow
 
-For detailed API documentation, please refer to the [API Documentation](./docs/README.md).
+```
+Client Request → API Key Validation → Permission Check → Business Logic → Response
+```
 
-## Database Schema
+### Key Components
 
-The database schema includes the following tables:
+- **API Keys**: Organization-scoped authentication tokens
+- **Permissions**: Granular access control (read, write, admin)
+- **Quotas**: Rate limiting and usage tracking
+- **Audit Logs**: Complete request tracking
 
-- **users**: Stores user information.
-- **products**: Stores product information.
-- **orders**: Stores order information.
-- **order_items**: Stores order item details.
-- **addresses**: Stores user addresses.
-- **roles**: Stores user roles.
-- **permissions**: Stores permissions.
-- **role_permissions**: Stores role-permission associations.
-- **user_roles**: Stores user-role associations.
+### Example API Call
 
-For the complete database schema, please refer to the [Database Schema](./data/schema-pgsql.sql).
+```bash
+# Validate API key
+curl -H "X-API-Key: sk_your_key" http://localhost:3001/api/v1/validate
 
-## Contributing
+# Create conversation
+curl -X POST "http://localhost:3001/api/v1/messaging/organizations/org-123/conversations" \
+  -H "X-API-Key: sk_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Team Chat", "type": "group", "participant_ids": ["user1", "user2"]}'
+```
 
-Please read [CONTRIBUTING.md](./.github/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
+## 🎛️ Admin Portal
 
-## License
+The web-based admin portal provides:
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE) file for details.
+- **Dashboard**: Overview of API usage and key metrics
+- **API Key Management**: Create, view, revoke, and monitor API keys
+- **Analytics**: Usage patterns, performance metrics, error rates
+- **Organization Management**: Administer organization settings
+- **Settings**: Customize portal preferences
+
+### Accessing the Admin Portal
+
+1. Navigate to `http://localhost:3000`
+2. Click "Access Admin Portal"
+3. Enter your Organization ID and API key with admin permissions
+4. Start managing your API ecosystem
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+pnpm test
+
+# Run tests in watch mode
+pnpm run test:watch
+
+# Run specific test file
+npx jest api/tests/messaging.test.ts
+```
+
+## 🚀 Deployment
+
+### Development
+
+```bash
+# Start all services
+pnpm run dev
+```
+
+### Production
+
+```bash
+# Build admin portal
+pnpm run build:admin
+
+# Start production servers
+pm2 start ecosystem.config.js
+```
+
+### Docker
+
+```bash
+# Build and run with Docker Compose
+docker-compose up -d
+```
+
+## 🔒 Security
+
+- API key-based authentication
+- Organization data isolation
+- Request rate limiting
+- Comprehensive audit logging
+- Input validation and sanitization
+- HTTPS enforcement in production
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+Please read [CONTRIBUTING.md](./.github/CONTRIBUTING.md) for detailed guidelines.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+- **Documentation**: Check the [docs](./docs/) folder
+- **Issues**: Create an issue on GitHub
+- **Discussions**: Use GitHub Discussions for questions
+
+---
+
+Built with ❤️ for enterprise API management and messaging platforms.

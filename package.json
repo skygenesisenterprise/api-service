@@ -6,8 +6,11 @@
      "dev": "pnpm run dev:backend & pnpm run dev:frontend",
      "dev:backend": "ts-node api/index.ts",
      "dev:frontend": "next dev --turbopack",
+     "dev:admin": "next dev --turbopack",
      "build": "next build --turbopack",
+     "build:admin": "next build --turbopack",
      "start": "next start",
+     "start:admin": "next start",
      "lint": "eslint",
      "test": "jest",
      "test:watch": "jest --watch"
