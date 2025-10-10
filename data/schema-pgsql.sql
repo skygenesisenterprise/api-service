@@ -142,6 +142,74 @@ CREATE TABLE audit_events (
 );
 
 -- ======================================
+-- MESSAGING SYSTEM
+-- ======================================
+
+CREATE TABLE conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    title VARCHAR(255),
+    type VARCHAR(50) DEFAULT 'direct', -- 'direct', 'group', 'channel'
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    is_archived BOOLEAN DEFAULT false,
+    last_message_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
+);
+
+CREATE TABLE conversation_participants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    role VARCHAR(50) DEFAULT 'member', -- 'admin', 'member', 'guest'
+    joined_at TIMESTAMP DEFAULT now(),
+    last_read_at TIMESTAMP,
+    is_muted BOOLEAN DEFAULT false,
+    UNIQUE(conversation_id, user_id)
+);
+
+CREATE TABLE messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+    sender_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    content TEXT,
+    message_type VARCHAR(50) DEFAULT 'text', -- 'text', 'image', 'file', 'system'
+    reply_to_id UUID REFERENCES messages(id) ON DELETE SET NULL,
+    is_edited BOOLEAN DEFAULT false,
+    edited_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
+);
+
+CREATE TABLE message_attachments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
+    filename VARCHAR(255) NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    mime_type VARCHAR(100),
+    file_size INTEGER,
+    file_url TEXT,
+    created_at TIMESTAMP DEFAULT now()
+);
+
+CREATE TABLE message_reactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    reaction VARCHAR(50) NOT NULL, -- emoji or reaction type
+    created_at TIMESTAMP DEFAULT now(),
+    UNIQUE(message_id, user_id, reaction)
+);
+
+CREATE TABLE message_reads (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    read_at TIMESTAMP DEFAULT now(),
+    UNIQUE(message_id, user_id)
+);
+
+-- ======================================
 -- TRIGGERS
 -- ======================================
 
@@ -149,6 +217,16 @@ CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_conversation_last_message()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE conversations
+    SET last_message_at = NEW.created_at
+    WHERE id = NEW.conversation_id;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -162,3 +240,18 @@ CREATE TRIGGER update_orgs_timestamp
 BEFORE UPDATE ON organizations
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
+
+CREATE TRIGGER update_conversations_timestamp
+BEFORE UPDATE ON conversations
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+CREATE TRIGGER update_messages_timestamp
+BEFORE UPDATE ON messages
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+CREATE TRIGGER update_conversation_last_message_trigger
+AFTER INSERT ON messages
+FOR EACH ROW
+EXECUTE FUNCTION update_conversation_last_message();
