@@ -113,3 +113,20 @@ table! {
         updated_at -> Timestamp,
     }
 }
+
+table! {
+    data_sources (id) {
+        id -> Uuid,
+        name -> Varchar,
+        db_type -> Varchar,
+        host -> Varchar,
+        port -> Integer,
+        database_name -> Varchar,
+        username -> Varchar,
+        password_hash -> Text,
+        organization_id -> Uuid,
+        status -> Varchar,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}

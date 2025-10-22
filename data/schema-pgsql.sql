@@ -105,6 +105,21 @@ CREATE TABLE service_registry (
     registered_at TIMESTAMP DEFAULT now()
 );
 
+CREATE TABLE data_sources (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    db_type VARCHAR(50) NOT NULL, -- 'postgresql', 'mysql', 'mariadb'
+    host VARCHAR(255) NOT NULL,
+    port INTEGER DEFAULT 5432,
+    database_name VARCHAR(255) NOT NULL,
+    username VARCHAR(255) NOT NULL,
+    password_hash TEXT NOT NULL,
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    status VARCHAR(50) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
+);
+
 -- ======================================
 -- AI & ANALYTICS (OPTIONAL)
 -- ======================================
@@ -250,6 +265,11 @@ EXECUTE FUNCTION update_timestamp();
 
 CREATE TRIGGER update_messages_timestamp
 BEFORE UPDATE ON messages
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+CREATE TRIGGER update_data_sources_timestamp
+BEFORE UPDATE ON data_sources
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 

@@ -37,6 +37,9 @@ async fn main() -> std::io::Result<()> {
                     .wrap(AuthenticateJwt::new())
                     .configure(handlers::api_key::config)
                     .configure(handlers::messaging::config)
+                    .configure(handlers::organization::config)
+                    .configure(handlers::user::config)
+                    .configure(handlers::data_source::config)
             )
     })
     .bind("127.0.0.1:8080")?
