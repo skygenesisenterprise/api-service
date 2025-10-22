@@ -16,6 +16,8 @@ pub struct ApiKey {
     pub quota_limit: i32,
     pub usage_count: i32,
     pub status: String,
+    pub public_key: Option<String>,
+    pub private_key: Option<String>,
     pub created_at: NaiveDateTime,
 }
 
@@ -28,6 +30,8 @@ pub struct NewApiKey<'a> {
     pub permissions: Vec<String>,
     pub quota_limit: i32,
     pub status: &'a str,
+    pub public_key: Option<&'a str>,
+    pub private_key: Option<&'a str>,
 }
 
 #[derive(AsChangeset, Deserialize, Debug)]
@@ -43,6 +47,7 @@ pub struct ApiKeyResponse {
     pub key_value: String,
     pub label: Option<String>,
     pub permissions: Vec<String>,
+    pub public_key: Option<String>,
     pub created_at: NaiveDateTime,
 }
 

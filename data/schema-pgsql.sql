@@ -55,6 +55,8 @@ CREATE TABLE api_keys (
     quota_limit INTEGER DEFAULT 100000,
     usage_count INTEGER DEFAULT 0,
     status VARCHAR(50) DEFAULT 'active',
+    public_key TEXT,
+    private_key TEXT,
     created_at TIMESTAMP DEFAULT now()
 );
 

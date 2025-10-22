@@ -1,5 +1,6 @@
 use diesel::prelude::*;
 use rand::Rng;
+use rsa::{RsaPrivateKey, RsaPublicKey, pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding}};
 use std::error::Error;
 use uuid::Uuid;
 
@@ -46,6 +47,7 @@ impl ApiKeyService {
         permissions: Vec<String>,
     ) -> Result<ApiKeyResponse, Box<dyn Error>> {
         let key_value = Self::generate_api_key();
+        let (public_key, private_key) = Self::generate_rsa_keypair()?;
 
         let new_key = NewApiKey {
             organization_id,
@@ -54,6 +56,8 @@ impl ApiKeyService {
             permissions,
             quota_limit: 100000,
             status: "active",
+            public_key: Some(&public_key),
+            private_key: Some(&private_key),
         };
 
         let inserted_key = diesel::insert_into(api_keys::table)
@@ -65,6 +69,7 @@ impl ApiKeyService {
             key_value: inserted_key.key_value,
             label: inserted_key.label,
             permissions: inserted_key.permissions,
+            public_key: inserted_key.public_key,
             created_at: inserted_key.created_at,
         })
     }
@@ -99,7 +104,7 @@ impl ApiKeyService {
     fn generate_api_key() -> String {
         let mut rng = rand::thread_rng();
         let chars: Vec<char> = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".chars().collect();
-        let mut result = "sk_".to_string();
+        let mut result = "sg_".to_string();
 
         for _ in 0..32 {
             let idx = rng.gen_range(0..chars.len());
@@ -107,6 +112,17 @@ impl ApiKeyService {
         }
 
         result
+    }
+
+    fn generate_rsa_keypair() -> Result<(String, String), Box<dyn Error>> {
+        let mut rng = rand::thread_rng();
+        let private_key = RsaPrivateKey::new(&mut rng, 2048)?;
+        let public_key = RsaPublicKey::from(&private_key);
+
+        let private_pem = private_key.to_pkcs8_pem(LineEnding::LF)?;
+        let public_pem = public_key.to_public_key_pem(LineEnding::LF)?;
+
+        Ok((public_pem.to_string(), private_pem.to_string()))
     }
 
     pub fn get_api_key_info(api_key: &ApiKey) -> ApiKeyInfo {

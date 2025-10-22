@@ -10,6 +10,8 @@ table! {
         quota_limit -> Integer,
         usage_count -> Integer,
         status -> Varchar,
+        public_key -> Nullable<Text>,
+        private_key -> Nullable<Text>,
         created_at -> Timestamp,
     }
 }

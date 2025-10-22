@@ -1,24 +1,25 @@
-use actix_web::HttpResponse;
-
+use actix_web::{HttpMessage, HttpResponse, dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform}, http::header::HeaderMap, Error, body::BoxBody};
+use futures_util::future::LocalBoxFuture;
+use std::{future::{ready, Ready}, rc::Rc};
 use crate::models::api_key::ApiKey;
 use crate::services::api_key::ApiKeyService;
 use crate::utils::db::DbPool;
 
 pub async fn authenticate_api_key(
-    req: &actix_web::HttpRequest,
+    headers: &HeaderMap,
+    query_string: &str,
     pool: &DbPool,
 ) -> Result<ApiKey, HttpResponse> {
-    let api_key = req
-        .headers()
+    let api_key = headers
         .get("x-api-key")
         .and_then(|h| h.to_str().ok())
         .or_else(|| {
-            req.headers()
+            headers
                 .get("authorization")
                 .and_then(|h| h.to_str().ok())
                 .and_then(|auth| auth.strip_prefix("Bearer "))
         })
-        .or_else(|| req.query_string().split('&').find_map(|pair| {
+        .or_else(|| query_string.split('&').find_map(|pair| {
             let mut parts = pair.split('=');
             match (parts.next(), parts.next()) {
                 (Some("api_key"), Some(key)) => Some(key),
@@ -72,4 +73,74 @@ pub fn require_permission(api_key: &ApiKey, permission: &str) -> Result<(), Http
             })));
     }
     Ok(())
+}
+
+pub struct AuthenticateApiKey {
+    pool: DbPool,
+}
+
+impl AuthenticateApiKey {
+    pub fn new(pool: DbPool) -> Self {
+        Self { pool }
+    }
+}
+
+impl<S> Transform<S, ServiceRequest> for AuthenticateApiKey
+where
+    S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error> + 'static,
+    S::Future: 'static,
+{
+    type Response = ServiceResponse<BoxBody>;
+    type Error = Error;
+    type InitError = ();
+    type Transform = AuthenticateApiKeyMiddleware<S>;
+    type Future = Ready<Result<Self::Transform, Self::InitError>>;
+
+    fn new_transform(&self, service: S) -> Self::Future {
+        ready(Ok(AuthenticateApiKeyMiddleware {
+            service: Rc::new(service),
+            pool: self.pool.clone(),
+        }))
+    }
+}
+
+pub struct AuthenticateApiKeyMiddleware<S> {
+    service: Rc<S>,
+    pool: DbPool,
+}
+
+impl<S> Service<ServiceRequest> for AuthenticateApiKeyMiddleware<S>
+where
+    S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error> + 'static,
+    S::Future: 'static,
+{
+    type Response = ServiceResponse<BoxBody>;
+    type Error = Error;
+    type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
+
+    forward_ready!(service);
+
+    fn call(&self, req: ServiceRequest) -> Self::Future {
+        let service = Rc::clone(&self.service);
+        let pool = self.pool.clone();
+
+        Box::pin(async move {
+            // Skip authentication for certain paths if needed
+            let path = req.path();
+            if path.starts_with("/api/validate") {
+                return service.call(req).await;
+            }
+
+            match authenticate_api_key(req.headers(), req.query_string(), &pool).await {
+                Ok(api_key) => {
+                    // Store the API key in request extensions
+                    req.extensions_mut().insert(api_key);
+                    service.call(req).await
+                }
+                Err(response) => {
+                    Ok(req.into_response(response))
+                }
+            }
+        })
+    }
 }
