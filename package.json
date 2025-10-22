@@ -20,7 +20,7 @@
     "bcryptjs": "^3.0.2",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-    "next": "15.5.3",
+    "next": "16.0.0",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },
