@@ -2,6 +2,7 @@ use actix_web::{web, HttpResponse, Result};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::middleware::auth::{AuthenticatedUser, require_role};
 use crate::models::api_key::{ApiKey, ApiKeyInfo};
 use crate::services::api_key::ApiKeyService;
 use crate::utils::db::DbPool;
@@ -15,11 +16,12 @@ pub struct CreateApiKeyRequest {
 pub async fn create_api_key(
     pool: web::Data<DbPool>,
     organization_id: web::Path<Uuid>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
     req: web::Json<CreateApiKeyRequest>,
 ) -> Result<HttpResponse> {
-    // Verify the API key belongs to the organization or has admin permissions
-    if (&*api_key_data).organization_id != *organization_id && !(&*api_key_data).permissions.contains(&"*".to_string()) {
+    // Verify the user belongs to the organization or has admin role
+    let user_org = Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap();
+    if user_org != *organization_id && !user_data.roles.contains(&"admin".to_string()) {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
             "error": "Insufficient permissions to create API keys for this organization"
         })));
@@ -48,10 +50,11 @@ pub async fn create_api_key(
 pub async fn get_api_keys(
     pool: web::Data<DbPool>,
     organization_id: web::Path<Uuid>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
-    // Verify the API key belongs to the organization
-    if (&*api_key_data).organization_id != *organization_id && !(&*api_key_data).permissions.contains(&"*".to_string()) {
+    // Verify the user belongs to the organization or has admin role
+    let user_org = Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap();
+    if user_org != *organization_id && !user_data.roles.contains(&"admin".to_string()) {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
             "error": "Insufficient permissions to view API keys for this organization"
         })));
@@ -90,12 +93,13 @@ pub async fn get_api_keys(
 pub async fn revoke_api_key(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
     let (organization_id, key_id) = path.into_inner();
 
-    // Verify the API key belongs to the organization or has admin permissions
-    if (&*api_key_data).organization_id != organization_id && !(&*api_key_data).permissions.contains(&"*".to_string()) {
+    // Verify the user belongs to the organization or has admin role
+    let user_org = Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap();
+    if user_org != organization_id && !user_data.roles.contains(&"admin".to_string()) {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
             "error": "Insufficient permissions to revoke API keys for this organization"
         })));
@@ -118,11 +122,16 @@ pub async fn revoke_api_key(
     }
 }
 
-pub async fn validate_api_key(api_key_data: web::ReqData<ApiKey>) -> Result<HttpResponse> {
-    let info = ApiKeyService::get_api_key_info(&*api_key_data);
+pub async fn validate_user(user_data: web::ReqData<AuthenticatedUser>) -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(serde_json::json!({
-        "message": "API key is valid",
-        "data": info
+        "message": "User is authenticated",
+        "data": {
+            "sub": user_data.sub,
+            "email": user_data.email,
+            "name": user_data.name,
+            "roles": user_data.roles,
+            "organization_id": user_data.organization_id
+        }
     })))
 }
 
@@ -135,6 +144,6 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     )
     .service(
         web::scope("/validate")
-            .route("", web::get().to(validate_api_key))
+            .route("", web::get().to(validate_user))
     );
 }

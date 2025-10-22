@@ -254,6 +254,7 @@ dependencies = [
  "futures-util",
  "jsonwebtoken",
  "log",
+ "once_cell",
  "r2d2",
  "rand 0.8.5",
  "reqwest",

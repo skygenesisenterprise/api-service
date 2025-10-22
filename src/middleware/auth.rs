@@ -1,91 +1,139 @@
 use actix_web::{HttpMessage, HttpResponse, dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform}, http::header::HeaderMap, Error, body::BoxBody};
 use futures_util::future::LocalBoxFuture;
 use std::{future::{ready, Ready}, rc::Rc};
-use crate::models::api_key::ApiKey;
-use crate::services::api_key::ApiKeyService;
-use crate::utils::db::DbPool;
+use serde::{Deserialize, Serialize};
+use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
+use reqwest::Client;
+use once_cell::sync::Lazy;
+use std::collections::HashMap;
+use tokio::sync::RwLock;
 
-pub async fn authenticate_api_key(
-    headers: &HeaderMap,
-    query_string: &str,
-    pool: &DbPool,
-) -> Result<ApiKey, HttpResponse> {
-    let api_key = headers
-        .get("x-api-key")
-        .and_then(|h| h.to_str().ok())
-        .or_else(|| {
-            headers
-                .get("authorization")
-                .and_then(|h| h.to_str().ok())
-                .and_then(|auth| auth.strip_prefix("Bearer "))
-        })
-        .or_else(|| query_string.split('&').find_map(|pair| {
-            let mut parts = pair.split('=');
-            match (parts.next(), parts.next()) {
-                (Some("api_key"), Some(key)) => Some(key),
-                _ => None,
-            }
-        }));
-
-    let api_key = match api_key {
-        Some(key) => key,
-        None => {
-            return Err(HttpResponse::Unauthorized()
-                .json(serde_json::json!({
-                    "error": "API key required",
-                    "message": "Please provide an API key in X-API-Key header, Authorization header, or api_key query parameter"
-                })));
-        }
-    };
-
-    let mut conn = match pool.get() {
-        Ok(conn) => conn,
-        Err(_) => {
-            return Err(HttpResponse::InternalServerError()
-                .json(serde_json::json!({"error": "Database connection error"})));
-        }
-    };
-
-    match ApiKeyService::validate_api_key(&mut conn, api_key) {
-        Ok(key) => Ok(key),
-        Err(e) => {
-            let error_msg = if e.to_string().contains("quota") {
-                "Quota exceeded"
-            } else {
-                "Invalid API key"
-            };
-            let status = if e.to_string().contains("quota") { 429 } else { 401 };
-            Err(HttpResponse::build(actix_web::http::StatusCode::from_u16(status).unwrap())
-                .json(serde_json::json!({
-                    "error": error_msg,
-                    "message": e.to_string()
-                })))
-        }
-    }
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AuthenticatedUser {
+    pub sub: String,
+    pub email: String,
+    pub name: Option<String>,
+    pub roles: Vec<String>,
+    pub organization_id: Option<String>,
 }
 
-pub fn require_permission(api_key: &ApiKey, permission: &str) -> Result<(), HttpResponse> {
-    if !ApiKeyService::has_permission(api_key, permission) {
+#[derive(Deserialize)]
+struct Claims {
+    sub: String,
+    email: String,
+    name: Option<String>,
+    realm_access: Option<RealmAccess>,
+    organization_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct RealmAccess {
+    roles: Vec<String>,
+}
+
+static JWKS_CACHE: Lazy<RwLock<HashMap<String, DecodingKey>>> = Lazy::new(|| RwLock::new(HashMap::new()));
+static HTTP_CLIENT: Lazy<Client> = Lazy::new(|| Client::new());
+
+async fn get_decoding_key(kid: &str) -> Result<DecodingKey, HttpResponse> {
+    let cache = JWKS_CACHE.read().await;
+    if let Some(key) = cache.get(kid) {
+        return Ok(key.clone());
+    }
+    drop(cache);
+
+    let jwks_url = std::env::var("SSO_JWKS_URL").unwrap_or_else(|_| "https://sso.skygenesisenterprise.com/realms/master/protocol/openid-connect/certs".to_string());
+    let response = HTTP_CLIENT.get(&jwks_url).send().await.map_err(|_| {
+        HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch JWKS"}))
+    })?;
+    let jwks: serde_json::Value = response.json().await.map_err(|_| {
+        HttpResponse::InternalServerError().json(serde_json::json!({"error": "Invalid JWKS response"}))
+    })?;
+    let keys = jwks["keys"].as_array().ok_or_else(|| {
+        HttpResponse::InternalServerError().json(serde_json::json!({"error": "No keys in JWKS"}))
+    })?;
+
+    let mut cache = JWKS_CACHE.write().await;
+    for key in keys {
+        if let Some(kid_val) = key["kid"].as_str() {
+            if let Some(n) = key["n"].as_str() {
+                if let Some(e) = key["e"].as_str() {
+                    let decoding_key = DecodingKey::from_rsa_components(n, e).map_err(|_| {
+                        HttpResponse::InternalServerError().json(serde_json::json!({"error": "Invalid RSA key"}))
+                    })?;
+                    cache.insert(kid_val.to_string(), decoding_key);
+                }
+            }
+        }
+    }
+    cache.get(kid).cloned().ok_or_else(|| {
+        HttpResponse::Unauthorized().json(serde_json::json!({"error": "Key not found"}))
+    })
+}
+
+pub async fn authenticate_jwt(headers: &HeaderMap) -> Result<AuthenticatedUser, HttpResponse> {
+    let token = headers
+        .get("authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|auth| auth.strip_prefix("Bearer "))
+        .ok_or_else(|| {
+            HttpResponse::Unauthorized().json(serde_json::json!({
+                "error": "Authentication required",
+                "message": "Please provide a Bearer token in Authorization header"
+            }))
+        })?;
+
+    let header = decode_header(token).map_err(|_| {
+        HttpResponse::Unauthorized().json(serde_json::json!({"error": "Invalid token"}))
+    })?;
+
+    let kid = header.kid.ok_or_else(|| {
+        HttpResponse::Unauthorized().json(serde_json::json!({"error": "No key ID in token"}))
+    })?;
+
+    let decoding_key = get_decoding_key(&kid).await?;
+
+    let mut validation = Validation::new(Algorithm::RS256);
+    validation.set_issuer(&[std::env::var("SSO_ISSUER").unwrap_or_else(|_| "https://sso.skygenesisenterprise.com/realms/master".to_string())]);
+    validation.set_audience(&[std::env::var("SSO_CLIENT_ID").unwrap_or_else(|_| "api-service".to_string())]);
+
+    let token_data = decode::<Claims>(token, &decoding_key, &validation).map_err(|_| {
+        HttpResponse::Unauthorized().json(serde_json::json!({"error": "Invalid token"}))
+    })?;
+
+    let claims = token_data.claims;
+    let roles = claims.realm_access.map(|ra| ra.roles).unwrap_or_default();
+
+    Ok(AuthenticatedUser {
+        sub: claims.sub,
+        email: claims.email,
+        name: claims.name,
+        roles,
+        organization_id: claims.organization_id,
+    })
+}
+
+
+
+pub fn require_role(user: &AuthenticatedUser, role: &str) -> Result<(), HttpResponse> {
+    if !user.roles.contains(&role.to_string()) {
         return Err(HttpResponse::Forbidden()
             .json(serde_json::json!({
                 "error": "Insufficient permissions",
-                "message": format!("Required permission: {}", permission)
+                "message": format!("Required role: {}", role)
             })));
     }
     Ok(())
 }
 
-pub struct AuthenticateApiKey {
-    pool: DbPool,
-}
+pub struct AuthenticateJwt;
 
-impl AuthenticateApiKey {
-    pub fn new(pool: DbPool) -> Self {
-        Self { pool }
+impl AuthenticateJwt {
+    pub fn new() -> Self {
+        Self
     }
 }
 
-impl<S> Transform<S, ServiceRequest> for AuthenticateApiKey
+impl<S> Transform<S, ServiceRequest> for AuthenticateJwt
 where
     S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error> + 'static,
     S::Future: 'static,
@@ -93,23 +141,21 @@ where
     type Response = ServiceResponse<BoxBody>;
     type Error = Error;
     type InitError = ();
-    type Transform = AuthenticateApiKeyMiddleware<S>;
+    type Transform = AuthenticateJwtMiddleware<S>;
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        ready(Ok(AuthenticateApiKeyMiddleware {
+        ready(Ok(AuthenticateJwtMiddleware {
             service: Rc::new(service),
-            pool: self.pool.clone(),
         }))
     }
 }
 
-pub struct AuthenticateApiKeyMiddleware<S> {
+pub struct AuthenticateJwtMiddleware<S> {
     service: Rc<S>,
-    pool: DbPool,
 }
 
-impl<S> Service<ServiceRequest> for AuthenticateApiKeyMiddleware<S>
+impl<S> Service<ServiceRequest> for AuthenticateJwtMiddleware<S>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error> + 'static,
     S::Future: 'static,
@@ -122,19 +168,18 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let service = Rc::clone(&self.service);
-        let pool = self.pool.clone();
 
         Box::pin(async move {
             // Skip authentication for certain paths if needed
             let path = req.path();
-            if path.starts_with("/api/validate") {
+            if path.starts_with("/api/validate") || path.starts_with("/health") {
                 return service.call(req).await;
             }
 
-            match authenticate_api_key(req.headers(), req.query_string(), &pool).await {
-                Ok(api_key) => {
-                    // Store the API key in request extensions
-                    req.extensions_mut().insert(api_key);
+            match authenticate_jwt(req.headers()).await {
+                Ok(user) => {
+                    // Store the authenticated user in request extensions
+                    req.extensions_mut().insert(user);
                     service.call(req).await
                 }
                 Err(response) => {

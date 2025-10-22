@@ -8,7 +8,7 @@ use actix_web::{web, App, HttpServer, middleware::Logger};
 use dotenvy::dotenv;
 use std::env;
 
-use crate::middleware::auth::AuthenticateApiKey;
+use crate::middleware::auth::AuthenticateJwt;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -34,7 +34,7 @@ async fn main() -> std::io::Result<()> {
             )
             .service(
                 web::scope("/api/v1")
-                    .wrap(AuthenticateApiKey::new(pool.clone()))
+                    .wrap(AuthenticateJwt::new())
                     .configure(handlers::api_key::config)
                     .configure(handlers::messaging::config)
             )

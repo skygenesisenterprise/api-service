@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::models::api_key::ApiKey;
+use crate::middleware::auth::{AuthenticatedUser, require_role};
 use crate::models::conversation::{CreateConversationRequest, Conversation, ConversationParticipant};
 use crate::models::message::{Message};
 use crate::models::message::{SendMessageRequest, UpdateMessageRequest, NewMessageAttachment};
@@ -14,13 +14,14 @@ use crate::utils::db::DbPool;
 pub async fn create_conversation(
     pool: web::Data<DbPool>,
     organization_id: web::Path<Uuid>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
     req: web::Json<CreateConversationRequest>,
 ) -> Result<HttpResponse> {
-    // Verify the API key belongs to the requested organization
-    if (&*api_key_data).organization_id != *organization_id {
+    // Verify the user belongs to the requested organization
+    let user_org_id = user_data.organization_id.as_ref().and_then(|id| Uuid::parse_str(id).ok());
+    if user_org_id != Some(*organization_id) {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
@@ -31,7 +32,7 @@ pub async fn create_conversation(
     }
 
     // For API-based messaging, we'll use the API key ID as the creator
-    let creator_id = (&*api_key_data).id;
+    let creator_id = Uuid::parse_str(&user_data.sub).unwrap();
 
     // Add creator to participants if not already included
     let mut participant_ids = req.participant_ids.clone();
@@ -62,9 +63,9 @@ pub async fn create_conversation(
 
 pub async fn get_organization_conversations(
     pool: web::Data<DbPool>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
-    let organization_id = (&*api_key_data).organization_id;
+    let organization_id = Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap();
 
     let mut conn = pool.get().map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("Database error: {}", e))
@@ -83,13 +84,13 @@ pub async fn get_organization_conversations(
 pub async fn get_conversation(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
     let (organization_id, conversation_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
@@ -113,13 +114,13 @@ pub async fn get_conversation(
 pub async fn delete_conversation(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
     let (organization_id, conversation_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
@@ -143,14 +144,14 @@ pub async fn delete_conversation(
 pub async fn send_message(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
     req: web::Json<SendMessageRequest>,
 ) -> Result<HttpResponse> {
     let (organization_id, conversation_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
@@ -161,7 +162,7 @@ pub async fn send_message(
     }
 
     // Use API key ID as sender
-    let sender_id = (&*api_key_data).id;
+    let sender_id = Uuid::parse_str(&user_data.sub).unwrap();
 
     let mut conn = pool.get().map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("Database error: {}", e))
@@ -189,14 +190,14 @@ pub async fn send_message(
 pub async fn get_messages(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
     query: web::Query<std::collections::HashMap<String, String>>,
 ) -> Result<HttpResponse> {
     let (organization_id, conversation_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
@@ -220,19 +221,19 @@ pub async fn get_messages(
 pub async fn update_message(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
     req: web::Json<UpdateMessageRequest>,
 ) -> Result<HttpResponse> {
     let (organization_id, message_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
     // Use API key ID as user ID for API-based updates
-    let user_id = (&*api_key_data).id;
+    let user_id = Uuid::parse_str(&user_data.sub).unwrap();
 
     let mut conn = pool.get().map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("Database error: {}", e))
@@ -255,18 +256,18 @@ pub async fn update_message(
 pub async fn delete_message(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
     let (organization_id, message_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
     // Use API key ID as user ID for API-based deletes
-    let user_id = (&*api_key_data).id;
+    let user_id = Uuid::parse_str(&user_data.sub).unwrap();
 
     let mut conn = pool.get().map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("Database error: {}", e))
@@ -288,14 +289,14 @@ pub async fn delete_message(
 pub async fn add_participant(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
     req: web::Json<serde_json::Value>,
 ) -> Result<HttpResponse> {
     let (organization_id, conversation_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
@@ -309,7 +310,7 @@ pub async fn add_participant(
     };
 
     // Use API key ID as adder
-    let adder_id = (&*api_key_data).id;
+    let adder_id = Uuid::parse_str(&user_data.sub).unwrap();
 
     let mut conn = pool.get().map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("Database error: {}", e))
@@ -332,18 +333,18 @@ pub async fn add_participant(
 pub async fn remove_participant(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
     let (organization_id, conversation_id, user_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
     // Use API key ID as remover
-    let remover_id = (&*api_key_data).id;
+    let remover_id = Uuid::parse_str(&user_data.sub).unwrap();
 
     let mut conn = pool.get().map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("Database error: {}", e))
@@ -365,14 +366,14 @@ pub async fn remove_participant(
 pub async fn add_reaction(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
     req: web::Json<serde_json::Value>,
 ) -> Result<HttpResponse> {
     let (organization_id, message_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
@@ -386,7 +387,7 @@ pub async fn add_reaction(
     };
 
     // Use API key ID as user ID
-    let user_id = (&*api_key_data).id;
+    let user_id = Uuid::parse_str(&user_data.sub).unwrap();
 
     let mut conn = pool.get().map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("Database error: {}", e))
@@ -409,18 +410,18 @@ pub async fn add_reaction(
 pub async fn remove_reaction(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid, String)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
     let (organization_id, message_id, reaction) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
     // Use API key ID as user ID
-    let user_id = (&*api_key_data).id;
+    let user_id = Uuid::parse_str(&user_data.sub).unwrap();
 
     let mut conn = pool.get().map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("Database error: {}", e))
@@ -442,18 +443,18 @@ pub async fn remove_reaction(
 pub async fn mark_message_as_read(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
     let (organization_id, message_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
     // Use API key ID as user ID
-    let user_id = (&*api_key_data).id;
+    let user_id = Uuid::parse_str(&user_data.sub).unwrap();
 
     let mut conn = pool.get().map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("Database error: {}", e))
@@ -476,18 +477,18 @@ pub async fn mark_message_as_read(
 pub async fn mark_conversation_as_read(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
     let (organization_id, conversation_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
     // Use API key ID as user ID
-    let user_id = (&*api_key_data).id;
+    let user_id = Uuid::parse_str(&user_data.sub).unwrap();
 
     let mut conn = pool.get().map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("Database error: {}", e))
@@ -509,13 +510,13 @@ pub async fn mark_conversation_as_read(
 pub async fn get_participants(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
     let (organization_id, conversation_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
@@ -552,14 +553,14 @@ pub async fn get_participants(
 pub async fn add_attachment(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
     req: web::Json<NewMessageAttachment>,
 ) -> Result<HttpResponse> {
     let (organization_id, message_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
@@ -604,13 +605,13 @@ pub async fn add_attachment(
 pub async fn get_message_attachments(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
     let (organization_id, message_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
@@ -649,17 +650,17 @@ pub async fn get_message_attachments(
 pub async fn delete_attachment(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
     let (organization_id, message_id, attachment_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
-    let user_id = (&*api_key_data).id;
+    let user_id = Uuid::parse_str(&user_data.sub).unwrap();
 
     let mut conn = pool.get().map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("Database error: {}", e))
@@ -681,13 +682,13 @@ pub async fn delete_attachment(
 pub async fn archive_conversation(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
     let (organization_id, conversation_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
@@ -711,13 +712,13 @@ pub async fn archive_conversation(
 pub async fn unarchive_conversation(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
     let (organization_id, conversation_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
@@ -741,14 +742,14 @@ pub async fn unarchive_conversation(
 pub async fn search_messages(
     pool: web::Data<DbPool>,
     organization_id: web::Path<Uuid>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
     query: web::Query<std::collections::HashMap<String, String>>,
 ) -> Result<HttpResponse> {
     let organization_id = organization_id.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
@@ -779,17 +780,17 @@ pub async fn search_messages(
 pub async fn get_unread_count(
     pool: web::Data<DbPool>,
     organization_id: web::Path<Uuid>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
     let organization_id = organization_id.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
-    let user_id = (&*api_key_data).id;
+    let user_id = Uuid::parse_str(&user_data.sub).unwrap();
 
     let mut conn = pool.get().map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("Database error: {}", e))
@@ -810,17 +811,17 @@ pub async fn get_unread_count(
 pub async fn get_conversation_unread_count(
     pool: web::Data<DbPool>,
     path: web::Path<(Uuid, Uuid)>,
-    api_key_data: web::ReqData<ApiKey>,
+    user_data: web::ReqData<AuthenticatedUser>,
 ) -> Result<HttpResponse> {
     let (organization_id, conversation_id) = path.into_inner();
 
-    if (&*api_key_data).organization_id != organization_id {
+    if Uuid::parse_str(user_data.organization_id.as_ref().unwrap()).unwrap() != organization_id {
         return Ok(HttpResponse::Forbidden().json(serde_json::json!({
-            "error": "API key does not belong to this organization"
+            "error": "User does not belong to this organization"
         })));
     }
 
-    let user_id = (&*api_key_data).id;
+    let user_id = Uuid::parse_str(&user_data.sub).unwrap();
 
     let mut conn = pool.get().map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("Database error: {}", e))
