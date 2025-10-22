@@ -3,8 +3,8 @@ use std::error::Error;
 use uuid::Uuid;
 
 use crate::models::conversation::{Conversation, NewConversation, ConversationWithParticipants, ConversationParticipant, NewConversationParticipant, CreateConversationRequest};
-use crate::models::message::{Message, NewMessage, MessageWithDetails, SendMessageRequest, UpdateMessage, UpdateMessageRequest, MessageReaction, NewMessageReaction, MessageRead, NewMessageRead};
-use crate::models::schema::{conversations, conversation_participants, messages, message_reactions, message_reads};
+use crate::models::message::{Message, NewMessage, MessageWithDetails, SendMessageRequest, UpdateMessage, UpdateMessageRequest, MessageReaction, NewMessageReaction, MessageRead, NewMessageRead, MessageAttachment, NewMessageAttachment};
+use crate::models::schema::{conversations, conversation_participants, messages, message_reactions, message_reads, message_attachments};
 use crate::utils::db::DbPooledConnection;
 
 pub struct MessagingService;
@@ -346,5 +346,204 @@ impl MessagingService {
         .execute(conn)?;
 
         Ok(count > 0)
+    }
+
+    // Message attachments
+    pub fn add_attachment(
+        conn: &mut DbPooledConnection,
+        message_id: Uuid,
+        attachment_data: NewMessageAttachment,
+    ) -> Result<MessageAttachment, Box<dyn Error>> {
+        // Verify message exists
+        messages::table
+            .filter(messages::id.eq(message_id))
+            .first::<Message>(conn)?;
+
+        let attachment = diesel::insert_into(message_attachments::table)
+            .values(&attachment_data)
+            .get_result::<MessageAttachment>(conn)?;
+
+        Ok(attachment)
+    }
+
+    pub fn get_message_attachments(
+        conn: &mut DbPooledConnection,
+        message_id: Uuid,
+    ) -> Result<Vec<MessageAttachment>, Box<dyn Error>> {
+        let attachments = message_attachments::table
+            .filter(message_attachments::message_id.eq(message_id))
+            .load::<MessageAttachment>(conn)?;
+
+        Ok(attachments)
+    }
+
+    pub fn delete_attachment(
+        conn: &mut DbPooledConnection,
+        attachment_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<bool, Box<dyn Error>> {
+        // First verify the attachment exists and belongs to a message sent by the user
+        let attachment = message_attachments::table
+            .filter(message_attachments::id.eq(attachment_id))
+            .first::<MessageAttachment>(conn)?;
+
+        let message_sender = messages::table
+            .filter(messages::id.eq(attachment.message_id))
+            .filter(messages::sender_id.eq(user_id))
+            .first::<Message>(conn)
+            .is_ok();
+
+        if !message_sender {
+            return Ok(false);
+        }
+
+        // Delete the attachment
+        let count = diesel::delete(
+            message_attachments::table
+                .filter(message_attachments::id.eq(attachment_id))
+        )
+        .execute(conn)?;
+
+        Ok(count > 0)
+    }
+
+    // Conversation archiving
+    pub fn archive_conversation(
+        conn: &mut DbPooledConnection,
+        conversation_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<bool, Box<dyn Error>> {
+        let count = diesel::update(
+            conversations::table
+                .filter(conversations::id.eq(conversation_id))
+                .filter(conversations::organization_id.eq(organization_id))
+        )
+        .set(conversations::is_archived.eq(true))
+        .execute(conn)?;
+
+        Ok(count > 0)
+    }
+
+    pub fn unarchive_conversation(
+        conn: &mut DbPooledConnection,
+        conversation_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<bool, Box<dyn Error>> {
+        let count = diesel::update(
+            conversations::table
+                .filter(conversations::id.eq(conversation_id))
+                .filter(conversations::organization_id.eq(organization_id))
+        )
+        .set(conversations::is_archived.eq(false))
+        .execute(conn)?;
+
+        Ok(count > 0)
+    }
+
+    // Search functionality
+    pub fn search_messages(
+        conn: &mut DbPooledConnection,
+        organization_id: Uuid,
+        query: String,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<MessageWithDetails>, Box<dyn Error>> {
+        // First get conversation IDs for the organization
+        let conversation_ids = conversations::table
+            .filter(conversations::organization_id.eq(organization_id))
+            .filter(conversations::is_archived.eq(false))
+            .select(conversations::id)
+            .load::<Uuid>(conn)?;
+
+        let msgs = messages::table
+            .filter(messages::conversation_id.eq_any(conversation_ids))
+            .filter(messages::content.like(format!("%{}%", query)))
+            .order(messages::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .load::<Message>(conn)?;
+
+        // TODO: Add attachments, reactions, etc.
+        let result = msgs.into_iter().map(|msg| MessageWithDetails {
+            message: msg,
+            sender_name: None,
+            attachments: None,
+            reactions: None,
+            read_by: None,
+            reply_to: None,
+        }).collect();
+
+        Ok(result)
+    }
+
+    // Statistics
+    pub fn get_unread_count(
+        conn: &mut DbPooledConnection,
+        user_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<i64, Box<dyn Error>> {
+        // Get conversation IDs where user is participant
+        let conversation_ids = conversation_participants::table
+            .filter(conversation_participants::user_id.eq(user_id))
+            .select(conversation_participants::conversation_id)
+            .load::<Uuid>(conn)?;
+
+        if conversation_ids.is_empty() {
+            return Ok(0);
+        }
+
+        // Get conversations that belong to the organization and are not archived
+        let org_conversation_ids = conversations::table
+            .filter(conversations::organization_id.eq(organization_id))
+            .filter(conversations::is_archived.eq(false))
+            .filter(conversations::id.eq_any(conversation_ids))
+            .select(conversations::id)
+            .load::<Uuid>(conn)?;
+
+        if org_conversation_ids.is_empty() {
+            return Ok(0);
+        }
+
+        // Count total messages in those conversations
+        let total_messages = messages::table
+            .filter(messages::conversation_id.eq_any(org_conversation_ids.clone()))
+            .count()
+            .get_result::<i64>(conn)?;
+
+        // Get message IDs in those conversations
+        let message_ids = messages::table
+            .filter(messages::conversation_id.eq_any(org_conversation_ids))
+            .select(messages::id)
+            .load::<Uuid>(conn)?;
+
+        // Count read messages
+        let read_messages = message_reads::table
+            .filter(message_reads::user_id.eq(user_id))
+            .filter(message_reads::message_id.eq_any(message_ids))
+            .count()
+            .get_result::<i64>(conn)?;
+
+        Ok(total_messages - read_messages)
+    }
+
+    pub fn get_conversation_unread_count(
+        conn: &mut DbPooledConnection,
+        conversation_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<i64, Box<dyn Error>> {
+        // Get all message IDs in the conversation
+        let message_ids = messages::table
+            .filter(messages::conversation_id.eq(conversation_id))
+            .select(messages::id)
+            .load::<Uuid>(conn)?;
+
+        // Count how many of those messages haven't been read by the user
+        let read_count = message_reads::table
+            .filter(message_reads::user_id.eq(user_id))
+            .filter(message_reads::message_id.eq_any(message_ids.clone()))
+            .count()
+            .get_result::<i64>(conn)?;
+
+        Ok(message_ids.len() as i64 - read_count)
     }
 }
