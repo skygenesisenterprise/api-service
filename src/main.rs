@@ -21,7 +21,7 @@ async fn main() -> std::io::Result<()> {
     // Create database connection pool
     let pool = utils::db::establish_connection(&database_url);
 
-    log::info!("Starting server on http://localhost:3001");
+    log::info!("Starting server on http://localhost:8080");
 
     HttpServer::new(move || {
         App::new()
@@ -39,7 +39,7 @@ async fn main() -> std::io::Result<()> {
                     .configure(handlers::messaging::config)
             )
     })
-    .bind("127.0.0.1:3001")?
+    .bind("127.0.0.1:8080")?
     .run()
     .await
 }

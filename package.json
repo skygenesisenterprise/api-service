@@ -4,7 +4,7 @@
   "private": true,
    "scripts": {
      "dev": "pnpm run dev:backend & pnpm run dev:frontend",
-     "dev:backend": "ts-node api/index.ts",
+     "dev:backend": "cargo run",
      "dev:frontend": "next dev --turbopack",
      "dev:admin": "next dev --turbopack",
      "build": "next build --turbopack",
@@ -20,7 +20,7 @@
     "bcryptjs": "^3.0.2",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-    "next": "15.5.3",
+    "next": "16.0.0",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },
@@ -28,7 +28,7 @@
     "@eslint/eslintrc": "^3.3.1",
     "@tailwindcss/postcss": "^4.1.14",
     "@types/axios": "0.14.4",
-    "@types/bcryptjs": "^3.0.0",
+    "@types/bcryptjs": "2.4.6",
     "@types/express": "^5.0.3",
     "@types/jest": "latest",
     "@types/jsonwebtoken": "^9.0.10",
@@ -39,7 +39,7 @@
     "@types/supertest": "^6.0.3",
     "@types/winston": "^2.4.4",
     "eslint": "^9.37.0",
-    "eslint-config-next": "15.5.3",
+    "eslint-config-next": "16.0.0",
     "tailwindcss": "^4.1.14",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

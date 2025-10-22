@@ -28,7 +28,7 @@ class ApiClient {
   private baseUrl: string;
 
   constructor(baseUrl: string = '') {
-    this.baseUrl = baseUrl || (typeof window !== 'undefined' ? '' : 'http://localhost:3001');
+    this.baseUrl = baseUrl || (typeof window !== 'undefined' ? '' : 'http://localhost:8080');
   }
 
   setAuth(apiKey: string, orgId: string) {
