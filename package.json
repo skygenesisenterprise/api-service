@@ -40,7 +40,7 @@
     "@types/winston": "^2.4.4",
     "eslint": "^9.37.0",
     "eslint-config-next": "16.0.0",
-    "tailwindcss": "^4.1.14",
+    "tailwindcss": "^4.1.16",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
