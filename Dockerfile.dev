@@ -1,0 +1,49 @@
+# ----------------------------
+# Dockerfile.dev
+# ----------------------------
+FROM debian:13-slim
+
+# ----------------------------
+# Installer dépendances
+# ----------------------------
+RUN apt-get update && apt-get install -y \
+    curl build-essential pkg-config libssl-dev ca-certificates git \
+    nodejs npm inotify-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# ----------------------------
+# Installer Rust
+# ----------------------------
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Installer cargo-watch pour recompile automatiquement le backend
+RUN cargo install cargo-watch
+
+# ----------------------------
+# Configurer backend Rust
+# ----------------------------
+WORKDIR /api
+COPY api/Cargo.toml Cargo.lock ./
+# Ne pas copier src pour le dev, on utilisera volume
+RUN cargo build
+
+# ----------------------------
+# Configurer frontend Next.js
+# ----------------------------
+WORKDIR /app
+COPY app/package*.json ./
+RUN npm install
+# Ne pas build pour dev, utiliser next dev
+# Copier nginx.conf si tu veux l'utiliser pour proxy local
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# ----------------------------
+# Exposer ports
+# ----------------------------
+EXPOSE 3000 4000
+
+# ----------------------------
+# Commande de dev : backend + frontend
+# ----------------------------
+CMD ["sh", "-c", "cargo watch -x 'run' --manifest-path /api/Cargo.toml & npm --prefix /app run dev"]
