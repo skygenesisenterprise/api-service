@@ -20,16 +20,158 @@ The Mail module integrates with Stalwart Mail Server as a secure proxy, providin
 └─────────────────────────────────────────────────────────────┘
                                 │
 ┌─────────────────────────────────────────────────────────────┐
-│                   Stalwart Mail Server                       │
+│            Official Stalwart Mail Server                    │
+│            https://stalwart.skygenesisenterprise.com        │
 │  ┌─────────────────┐    ┌─────────────────┐                 │
 │  │   JMAP API      │    │   SMTP/IMAP     │                 │
-│  │   (Internal)    │    │   (Internal)    │                 │
+│  │   (mTLS Only)   │    │   (Internal)    │                 │
 │  │                 │    │                 │                 │
 │  │ • Message Ops   │    │ • Send/Receive  │                 │
 │  │ • Mailbox Mgmt  │    │ • Storage       │                 │
 │  │ • Search        │    │ • Protocols     │                 │
 │  └─────────────────┘    └─────────────────┘                 │
 └─────────────────────────────────────────────────────────────┘
+```
+
+## Dynamic Server Routing
+
+### Server Resolution Architecture
+The Mail module supports dynamic routing to multiple Stalwart servers based on user context, tenant, or geographic location. This enables:
+
+- **Multi-tenant deployments**: Different tenants can use different Stalwart instances
+- **Geographic distribution**: Users routed to nearest regional server
+- **Load balancing**: Distribution of load across multiple servers
+- **Disaster recovery**: Automatic failover to backup servers
+
+### Server Resolver Interface
+```rust
+#[async_trait]
+pub trait StalwartServerResolver: Send + Sync {
+    async fn resolve_server(&self, user: &User, operation: &str) -> Result<String, StalwartError>;
+}
+```
+
+### Available Resolvers
+
+#### Official Resolver (Default)
+Routes all requests to the official SGE Stalwart server:
+```rust
+pub async fn new_official(vault_client: Arc<VaultClient>) -> Result<Self, StalwartError>
+```
+- **URL**: `https://stalwart.skygenesisenterprise.com`
+- **Use Case**: Single centralized deployment
+
+#### Tenant-Based Resolver
+Routes requests based on user tenant:
+```rust
+pub async fn new_tenant_based(vault_client: Arc<VaultClient>) -> Result<Self, StalwartError>
+```
+- **Logic**: Extracts tenant from user roles (`tenant:{name}`)
+- **Configuration**: `secret/stalwart/tenants/{tenant}/server_url`
+- **Use Case**: Multi-tenant with dedicated servers
+
+#### Region-Based Resolver
+Routes requests based on geographic region:
+```rust
+pub async fn new_region_based(vault_client: Arc<VaultClient>, default_region: String) -> Result<Self, StalwartError>
+```
+- **Logic**: Determines region from user metadata or tenant mapping
+- **Configuration**: `secret/stalwart/regions/{region}/server_url`
+- **Use Case**: Global deployment with regional servers
+
+### Client Initialization
+```rust
+pub async fn new(
+    vault_client: Arc<VaultClient>,
+    server_resolver: Arc<dyn StalwartServerResolver>
+) -> Result<Self, StalwartError>
+```
+**Process:**
+1. Accept server resolver for dynamic routing
+2. Load mTLS certificates from Vault
+3. Configure HTTP client with mTLS
+4. Return configured client with routing capability
+
+### Routing Decision Flow
+```
+User Request → Extract Context (Tenant/Region/Operation)
+                   ↓
+            Server Resolver → Determine Target Server
+                   ↓
+            Route to Appropriate Stalwart Instance
+                   ↓
+            Apply mTLS + SGE Headers
+                   ↓
+            Execute Operation
+```
+
+## Configuration Examples
+
+### Single Server (Official)
+```rust
+// Use official SGE Stalwart server
+let stalwart_client = StalwartClient::new_official(vault_client).await?;
+```
+
+**Vault Configuration:**
+```
+secret/stalwart/client_cert: <certificate>
+secret/stalwart/client_key: <private_key>
+secret/stalwart/ca_cert: <ca_certificate>
+```
+
+### Multi-Tenant Deployment
+```rust
+// Route based on tenant
+let stalwart_client = StalwartClient::new_tenant_based(vault_client).await?;
+```
+
+**Vault Configuration:**
+```
+secret/stalwart/client_cert: <certificate>
+secret/stalwart/client_key: <private_key>
+secret/stalwart/ca_cert: <ca_certificate>
+secret/stalwart/tenants/acme/server_url: "https://stalwart-acme.sge.internal"
+secret/stalwart/tenants/globex/server_url: "https://stalwart-globex.sge.internal"
+```
+
+**User Role Configuration:**
+- User roles: `["employee", "tenant:acme"]` → Routes to `stalwart-acme.sge.internal`
+- User roles: `["employee", "tenant:globex"]` → Routes to `stalwart-globex.sge.internal`
+
+### Geographic Distribution
+```rust
+// Route based on region
+let stalwart_client = StalwartClient::new_region_based(vault_client, "us-east-1".to_string()).await?;
+```
+
+**Vault Configuration:**
+```
+secret/stalwart/client_cert: <certificate>
+secret/stalwart/client_key: <private_key>
+secret/stalwart/ca_cert: <ca_certificate>
+secret/stalwart/regions/us-east-1/server_url: "https://stalwart-us-east.sge.internal"
+secret/stalwart/regions/eu-west-1/server_url: "https://stalwart-eu-west.sge.internal"
+secret/stalwart/regions/ap-southeast-1/server_url: "https://stalwart-ap-southeast.sge.internal"
+```
+
+### Custom Resolver
+```rust
+// Implement custom routing logic
+#[derive(Clone)]
+struct CustomResolver {
+    vault_client: Arc<VaultClient>,
+    routing_rules: HashMap<String, String>,
+}
+
+#[async_trait]
+impl StalwartServerResolver for CustomResolver {
+    async fn resolve_server(&self, user: &User, operation: &str) -> Result<String, StalwartError> {
+        // Custom routing logic based on user attributes, operation type, etc.
+        // Example: Route based on user department, time of day, load balancing, etc.
+        todo!("Implement custom routing logic")
+    }
+}
 ```
 
 ## Communication Protocol
@@ -234,9 +376,12 @@ Stalwart "serverError" → SGE 500 Internal Server Error
 ### Environment Variables
 ```bash
 # Stalwart Connection
-STALWART_BASE_URL=https://stalwart-mail.internal
 STALWART_JMAP_PATH=/jmap
 STALWART_TIMEOUT_SECONDS=30
+
+# Routing Configuration
+STALWART_ROUTING_MODE=official  # official|tenant|region
+STALWART_DEFAULT_REGION=us-east-1  # For region-based routing
 
 # mTLS Configuration
 STALWART_CLIENT_CERT=/etc/sge/certs/stalwart.crt
@@ -249,17 +394,37 @@ STALWART_CONNECT_TIMEOUT=5
 STALWART_REQUEST_TIMEOUT=30
 ```
 
-### Vault Paths
-- `secret/stalwart/client_cert`: Client certificate
-- `secret/stalwart/client_key`: Private key
-- `secret/stalwart/ca_cert`: CA certificate
+### Vault Secrets
+
+#### Core Authentication Secrets
+- **`secret/stalwart/client_cert`**: PEM-encoded client certificate for mTLS
+- **`secret/stalwart/client_key`**: PEM-encoded private key for mTLS
+- **`secret/stalwart/ca_cert`**: PEM-encoded CA certificate for server verification
+
+#### Routing Configuration Secrets
+
+**For Tenant-Based Routing:**
+- **`secret/stalwart/tenants/{tenant}/server_url`**: Server URL for specific tenant
+- Example: `secret/stalwart/tenants/acme/server_url` → `"https://stalwart-tenant-acme.sge.internal"`
+
+**For Region-Based Routing:**
+- **`secret/stalwart/regions/{region}/server_url`**: Server URL for specific region
+- Example: `secret/stalwart/regions/us-east-1/server_url` → `"https://stalwart-us-east.sge.internal"`
+
+**Certificate Requirements:**
+- Issued by SGE Certificate Authority
+- Extended Key Usage: Client Authentication
+- Subject Alternative Name: SGE service identifier
+- Valid for at least 90 days
+- Must be valid for all target Stalwart servers
 
 ## Deployment Considerations
 
 ### Network Security
-- **Internal Network**: Stalwart only accessible from SGE
-- **Firewall Rules**: Restrict Stalwart to SGE IP ranges
-- **TLS Everywhere**: All communication encrypted
+- **Official Endpoint**: All traffic routed through `https://stalwart.skygenesisenterprise.com`
+- **mTLS Required**: Mutual TLS authentication mandatory
+- **IP Whitelisting**: SGE-Core IPs whitelisted at network level
+- **TLS 1.3**: Minimum TLS version enforced
 
 ### High Availability
 - **Load Balancing**: Multiple Stalwart instances
@@ -285,7 +450,8 @@ STALWART_REQUEST_TIMEOUT=30
 - **WebSocket Support**: Real-time updates via WebSocket
 
 ### Compliance & Security
+- **Dynamic Routing**: Secure routing to appropriate servers based on context
 - **End-to-End Encryption**: PGP/SMIME support
-- **Audit Logging**: Comprehensive audit trails
-- **Data Retention**: Configurable retention policies
-- **GDPR Compliance**: Data portability and deletion
+- **Audit Logging**: Comprehensive audit trails with server routing information
+- **Data Residency**: Geographic data placement compliance
+- **GDPR Compliance**: Data portability and deletion with proper routing

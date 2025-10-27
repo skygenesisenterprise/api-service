@@ -5,9 +5,92 @@ use reqwest::{Client, Certificate, Identity};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use async_trait::async_trait;
 use crate::core::vault::VaultClient;
 use crate::models::user::User;
 use crate::models::mail::*;
+
+// Server resolver trait for dynamic routing
+#[async_trait]
+pub trait StalwartServerResolver: Send + Sync {
+    async fn resolve_server(&self, user: &User, operation: &str) -> Result<String, StalwartError>;
+}
+
+// Default resolver using official server
+pub struct OfficialStalwartResolver;
+
+#[async_trait]
+impl StalwartServerResolver for OfficialStalwartResolver {
+    async fn resolve_server(&self, _user: &User, _operation: &str) -> Result<String, StalwartError> {
+        Ok("https://stalwart.skygenesisenterprise.com".to_string())
+    }
+}
+
+// Tenant-based resolver (example for multi-tenant deployments)
+pub struct TenantBasedResolver {
+    vault_client: Arc<VaultClient>,
+}
+
+impl TenantBasedResolver {
+    pub fn new(vault_client: Arc<VaultClient>) -> Self {
+        TenantBasedResolver { vault_client }
+    }
+}
+
+#[async_trait]
+impl StalwartServerResolver for TenantBasedResolver {
+    async fn resolve_server(&self, user: &User, operation: &str) -> Result<String, StalwartError> {
+        // Extract tenant from user context
+        let tenant = extract_tenant_from_user(user)?;
+
+        // Get tenant-specific server configuration from Vault
+        let server_config_path = format!("secret/stalwart/tenants/{}", tenant);
+        let server_url: String = self.vault_client
+            .get_secret(&server_config_path)
+            .await?
+            .get("server_url")
+            .and_then(|v| v.as_str())
+            .ok_or(StalwartError::ConfigurationError("Server URL not found for tenant".to_string()))?
+            .to_string();
+
+        Ok(server_url)
+    }
+}
+
+// Region-based resolver (example for geo-distribution)
+pub struct RegionBasedResolver {
+    vault_client: Arc<VaultClient>,
+    default_region: String,
+}
+
+impl RegionBasedResolver {
+    pub fn new(vault_client: Arc<VaultClient>, default_region: String) -> Self {
+        RegionBasedResolver {
+            vault_client,
+            default_region,
+        }
+    }
+}
+
+#[async_trait]
+impl StalwartServerResolver for RegionBasedResolver {
+    async fn resolve_server(&self, user: &User, operation: &str) -> Result<String, StalwartError> {
+        // Determine region based on user location or tenant
+        let region = determine_user_region(user).unwrap_or_else(|| self.default_region.clone());
+
+        // Get region-specific server
+        let region_config_path = format!("secret/stalwart/regions/{}", region);
+        let server_url: String = self.vault_client
+            .get_secret(&region_config_path)
+            .await?
+            .get("server_url")
+            .and_then(|v| v.as_str())
+            .ok_or(StalwartError::ConfigurationError(format!("Server URL not found for region: {}", region)))?
+            .to_string();
+
+        Ok(server_url)
+    }
+}
 
 pub struct StalwartClient {
     client: Client,
@@ -16,13 +99,62 @@ pub struct StalwartClient {
     identity: Arc<Mutex<Option<Identity>>>,
     vault_client: Arc<VaultClient>,
     session_token: Arc<Mutex<Option<String>>>,
+    server_resolver: Arc<dyn StalwartServerResolver>,
 }
 
 impl StalwartClient {
     pub async fn new(
-        base_url: String,
         vault_client: Arc<VaultClient>,
+        server_resolver: Arc<dyn StalwartServerResolver>,
     ) -> Result<Self, StalwartError> {
+        // Load mTLS certificates from Vault
+        let cert_pem = vault_client.get_secret("stalwart/client_cert").await?;
+        let key_pem = vault_client.get_secret("stalwart/client_key").await?;
+        let ca_pem = vault_client.get_secret("stalwart/ca_cert").await?;
+
+        // Create client identity
+        let identity_pem = format!("{}\n{}", cert_pem, key_pem);
+        let identity = Identity::from_pem(identity_pem.as_bytes())?;
+
+        // Create CA certificate
+        let ca_cert = Certificate::from_pem(ca_pem.as_bytes())?;
+
+        // Build HTTP client with mTLS
+        let client = Client::builder()
+            .identity(identity.clone())
+            .add_root_certificate(ca_cert)
+            .timeout(std::time::Duration::from_secs(30))
+            .pool_max_idle_per_host(10)
+            .build()?;
+
+        Ok(StalwartClient {
+            client,
+            base_url: String::new(), // Will be resolved dynamically
+            jmap_path: "/jmap".to_string(),
+            identity: Arc::new(Mutex::new(Some(identity))),
+            vault_client,
+            session_token: Arc::new(Mutex::new(None)),
+            server_resolver,
+        })
+    }
+
+    // Convenience constructor for official server
+    pub async fn new_official(vault_client: Arc<VaultClient>) -> Result<Self, StalwartError> {
+        let resolver = Arc::new(OfficialStalwartResolver);
+        Self::new(vault_client, resolver).await
+    }
+
+    // Constructor for tenant-based routing
+    pub async fn new_tenant_based(vault_client: Arc<VaultClient>) -> Result<Self, StalwartError> {
+        let resolver = Arc::new(TenantBasedResolver::new(vault_client.clone()));
+        Self::new(vault_client, resolver).await
+    }
+
+    // Constructor for region-based routing
+    pub async fn new_region_based(vault_client: Arc<VaultClient>, default_region: String) -> Result<Self, StalwartError> {
+        let resolver = Arc::new(RegionBasedResolver::new(vault_client.clone(), default_region));
+        Self::new(vault_client, resolver).await
+    }
         // Load mTLS certificates from Vault
         let cert_pem = vault_client.get_secret("stalwart/client_cert").await?;
         let key_pem = vault_client.get_secret("stalwart/client_key").await?;
@@ -56,6 +188,9 @@ impl StalwartClient {
     // Core JMAP operations
 
     pub async fn execute_jmap(&self, request: JmapRequest, user: &User) -> Result<JmapResponse, StalwartError> {
+        // Resolve the appropriate server for this user/operation
+        let server_url = self.server_resolver.resolve_server(user, "jmap").await?;
+
         // Ensure we have a valid session
         self.ensure_session(user).await?;
 
@@ -63,7 +198,7 @@ impl StalwartClient {
         let headers = self.build_sge_headers(user);
 
         // Execute JMAP request
-        let url = format!("{}{}", self.base_url, self.jmap_path);
+        let url = format!("{}{}", server_url, self.jmap_path);
         let response = self.client
             .post(&url)
             .headers(headers)
@@ -191,7 +326,8 @@ impl StalwartClient {
     }
 
     pub async fn get_attachment(&self, message_id: &str, attachment_id: &str, user: &User) -> Result<Vec<u8>, StalwartError> {
-        let url = format!("{}/attachment/{}/{}", self.base_url, message_id, attachment_id);
+        let server_url = self.server_resolver.resolve_server(user, "attachment_download").await?;
+        let url = format!("{}/attachment/{}/{}", server_url, message_id, attachment_id);
 
         let headers = self.build_sge_headers(user);
 
@@ -207,7 +343,8 @@ impl StalwartClient {
     }
 
     pub async fn upload_attachment(&self, filename: &str, content_type: &str, data: &[u8], user: &User) -> Result<String, StalwartError> {
-        let url = format!("{}/upload", self.base_url);
+        let server_url = self.server_resolver.resolve_server(user, "attachment_upload").await?;
+        let url = format!("{}/upload", server_url);
 
         let headers = self.build_sge_headers(user);
         let form = reqwest::multipart::Form::new()
@@ -313,8 +450,21 @@ impl StalwartClient {
         "signature_placeholder".to_string()
     }
 
-    pub async fn health_check(&self) -> Result<bool, StalwartError> {
-        let url = format!("{}/health", self.base_url);
+    pub async fn health_check(&self, user: Option<&User>) -> Result<bool, StalwartError> {
+        // Use a default user context for health checks if none provided
+        let default_user = User {
+            id: "health-check-user".to_string(),
+            email: "health@example.com".to_string(),
+            first_name: None,
+            last_name: None,
+            roles: vec!["health".to_string()],
+            created_at: chrono::Utc::now(),
+            enabled: true,
+        };
+
+        let user = user.unwrap_or(&default_user);
+        let server_url = self.server_resolver.resolve_server(user, "health").await?;
+        let url = format!("{}/health", server_url);
 
         let response = self.client
             .get(&url)
@@ -347,10 +497,28 @@ impl StalwartClient {
 }
 
 // Helper functions
-fn extract_tenant(user: &User) -> String {
+fn extract_tenant_from_user(user: &User) -> Result<String, StalwartError> {
     // Extract tenant from user roles or metadata
-    // Default implementation
-    "default".to_string()
+    // Look for tenant information in user roles or custom attributes
+    for role in &user.roles {
+        if role.starts_with("tenant:") {
+            return Ok(role.trim_start_matches("tenant:").to_string());
+        }
+    }
+
+    // Fallback to default tenant
+    Ok("default".to_string())
+}
+
+fn determine_user_region(user: &User) -> Option<String> {
+    // Determine region based on user attributes
+    // This could be based on:
+    // - User location metadata
+    // - Tenant region mapping
+    // - Geographic routing rules
+
+    // For now, return None to use default region
+    None
 }
 
 // Error types

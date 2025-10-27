@@ -56,10 +56,10 @@ The API follows a modular layered architecture with clear separation of responsi
 - **[Middlewares](middlewares.md)** - JWT authentication and request processing
 - **[Utilities](utils.md)** - Helper functions (tokens, keys, hashing)
 
-### 📧 Mail Module
+### 📧 Mail Module (Dynamic Routing)
 - **[Mail Overview](mail-overview.md)** - Mail module architecture and security model
 - **[Mail Endpoints](mail-endpoints.md)** - Complete mail API reference
-- **[Mail Integration](mail-integration.md)** - Stalwart server integration details
+- **[Mail Integration](mail-integration.md)** - Dynamic Stalwart server routing and integration
 
 ### 🔧 Planned Components
 - **[Configuration](config.md)** - Centralized configuration management (to implement)
