@@ -1,10 +1,10 @@
 # Sky Genesis Enterprise API Documentation
 
-Cette documentation couvre l'architecture complète de l'API Sky Genesis Enterprise, un service web en Rust pour la gestion sécurisée de clés et l'authentification.
+This documentation covers the complete architecture of the Sky Genesis Enterprise API, a Rust web service for secure key management and authentication.
 
-## Architecture Générale
+## General Architecture
 
-L'API suit une architecture modulaire en couches avec séparation claire des responsabilités :
+The API follows a modular layered architecture with clear separation of responsibilities:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -40,86 +40,86 @@ L'API suit une architecture modulaire en couches avec séparation claire des res
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Structure de la Documentation
+## Documentation Structure
 
-### 📋 Vue d'Ensemble
-- **[API Overview](api-overview.md)** - Architecture globale, technologies et fonctionnalités clés
-- **[API Endpoints](api-endpoints.md)** - Référence complète des endpoints avec exemples
-- **[Data Models](data-models.md)** - Structures de données et règles de validation
+### 📋 Overview
+- **[API Overview](api-overview.md)** - Global architecture, technologies and key features
+- **[API Endpoints](api-endpoints.md)** - Complete endpoint reference with examples
+- **[Data Models](data-models.md)** - Data structures and validation rules
 
-### 🏗️ Architecture Technique
-- **[Main Entry Point](main.md)** - Initialisation de l'application et flux de démarrage
-- **[Routes](routes.md)** - Définition des routes API avec filtres Warp
-- **[Controllers](controllers.md)** - Gestionnaires de requêtes HTTP et formatage des réponses
-- **[Services](services.md)** - Logique métier et intégrations externes
-- **[Core Integrations](core.md)** - Clients Vault et Keycloak avec gestion des connexions
-- **[Middlewares](middlewares.md)** - Authentification JWT et traitement des requêtes
-- **[Utilities](utils.md)** - Fonctions utilitaires (tokens, clés, hachage)
+### 🏗️ Technical Architecture
+- **[Main Entry Point](main.md)** - Application initialization and startup flow
+- **[Routes](routes.md)** - API route definitions with Warp filters
+- **[Controllers](controllers.md)** - HTTP request handlers and response formatting
+- **[Services](services.md)** - Business logic and external integrations
+- **[Core Integrations](core.md)** - Vault and Keycloak clients with connection management
+- **[Middlewares](middlewares.md)** - JWT authentication and request processing
+- **[Utilities](utils.md)** - Utility functions (tokens, keys, hashing)
 
-### 🔧 Composants Planifiés
-- **[Configuration](config.md)** - Gestion centralisée de la configuration (à implémenter)
-- **[Database Queries](queries.md)** - Couche d'abstraction base de données (actuellement placeholder)
+### 🔧 Planned Components
+- **[Configuration](config.md)** - Centralized configuration management (to implement)
+- **[Database Queries](queries.md)** - Database abstraction layer (currently placeholder)
 
-## Flux de Données
+## Data Flow
 
-### Authentification Utilisateur
+### User Authentication
 ```
 Client Request → JWT Middleware → Auth Controller → Auth Service → Keycloak Client
                                                                       ↓
                                                             Token Generation → JWT Response
 ```
 
-### Gestion des Clés API
+### API Key Management
 ```
 Client Request → JWT Middleware → Key Controller → Key Service → Vault Client
                                                                     ↓
                                                           Key Rotation → Database Log
 ```
 
-### Points d'Intégration Externes
-- **Vault** : Stockage sécurisé des secrets et rotation automatique des clés
-- **Keycloak** : Gestion des utilisateurs et authentification OAuth2
-- **PostgreSQL** (planifié) : Persistance des données d'audit et métadonnées
+### External Integration Points
+- **Vault**: Secure secret storage and automatic key rotation
+- **Keycloak**: User management and OAuth2 authentication
+- **PostgreSQL** (planned): Persistence of audit data and metadata
 
-## Patterns Architecturaux
+## Architectural Patterns
 
-### Injection de Dépendances
-- Utilisation d'`Arc<T>` pour le partage thread-safe des services
-- Injection constructeur pour faciliter les tests
-- Séparation claire entre logique métier et infrastructure
+### Dependency Injection
+- Use of `Arc<T>` for thread-safe service sharing
+- Constructor injection to facilitate testing
+- Clear separation between business logic and infrastructure
 
-### Gestion d'Erreurs
-- Types d'erreur spécifiques par couche
+### Error Handling
+- Layer-specific error types
 - Propagation via `Result<T, Box<dyn std::error::Error>>`
-- Gestion centralisée des rejets HTTP
+- Centralized HTTP rejection handling
 
-### Programmation Asynchrone
-- Runtime Tokio pour les opérations I/O
-- `async/await` pour la lisibilité du code
-- Gestion des timeouts et reconnexions
+### Asynchronous Programming
+- Tokio runtime for I/O operations
+- `async/await` for code readability
+- Timeout and reconnection management
 
-### Sécurité
-- Authentification multi-niveaux (JWT + App Token)
-- Validation stricte des entrées
-- Audit logging des opérations sensibles
-- Chiffrement des secrets via Vault
+### Security
+- Multi-level authentication (JWT + App Token)
+- Strict input validation
+- Audit logging of sensitive operations
+- Secret encryption via Vault
 
-## Technologies et Dépendances
+## Technologies and Dependencies
 
-### Stack Technique
-- **Langage** : Rust 1.70+ avec édition 2021
-- **Framework Web** : Warp (async, type-safe)
-- **Authentification** : JWT (jsonwebtoken) + Keycloak OAuth2
-- **Secrets** : HashiCorp Vault avec AppRole
-- **Base de données** : PostgreSQL (planifié)
-- **Async Runtime** : Tokio
-- **Sérialisation** : Serde (JSON)
-- **Logs** : env_logger (configuration future)
+### Technical Stack
+- **Language**: Rust 1.70+ with 2021 edition
+- **Web Framework**: Warp (async, type-safe)
+- **Authentication**: JWT (jsonwebtoken) + Keycloak OAuth2
+- **Secrets**: HashiCorp Vault with AppRole
+- **Database**: PostgreSQL (planned)
+- **Async Runtime**: Tokio
+- **Serialization**: Serde (JSON)
+- **Logging**: env_logger (future configuration)
 
-### Dépendances Clés
+### Key Dependencies
 ```toml
 [dependencies]
-warp = "0.3"           # Framework web
+warp = "0.3"           # Web framework
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 jsonwebtoken = "8.0"   # JWT handling
@@ -129,66 +129,66 @@ chrono = "0.4"         # Date/time handling
 dotenv = "0.15"        # Environment variables
 ```
 
-## État d'Implémentation
+## Implementation Status
 
-### ✅ Implémenté
-- Architecture modulaire complète
-- Authentification JWT + Keycloak
-- Gestion des clés API avec Vault
-- Routes REST complètes
-- Gestion d'erreurs structurée
-- Tests unitaires de base
+### ✅ Implemented
+- Complete modular architecture
+- JWT authentication + Keycloak integration
+- API key management with Vault
+- Complete REST routes
+- Structured error handling
+- Basic unit tests
 
-### 🚧 En Développement
-- Intégration PostgreSQL complète
-- Configuration centralisée
-- Métriques et monitoring
-- Cache et optimisation performance
+### 🚧 In Development
+- Complete PostgreSQL integration
+- Centralized configuration
+- Metrics and monitoring
+- Caching and performance optimization
 
-### 📋 Planifié
-- Migration système
-- Interface d'administration
-- Support multi-tenant avancé
+### 📋 Planned
+- Migration system
+- Administration interface
+- Advanced multi-tenant support
 - API versioning
-- Documentation OpenAPI
+- OpenAPI documentation
 
-## Structure des Modules
+## Module Structure
 
 ```
 api/src/
-├── main.rs              # 🚀 Point d'entrée et orchestration
+├── main.rs              # 🚀 Entry point and orchestration
 ├── config/              # ⚙️ Configuration (placeholder)
-├── controllers/         # 🎯 Gestion requêtes HTTP
-├── core/                # 🔗 Clients externes (Vault/Keycloak)
-├── middlewares/         # 🛡️ Authentification et validation
-├── models/              # 📊 Structures de données
-├── queries/             # 💾 Accès base de données (placeholder)
-├── routes/              # 🛣️ Définition des endpoints
-├── services/            # 🏢 Logique métier
-├── tests/               # ✅ Tests unitaires
-└── utils/               # 🔧 Utilitaires (tokens, clés)
+├── controllers/         # 🎯 HTTP request handling
+├── core/                # 🔗 External clients (Vault/Keycloak)
+├── middlewares/         # 🛡️ Authentication and validation
+├── models/              # 📊 Data structures
+├── queries/             # 💾 Database access (placeholder)
+├── routes/              # 🛣️ Endpoint definitions
+├── services/            # 🏢 Business logic
+├── tests/               # ✅ Unit tests
+└── utils/               # 🔧 Utilities (tokens, keys)
 ```
 
-## Principes de Conception
+## Design Principles
 
-### Séparation des Responsabilités
-- **Routes** : Définition des endpoints uniquement
-- **Controllers** : Parsing/validation des requêtes
-- **Services** : Logique métier pure
-- **Core** : Communication avec services externes
+### Separation of Concerns
+- **Routes**: Endpoint definitions only
+- **Controllers**: Request parsing/validation
+- **Services**: Pure business logic
+- **Core**: Communication with external services
 
-### Programmation Fonctionnelle
-- Fonctions pures où possible
-- Immuabilité des données
-- Gestion d'erreurs explicite
-- Composition plutôt qu'héritage
+### Functional Programming
+- Pure functions where possible
+- Data immutability
+- Explicit error handling
+- Composition over inheritance
 
-### Sécurité First
-- Validation en entrée systématique
-- Authentification obligatoire
-- Audit logging complet
-- Secrets jamais en dur
+### Security First
+- Systematic input validation
+- Mandatory authentication
+- Complete audit logging
+- Secrets never hardcoded
 
 ---
 
-*Pour des exemples d'utilisation pratiques, consultez [API Endpoints](api-endpoints.md). Pour le développement local, voir [API Overview](api-overview.md).*
+*For practical usage examples, see [API Endpoints](api-endpoints.md). For local development, see [API Overview](api-overview.md).*
