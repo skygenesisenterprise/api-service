@@ -48,13 +48,18 @@ The API follows a modular layered architecture with clear separation of responsi
 - **[Data Models](data-models.md)** - Data structures and validation rules
 
 ### 🏗️ Technical Architecture
-- **[Main Entry Point](main.md)** - Application initialization and startup flow
+- **[Main Entry Point](main.md)** - Application startup and initialization
 - **[Routes](routes.md)** - API route definitions with Warp filters
 - **[Controllers](controllers.md)** - HTTP request handlers and response formatting
 - **[Services](services.md)** - Business logic and external integrations
 - **[Core Integrations](core.md)** - Vault and Keycloak clients with connection management
 - **[Middlewares](middlewares.md)** - JWT authentication and request processing
-- **[Utilities](utils.md)** - Utility functions (tokens, keys, hashing)
+- **[Utilities](utils.md)** - Helper functions (tokens, keys, hashing)
+
+### 📧 Mail Module
+- **[Mail Overview](mail-overview.md)** - Mail module architecture and security model
+- **[Mail Endpoints](mail-endpoints.md)** - Complete mail API reference
+- **[Mail Integration](mail-integration.md)** - Stalwart server integration details
 
 ### 🔧 Planned Components
 - **[Configuration](config.md)** - Centralized configuration management (to implement)
