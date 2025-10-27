@@ -8,16 +8,25 @@ mod services;
 mod middlewares;
 mod routes;
 mod controllers;
+mod core;
+mod queries;
+mod utils;
+mod tests;
 
 #[tokio::main]
 async fn main() {
     dotenv().ok();
 
     let vault_addr = std::env::var("VAULT_ADDR").unwrap_or("https://vault.skygenesisenterprise.com".to_string());
-    let vault_token = std::env::var("VAULT_TOKEN").expect("VAULT_TOKEN must be set");
-    let vault_manager = Arc::new(crate::services::vault_manager::VaultManager::new(vault_addr, vault_token));
+    let role_id = std::env::var("VAULT_ROLE_ID").expect("VAULT_ROLE_ID must be set");
+    let secret_id = std::env::var("VAULT_SECRET_ID").expect("VAULT_SECRET_ID must be set");
+    let vault_client = Arc::new(crate::core::vault::VaultClient::new(vault_addr, role_id, secret_id).await.unwrap());
+    let key_service = Arc::new(crate::services::key_service::KeyService::new(vault_client));
 
-    let routes = routes::routes(vault_manager);
+    let vault_token = std::env::var("VAULT_TOKEN").unwrap_or_default();
+    let vault_manager = Arc::new(crate::services::vault_manager::VaultManager::new("dummy".to_string(), vault_token));
+
+    let routes = routes::routes(vault_manager, key_service);
 
     println!("Server started at http://localhost:3000");
 

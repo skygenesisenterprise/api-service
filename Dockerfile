@@ -21,10 +21,10 @@ RUN cargo build --release
 FROM node:20-bullseye-slim AS nextjs-builder
 
 WORKDIR /app
-COPY app/package*.json ./
-RUN npm install
-COPY app/ ./
-RUN npm run build
+COPY package*.json ./
+RUN pnpm install
+COPY app/ ./   
+RUN pnpm run build
 
 # ----------------------------
 # Étape 3 : Image finale avec Nginx
@@ -43,7 +43,7 @@ COPY --from=rust-builder /api/target/release/backend /usr/local/bin/backend
 COPY --from=nextjs-builder /app/.next /app/.next
 COPY --from=nextjs-builder /app/package*.json /app/
 WORKDIR /app
-RUN npm install --omit=dev
+RUN pnpm install --omit=dev
 
 # Copier la configuration Nginx
 COPY nginx.conf /etc/nginx/nginx.conf

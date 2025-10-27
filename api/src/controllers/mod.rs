@@ -1,3 +1,4 @@
 // Controllers Rust mod
 
-// Placeholder for controllers
+pub mod controller;
+pub mod key_controller;

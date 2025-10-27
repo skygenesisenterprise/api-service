@@ -2,3 +2,4 @@
 
 pub mod vault_service;
 pub mod vault_manager;
+pub mod key_service;
