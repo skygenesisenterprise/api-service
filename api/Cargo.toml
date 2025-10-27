@@ -8,6 +8,12 @@ tokio = { version = "1.0", features = ["full"] }
 warp = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+vault = "0.1"
+reqwest = { version = "0.11", features = ["json"] }
+diesel = { version = "2.0", features = ["postgres", "r2d2", "chrono"] }
+diesel_migrations = "2.0"
+chrono = { version = "0.4", features = ["serde"] }
+dotenv = "0.15"
 
 [[bin]]
 name = "api"
