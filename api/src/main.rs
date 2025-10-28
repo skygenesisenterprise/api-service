@@ -11,6 +11,7 @@ mod controllers;
 mod core;
 mod queries;
 mod utils;
+mod websocket;
 mod tests;
 
 #[tokio::main]
@@ -30,7 +31,10 @@ async fn main() {
     let vault_token = std::env::var("VAULT_TOKEN").unwrap_or_default();
     let vault_manager = Arc::new(crate::services::vault_manager::VaultManager::new("dummy".to_string(), vault_token));
 
-    let routes = routes::routes(vault_manager, key_service, auth_service);
+    // Initialize WebSocket server
+    let ws_server = Arc::new(crate::websocket::WebSocketServer::new());
+
+    let routes = routes::routes(vault_manager, key_service, auth_service, ws_server);
 
     // Get port from environment variable or default to 8080
     let port = std::env::var("PORT")
