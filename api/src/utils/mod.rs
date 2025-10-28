@@ -1,4 +1,4 @@
-// Utils Rust mod
+// Utils Rust module
 
 pub mod util;
 pub mod key_utils;

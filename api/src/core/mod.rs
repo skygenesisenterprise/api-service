@@ -1,4 +1,4 @@
-// Core Rust mod
+// Core Rust module
 
 pub mod core;
 pub mod vault;

@@ -1,4 +1,4 @@
-// Controllers Rust mod
+// Controllers Rust module
 
 pub mod controller;
 pub mod key_controller;

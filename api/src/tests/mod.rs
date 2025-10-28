@@ -1,4 +1,4 @@
-// Tests Rust mod
+// Tests Rust module
 
 pub mod test;
 pub mod key_tests;

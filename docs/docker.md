@@ -1,158 +1,158 @@
-# Utilisation de Docker dans l'API Sky Genesis
+# Docker Usage in Sky Genesis API
 
-Ce document explique comment utiliser Docker pour développer, construire et déployer l'API Sky Genesis Enterprise.
+This document explains how to use Docker for developing, building, and deploying the Sky Genesis Enterprise API.
 
-## Table des matières
+## Table of Contents
 
 - [Introduction](#introduction)
-- [Prérequis](#prérequis)
-- [Configuration de développement](#configuration-de-développement)
-- [Configuration de production](#configuration-de-production)
-- [Commandes communes](#commandes-communes)
-- [Sécurité](#sécurité)
-- [Monitoring et logging](#monitoring-et-logging)
-- [Dépannage](#dépannage)
-- [Ressources supplémentaires](#ressources-supplémentaires)
+- [Prerequisites](#prerequisites)
+- [Development Setup](#development-setup)
+- [Production Setup](#production-setup)
+- [Common Commands](#common-commands)
+- [Security](#security)
+- [Monitoring and Logging](#monitoring-and-logging)
+- [Troubleshooting](#troubleshooting)
+- [Additional Resources](#additional-resources)
 
 ## Introduction
 
-L'API Sky Genesis Enterprise utilise Docker pour containeriser ses composants principaux :
-- **API Backend** : Service Rust exposé sur le port 8080
-- **Frontend** : Application Next.js exposée sur le port 3000
-- **Base de données** : PostgreSQL pour le stockage des données
-- **Cache** : Redis pour la mise en cache
-- **Gestion des secrets** : Vault pour la gestion sécurisée des secrets
-- **Authentification** : Keycloak pour la gestion des identités
-- **Proxy inverse** : NGINX pour le routage et la sécurité
+The Sky Genesis Enterprise API uses Docker to containerize its main components:
+- **API Backend**: Rust service exposed on port 8080
+- **Frontend**: Next.js application exposed on port 3000
+- **Database**: PostgreSQL for data storage
+- **Cache**: Redis for caching
+- **Secret Management**: Vault for secure secret management
+- **Authentication**: Keycloak for identity management
+- **Reverse Proxy**: NGINX for routing and security
 
-## Prérequis
+## Prerequisites
 
-Avant de commencer, assurez-vous d'avoir installé :
-- Docker (version 20.10 ou supérieure)
-- Docker Compose (version 2.0 ou supérieure)
-- Au moins 4GB de RAM disponible
-- Ports 3000, 8080, 5432, 6379, 8200 et 8081 libres
+Before starting, ensure you have installed:
+- Docker (version 20.10 or higher)
+- Docker Compose (version 2.0 or higher)
+- At least 4GB of available RAM
+- Ports 3000, 8080, 5432, 6379, 8200, and 8081 available
 
-## Configuration de développement
+## Development Setup
 
-### Démarrage rapide
+### Quick Start
 
-Pour démarrer l'environnement de développement complet :
+To start the complete development environment:
 
 ```bash
 cd infrastructure/docker
 docker-compose up -d
 ```
 
-Cela lance tous les services :
-- API backend sur http://localhost:8080
-- Frontend sur http://localhost:3000
-- Base de données PostgreSQL sur localhost:5432
-- Redis sur localhost:6379
-- Vault sur http://localhost:8200
-- Keycloak sur http://localhost:8081
+This launches all services:
+- API backend on http://localhost:8080
+- Frontend on http://localhost:3000
+- PostgreSQL database on localhost:5432
+- Redis on localhost:6379
+- Vault on http://localhost:8200
+- Keycloak on http://localhost:8081
 
-### Services inclus
+### Included Services
 
-Le fichier `docker-compose.yml` définit les services suivants :
+The `docker-compose.yml` file defines the following services:
 
 #### API (Rust)
-- **Image** : Construit à partir de `Dockerfile.dev`
-- **Port** : 8080
-- **Variables d'environnement** :
-  - `DATABASE_URL` : Connexion PostgreSQL
-  - `VAULT_ADDR` : Adresse Vault
-  - `REDIS_URL` : Connexion Redis
-  - `JWT_SECRET` : Clé secrète JWT
-- **Volumes** : Montage du code source pour le développement à chaud
+- **Image**: Built from `Dockerfile.dev`
+- **Port**: 8080
+- **Environment Variables**:
+  - `DATABASE_URL`: PostgreSQL connection
+  - `VAULT_ADDR`: Vault address
+  - `REDIS_URL`: Redis connection
+  - `JWT_SECRET`: JWT secret key
+- **Volumes**: Source code mounting for hot reloading
 
 #### Frontend (Next.js)
-- **Image** : Construit à partir de `Dockerfile.frontend.dev`
-- **Port** : 3000
-- **Variables d'environnement** :
-  - `API_URL` : URL de l'API backend
-  - `NEXT_PUBLIC_API_URL` : URL publique de l'API
-- **Volumes** : Montage du code source pour le développement à chaud
+- **Image**: Built from `Dockerfile.frontend.dev`
+- **Port**: 3000
+- **Environment Variables**:
+  - `API_URL`: Backend API URL
+  - `NEXT_PUBLIC_API_URL`: Public API URL
+- **Volumes**: Source code mounting for hot reloading
 
-#### Base de données (PostgreSQL)
-- **Image** : postgres:15-alpine
-- **Port** : 5432
-- **Base de données** : api_service
-- **Utilisateur** : postgres
-- **Mot de passe** : password (à changer en production)
-- **Volume** : Persistance des données
-- **Initialisation** : Script SQL `schema-pgsql.sql`
+#### Database (PostgreSQL)
+- **Image**: postgres:15-alpine
+- **Port**: 5432
+- **Database**: api_service
+- **User**: postgres
+- **Password**: password (change in production)
+- **Volume**: Data persistence
+- **Initialization**: SQL script `schema-pgsql.sql`
 
 #### Cache (Redis)
-- **Image** : redis:7-alpine
-- **Port** : 6379
-- **Persistance** : Append-only file activé
+- **Image**: redis:7-alpine
+- **Port**: 6379
+- **Persistence**: Append-only file enabled
 
-#### Gestion des secrets (Vault)
-- **Image** : vault:1.15
-- **Port** : 8200
-- **Mode** : Développement (token root = "root")
-- **Volume** : Persistance des données Vault
+#### Secret Management (Vault)
+- **Image**: vault:1.15
+- **Port**: 8200
+- **Mode**: Development (root token = "root")
+- **Volume**: Vault data persistence
 
-#### Authentification (Keycloak)
-- **Image** : quay.io/keycloak/keycloak:22.0
-- **Port** : 8081
-- **Base de données** : PostgreSQL partagée
-- **Admin** : admin/admin (à changer en production)
+#### Authentication (Keycloak)
+- **Image**: quay.io/keycloak/keycloak:22.0
+- **Port**: 8081
+- **Database**: Shared PostgreSQL
+- **Admin**: admin/admin (change in production)
 
-#### Proxy inverse (NGINX)
-- **Image** : nginx:alpine
-- **Ports** : 80 et 443
-- **Configuration** : `nginx.conf` du projet racine
+#### Reverse Proxy (NGINX)
+- **Image**: nginx:alpine
+- **Ports**: 80 and 443
+- **Configuration**: Project root `nginx.conf`
 
-### Commandes de développement
+### Development Commands
 
 ```bash
-# Démarrer tous les services
+# Start all services
 docker-compose up -d
 
-# Voir les logs
+# View logs
 docker-compose logs -f
 
-# Arrêter tous les services
+# Stop all services
 docker-compose down
 
-# Reconstruire et redémarrer un service spécifique
+# Rebuild and restart specific service
 docker-compose up -d --build api
 
-# Accéder à un conteneur en cours d'exécution
+# Access running container
 docker-compose exec api bash
 ```
 
-## Configuration de production
+## Production Setup
 
-### Construction des images
+### Building Images
 
-Pour construire les images de production :
+To build production images:
 
 ```bash
-# Construire l'API
+# Build API
 docker build -f infrastructure/docker/Dockerfile.api -t skygenesisenterprise/api:latest .
 
-# Construire le frontend
+# Build frontend
 docker build -f infrastructure/docker/Dockerfile.frontend -t sky-genesis/frontend:latest .
 ```
 
-### Variables d'environnement
+### Environment Variables
 
-Le backend charge automatiquement les valeurs par défaut depuis le fichier `.env.example` si les variables d'environnement ne sont pas définies. Cela permet de modifier facilement les domaines des serveurs en éditant ce fichier.
+The backend automatically loads default values from the `.env.example` file if environment variables are not defined. This allows easy modification of server domains by editing this file.
 
-En production, configurez les variables suivantes :
+In production, configure the following variables:
 
 ```bash
-# Base de données
+# Database
 DATABASE_URL=postgresql://user:password@host:5432/api_service
 
-# Cache Redis
+# Redis Cache
 REDIS_URL=redis://host:6379
 
-# Authentification
-JWT_SECRET=votre_cle_secrete_jwt
+# Authentication
+JWT_SECRET=your_jwt_secret_key
 
 # API
 API_URL=https://api.example.com
@@ -160,137 +160,252 @@ API_URL=https://api.example.com
 # Frontend
 NEXT_PUBLIC_API_URL=https://api.example.com
 
-# Serveurs externes (valeurs par défaut dans .env.example)
+# External servers (default values in .env.example)
 VAULT_ADDR=https://vault.skygenesisenterprise.com
 KEYCLOAK_URL=https://keycloak.skygenesisenterprise.com
 STALWART_URL=https://stalwart.skygenesisenterprise.com
 ```
 
-#### Modification des domaines
+#### Domain Modification
 
-Pour changer le domaine des serveurs (par exemple passer de `.com` à `.local`) :
+To change server domains (e.g., from `.com` to `.local`):
 
-1. **Éditez le fichier `.env.example`** :
+1. **Edit the `.env.example` file**:
    ```bash
    VAULT_ADDR=https://vault.skygenesisenterprise.local
    KEYCLOAK_URL=https://keycloak.skygenesisenterprise.local
    STALWART_URL=https://stalwart.skygenesisenterprise.local
+   SESSION_COOKIE_DOMAIN=skygenesisenterprise.local
    ```
 
-2. **Ou définissez les variables d'environnement** :
+2. **Or set environment variables**:
    ```bash
    export VAULT_ADDR=https://vault.skygenesisenterprise.local
    export KEYCLOAK_URL=https://keycloak.skygenesisenterprise.local
    export STALWART_URL=https://stalwart.skygenesisenterprise.local
+   export SESSION_COOKIE_DOMAIN=skygenesisenterprise.local
    ```
 
-Les variables d'environnement ont la priorité sur les valeurs dans `.env.example`.
+Environment variables take priority over values in `.env.example`.
 
-### Déploiement
+#### Shared Session System
 
-Utilisez le fichier `docker-compose.prod.yml` pour le déploiement en production :
+The API implements a shared session system similar to Google, allowing users to stay logged in across applications:
+
+#### Two-Factor Authentication (2FA)
+
+2FA is optionally supported to enhance security for sensitive applications:
+
+- **TOTP**: Authenticator apps (Google Authenticator, Authy)
+- **SMS**: Codes sent via SMS
+- **Email**: Codes sent via email
+- **Recovery codes**: One-time use backup codes
+
+##### 2FA Endpoints
+
+```http
+POST /auth/2fa/setup     # Setup 2FA method
+POST /auth/2fa/verify    # Verify and activate
+GET  /auth/2fa/methods   # List methods
+DELETE /auth/2fa/methods/{id}  # Remove method
+```
+
+##### Per-Application Configuration
+
+```bash
+# Applications requiring 2FA
+AETHER_MAIL_REQUIRES_2FA=true
+AETHER_DRIVE_REQUIRES_2FA=true
+```
+
+See [docs/two-factor-auth.md](two-factor-auth.md) for complete documentation.
+
+- **Session Cookies**: Secure storage of session tokens in browser
+- **Shared Sessions**: Valid session grants access to all applications
+- **Auto-expiration**: Sessions expire after 7 days by default
+- **Security**: HttpOnly, Secure, SameSite cookies
+
+##### Session Endpoints
+
+- `POST /auth/session/login`: Login with existing session token
+- `POST /auth/logout`: Logout current session
+- `POST /auth/logout/all`: Logout all sessions
+- `GET /auth/sessions`: List user's active sessions
+
+##### Session Configuration
+
+```bash
+# Session lifetime (seconds)
+SESSION_TTL_SECONDS=604800
+
+# Session cookie name
+SESSION_COOKIE_NAME=sky_genesis_session
+
+# Cookie domain
+SESSION_COOKIE_DOMAIN=skygenesisenterprise.com
+
+# Secure cookie (HTTPS only)
+SESSION_COOKIE_SECURE=true
+```
+
+#### Unified Applications Ecosystem
+
+The API acts as a **centralized intermediary** for authentication across the entire Sky Genesis ecosystem, enabling **"One Account for All the Ecosystem"**.
+
+##### Supported Applications
+
+- **Aether Search**: Search engine
+- **Aether Mail**: Email service
+- **Aether Drive**: Cloud storage
+- **Aether Calendar**: Calendar management
+
+##### Ecosystem Endpoints
+
+```http
+GET  /auth/applications           # List accessible applications
+POST /auth/applications/access    # Request application access
+```
+
+##### Authentication Flow
+
+1. **Initial Login**: User logs in via central API
+2. **Session Created**: Shared session cookie across all applications
+3. **Application Access**: Each application validates session via API
+4. **Granular Permissions**: Access control per application and feature
+
+##### Usage Example
+
+```javascript
+// 1. Get list of applications
+const apps = await fetch('/auth/applications');
+
+// 2. Request access to Aether Mail
+const access = await fetch('/auth/applications/access', {
+  method: 'POST',
+  headers: { 'Authorization': 'Bearer ' + userToken },
+  body: JSON.stringify({
+    application_id: 'aether-mail',
+    requested_permissions: ['mail:read', 'mail:write']
+  })
+});
+
+// 3. Use application token to access Aether Mail
+const mailToken = access.access_token;
+// This token can be used directly with Aether Mail
+```
+
+##### Ecosystem Security
+
+- **Specific Tokens**: Each application receives a dedicated token
+- **Isolated Permissions**: Granular control per application
+- **Independent Expiration**: Application tokens expire separately
+- **Centralized Revocation**: Ability to revoke access to specific applications
+
+### Deployment
+
+Use the `docker-compose.prod.yml` file for production deployment:
 
 ```bash
 docker-compose -f infrastructure/docker/docker-compose.prod.yml up -d
 ```
 
-Ce fichier inclut :
-- Images optimisées pour la production
-- Configuration NGINX pour le proxy inverse
-- Certificats SSL
-- Limites de ressources
-- Politiques de redémarrage
+This file includes:
+- Production-optimized images
+- NGINX configuration for reverse proxy
+- SSL certificates
+- Resource limits
+- Restart policies
 
-## Commandes communes
+## Common Commands
 
-### Gestion des conteneurs
+### Container Management
 
 ```bash
-# Lister les conteneurs en cours d'exécution
+# List running containers
 docker ps
 
-# Voir les logs d'un conteneur
+# View container logs
 docker logs sky-genesis-api
 
-# Arrêter un conteneur spécifique
+# Stop specific container
 docker stop sky-genesis-api
 
-# Supprimer les conteneurs arrêtés
+# Remove stopped containers
 docker container prune
 
-# Nettoyer les images non utilisées
+# Clean unused images
 docker image prune -a
 ```
 
 ### Debugging
 
 ```bash
-# Accéder au shell d'un conteneur
+# Access container shell
 docker exec -it sky-genesis-api /bin/bash
 
-# Voir les statistiques des conteneurs
+# View container statistics
 docker stats
 
-# Inspecter un conteneur
+# Inspect container
 docker inspect sky-genesis-api
 ```
 
-### Santé des services
+### Service Health
 
 ```bash
-# Vérifier la santé de l'API
+# Check API health
 curl http://localhost:8080/health
 
-# Vérifier la santé du frontend
+# Check frontend health
 curl http://localhost:3000/api/health
 
-# Vérifier PostgreSQL
+# Check PostgreSQL
 docker exec sky-genesis-postgres pg_isready -U postgres -d api_service
 ```
 
-## Sécurité
+## Security
 
-### Bonnes pratiques
+### Best Practices
 
-- **Utilisateurs non-root** : Tous les conteneurs utilisent des utilisateurs non-privilégiés
-- **Images minimales** : Utilisation d'images Alpine et Debian slim
-- **Secrets externes** : Les secrets ne sont pas stockés dans les images
-- **Scans de sécurité** : Intégrez des scans réguliers avec Trivy
+- **Non-root users**: All containers use non-privileged users
+- **Minimal images**: Use Alpine and Debian slim images
+- **External secrets**: Secrets are not stored in images
+- **Security scans**: Integrate regular scans with Trivy
 
-### Scan de sécurité
+### Security Scanning
 
 ```bash
-# Scanner une image pour les vulnérabilités
+# Scan image for vulnerabilities
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
   aquasecurity/trivy image skygenesisenterprise/api:latest
 
-# Scanner pour les secrets
+# Scan for secrets
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
   zricethezav/gitleaks:latest docker --image skygenesisenterprise/api:latest
 ```
 
-### Configuration NGINX sécurisée
+### Secure NGINX Configuration
 
-Le fichier `nginx.conf` inclut des en-têtes de sécurité :
+The `nginx.conf` file includes security headers:
 - `X-Frame-Options: DENY`
 - `X-Content-Type-Options: nosniff`
 - `X-XSS-Protection: 1; mode=block`
 - `Strict-Transport-Security`
 - `Referrer-Policy`
 
-## Monitoring et logging
+## Monitoring and Logging
 
-### Health checks
+### Health Checks
 
-Tous les services incluent des health checks configurés :
-- **Intervalle** : 30 secondes
-- **Timeout** : 10 secondes
-- **Retries** : 3
-- **Start period** : 30-60 secondes selon le service
+All services include configured health checks:
+- **Interval**: 30 seconds
+- **Timeout**: 10 seconds
+- **Retries**: 3
+- **Start period**: 30-60 seconds depending on service
 
 ### Logging
 
-Configuration de logging JSON avec rotation :
+JSON logging configuration with rotation:
 ```yaml
 logging:
   driver: "json-file"
@@ -299,83 +414,83 @@ logging:
     max-file: "3"
 ```
 
-### Métriques
+### Metrics
 
-Pour l'export de métriques Prometheus, exposez le port 9090 et configurez node_exporter.
+For Prometheus metrics export, expose port 9090 and configure node_exporter.
 
-## Dépannage
+## Troubleshooting
 
-### Problèmes courants
+### Common Issues
 
-#### Port déjà utilisé
+#### Port Already in Use
 ```bash
-# Identifier le processus utilisant le port
+# Identify process using the port
 lsof -i :8080
 
-# Tuer le processus
+# Kill the process
 kill -9 <PID>
 ```
 
-#### Conteneur ne démarre pas
+#### Container Won't Start
 ```bash
-# Voir les logs détaillés
+# View detailed logs
 docker logs sky-genesis-api
 
-# Démarrer en mode debug
+# Start in debug mode
 docker run -it --entrypoint /bin/bash skygenesisenterprise/api:latest
 ```
 
-#### Connexion à la base de données échoue
+#### Database Connection Failed
 ```bash
-# Vérifier que PostgreSQL fonctionne
+# Check if PostgreSQL is running
 docker ps | grep postgres
 
-# Voir les logs PostgreSQL
+# View PostgreSQL logs
 docker logs sky-genesis-postgres
 
-# Tester la connexion
+# Test connection
 docker exec sky-genesis-postgres pg_isready -U postgres -d api_service
 ```
 
-#### Problèmes de volumes
+#### Volume Issues
 ```bash
-# Lister les volumes
+# List volumes
 docker volume ls
 
-# Inspecter un volume
+# Inspect volume
 docker volume inspect postgres_data
 
-# Supprimer un volume (ATTENTION : perte de données)
+# Remove volume (WARNING: data loss)
 docker volume rm postgres_data
 ```
 
-### Commandes de diagnostic
+### Diagnostic Commands
 
 ```bash
-# État des services
+# Service status
 docker-compose ps
 
-# Logs de tous les services
+# Logs from all services
 docker-compose logs
 
-# Utilisation des ressources
+# Resource usage
 docker stats
 
-# Événements Docker
+# Docker events
 docker events
 
-# Nettoyer le système
+# Clean system
 docker system prune -a --volumes
 ```
 
-## Ressources supplémentaires
+## Additional Resources
 
-- [Documentation Docker](https://docs.docker.com/)
-- [Guide Docker Compose](https://docs.docker.com/compose/)
-- [Bonnes pratiques Docker](https://docs.docker.com/develop/dev-best-practices/)
-- [Sécurité Docker](https://docs.docker.com/engine/security/)
-- [Multi-stage builds](https://docs.docker.com/develop/dev-best-practices/)
+- [Docker Documentation](https://docs.docker.com/)
+- [Docker Compose Guide](https://docs.docker.com/compose/)
+- [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
+- [Docker Security](https://docs.docker.com/engine/security/)
+- [Multi-stage Builds](https://docs.docker.com/develop/dev-best-practices/)
 
 ---
 
-**🐳 Containerisé • 🔒 Sécurisé • 🚀 Optimisé**
+**🐳 Containerized • 🔒 Secure • 🚀 Optimized**

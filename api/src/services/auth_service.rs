@@ -2,6 +2,9 @@ use crate::core::keycloak::KeycloakClient;
 use crate::core::vault::VaultClient;
 use crate::models::user::User;
 use crate::utils::tokens;
+use crate::services::session_service::{SessionService, Session};
+use crate::services::application_service::{ApplicationService, ApplicationAccessRequest, ApplicationAccessResponse};
+use crate::services::two_factor_service::{TwoFactorService, TwoFactorVerificationRequest, TwoFactorVerificationResponse};
 use std::sync::Arc;
 
 #[derive(Deserialize)]
@@ -16,19 +19,83 @@ pub struct LoginResponse {
     pub refresh_token: String,
     pub expires_in: u64,
     pub user: User,
+    pub session_token: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct SessionLoginResponse {
+    pub user: User,
+    pub session_id: String,
+    pub expires_at: chrono::DateTime<chrono::Utc>,
 }
 
 pub struct AuthService {
     keycloak: Arc<KeycloakClient>,
     vault: Arc<VaultClient>,
+    session_service: Arc<SessionService>,
+    application_service: Arc<ApplicationService>,
+    two_factor_service: Arc<TwoFactorService>,
 }
 
 impl AuthService {
-    pub fn new(keycloak: Arc<KeycloakClient>, vault: Arc<VaultClient>) -> Self {
-        AuthService { keycloak, vault }
+    pub fn new(
+        keycloak: Arc<KeycloakClient>,
+        vault: Arc<VaultClient>,
+        session_service: Arc<SessionService>,
+        application_service: Arc<ApplicationService>,
+        two_factor_service: Arc<TwoFactorService>,
+    ) -> Self {
+        AuthService {
+            keycloak,
+            vault,
+            session_service,
+            application_service,
+            two_factor_service,
+        }
     }
 
-    pub async fn login(&self, req: LoginRequest, app_token: &str) -> Result<LoginResponse, Box<dyn std::error::Error>> {
+    pub async fn login(&self, req: LoginRequest, app_token: &str, user_agent: Option<String>, ip_address: Option<String>) -> Result<LoginResponse, Box<dyn std::error::Error>> {
+        // Validate app_token via Vault
+        let valid = self.vault.validate_access("app", app_token).await?;
+        if !valid {
+            return Err("Invalid app token".into());
+        }
+
+        let token_resp = self.keycloak.login(&req.email, &req.password).await?;
+        let user_info = self.keycloak.get_user_info(&token_resp.access_token).await?;
+
+        let user = User {
+            id: user_info["sub"].as_str().unwrap_or("").to_string(),
+            email: req.email,
+            first_name: user_info.get("given_name").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            last_name: user_info.get("family_name").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            roles: vec!["employee".to_string()], // From user_info
+            created_at: chrono::Utc::now(),
+            enabled: true,
+        };
+
+        // Check if 2FA is required for this application
+        let requires_2fa = self.application_service.is_two_factor_required_for_application(app_token).await?;
+
+        // If 2FA is required and user doesn't have it enabled, return error
+        if requires_2fa && !self.two_factor_service.user_has_two_factor_enabled(&user.id).await? {
+            return Err("Two-factor authentication is required for this application".into());
+        }
+
+        // Create session
+        let session = self.session_service.create_session(&user, user_agent, ip_address).await?;
+        let session_token = self.session_service.generate_session_token(&session)?;
+
+        let internal_token = tokens::generate_jwt(&user)?;
+
+        Ok(LoginResponse {
+            access_token: internal_token,
+            refresh_token: token_resp.refresh_token,
+            expires_in: token_resp.expires_in,
+            user,
+            session_token: Some(session_token),
+        })
+    }
         // Validate app_token via Vault
         let valid = self.vault.validate_access("app", app_token).await?;
         if !valid {
@@ -50,12 +117,50 @@ impl AuthService {
 
         let internal_token = tokens::generate_jwt(&user)?;
 
+        // Create session for cross-app authentication
+        let session = self.session_service.create_session(&user, user_agent, ip_address).await?;
+        let session_token = self.session_service.generate_session_token(&session)?;
+
         Ok(LoginResponse {
             access_token: internal_token,
             refresh_token: token_resp.refresh_token,
             expires_in: token_resp.expires_in,
             user,
+            session_token: Some(session_token),
         })
+    }
+
+    pub async fn login_with_session(&self, session_token: &str, app_token: &str) -> Result<SessionLoginResponse, Box<dyn std::error::Error>> {
+        // Validate app_token via Vault
+        let valid = self.vault.validate_access("app", app_token).await?;
+        if !valid {
+            return Err("Invalid app token".into());
+        }
+
+        // Validate session token
+        let session_data = self.session_service.validate_session_token(session_token)?;
+        let session = self.session_service.validate_session(&session_data.session_id).await?;
+
+        match session {
+            Some(sess) => {
+                let user = User {
+                    id: sess.user_id,
+                    email: sess.email,
+                    first_name: None, // Could be cached in session
+                    last_name: None,
+                    roles: sess.roles,
+                    created_at: sess.created_at,
+                    enabled: true,
+                };
+
+                Ok(SessionLoginResponse {
+                    user,
+                    session_id: sess.session_id,
+                    expires_at: sess.expires_at,
+                })
+            }
+            None => Err("Invalid or expired session".into()),
+        }
     }
 
     pub async fn register(&self, user: User, password: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -78,5 +183,123 @@ impl AuthService {
             created_at: chrono::Utc::now(),
             enabled: true,
         })
+    }
+
+    pub async fn logout(&self, session_id: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+        if let Some(session_id) = session_id {
+            self.session_service.destroy_session(session_id).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn logout_all(&self, user_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+        self.session_service.destroy_all_user_sessions(user_id).await?;
+        Ok(())
+    }
+
+    pub async fn get_user_sessions(&self, user_id: &str) -> Result<Vec<Session>, Box<dyn std::error::Error>> {
+        self.session_service.get_user_sessions(user_id).await
+    }
+
+    pub async fn validate_session(&self, session_id: &str) -> Result<Option<Session>, Box<dyn std::error::Error>> {
+        self.session_service.validate_session(session_id).await
+    }
+
+    pub async fn request_application_access(
+        &self,
+        user: &User,
+        request: ApplicationAccessRequest,
+    ) -> Result<ApplicationAccessResponse, Box<dyn std::error::Error>> {
+        self.application_service.request_application_access(user, request).await
+    }
+
+    pub async fn get_user_applications(&self, user: &User) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
+        let applications = self.application_service.list_applications().await?;
+        let mut user_apps = Vec::new();
+
+        for app in applications {
+            let permissions = self.application_service.get_user_application_permissions(user, &app.id).await?;
+            if !permissions.is_empty() {
+                let mut app_data = serde_json::to_value(app)?;
+                app_data["user_permissions"] = serde_json::to_value(permissions)?;
+                user_apps.push(app_data);
+            }
+        }
+
+        Ok(user_apps)
+    }
+
+    pub async fn get_user_applications_by_user_id(&self, user_id: &str) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
+        // In production, fetch user from database
+        let user = User {
+            id: user_id.to_string(),
+            email: "placeholder@example.com".to_string(),
+            first_name: None,
+            last_name: None,
+            roles: vec!["employee".to_string()],
+            created_at: chrono::Utc::now(),
+            enabled: true,
+        };
+
+        self.get_user_applications(&user).await
+    }
+
+    pub async fn validate_application_access(
+        &self,
+        user: &User,
+        application_id: &str,
+        token: &str,
+        required_permissions: &[String],
+    ) -> Result<bool, Box<dyn std::error::Error>> {
+        // First validate the application token
+        let app_token = self.application_service.validate_application_token(token).await?;
+
+        // Check if token belongs to user and application
+        if app_token.user_id != user.id || app_token.application_id != application_id {
+            return Ok(false);
+        }
+
+        // Check if token is expired
+        if chrono::Utc::now() > app_token.expires_at {
+            return Ok(false);
+        }
+
+        // Check if user has required permissions
+        for perm in required_permissions {
+            if !app_token.permissions.contains(perm) {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
+    }
+
+    // Two-Factor Authentication methods
+    pub async fn setup_two_factor(
+        &self,
+        user: &User,
+        request: crate::services::two_factor_service::TwoFactorSetupRequest,
+    ) -> Result<crate::services::two_factor_service::TwoFactorSetupResponse, Box<dyn std::error::Error>> {
+        self.two_factor_service.setup_two_factor(user, request).await
+    }
+
+    pub async fn verify_two_factor(
+        &self,
+        user: &User,
+        request: TwoFactorVerificationRequest,
+    ) -> Result<TwoFactorVerificationResponse, Box<dyn std::error::Error>> {
+        self.two_factor_service.verify_two_factor(user, request).await
+    }
+
+    pub async fn get_user_two_factor_methods(&self, user_id: &str) -> Result<Vec<crate::services::two_factor_service::TwoFactorMethod>, Box<dyn std::error::Error>> {
+        self.two_factor_service.get_user_two_factor_methods(user_id).await
+    }
+
+    pub async fn remove_two_factor_method(&self, user_id: &str, method_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+        self.two_factor_service.remove_two_factor_method(user_id, method_id).await
+    }
+
+    pub async fn is_two_factor_required_for_application(&self, application_id: &str) -> Result<bool, Box<dyn std::error::Error>> {
+        self.two_factor_service.is_two_factor_required_for_application(application_id).await
     }
 }

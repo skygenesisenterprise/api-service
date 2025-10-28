@@ -1,4 +1,4 @@
-// Middlewares Rust mod
+// Middlewares Rust module
 
 pub mod auth;
 pub mod logging;

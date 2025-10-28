@@ -1,1 +1,1 @@
-// Config Rust mod
+// Config Rust module
