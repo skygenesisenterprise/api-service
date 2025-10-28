@@ -39,16 +39,30 @@ api/src/
 - App token validation via Vault
 
 ### Key Management
-- API key creation and rotation
+- API key creation and rotation with `sk_` prefix
 - Multi-tenant key isolation
 - Time-to-live (TTL) support
 - Secure storage in Vault
+- Cryptographic key operations (encryption, signing, key exchange)
+
+### Cryptographic Operations
+- **Symmetric Encryption**: AES-256-GCM and ChaCha20-Poly1305
+- **Digital Signatures**: Ed25519 (API tokens) and ECDSA P-384 (high security)
+- **Key Exchange**: X25519 (Curve25519) for secure key establishment
+- **Password Hashing**: Argon2id with optimized parameters
+- **Hash Functions**: SHA-512 and SHA-3-512
+- **Key Derivation**: HKDF-SHA-512 with proper salt handling
 
 ### Security
-- All sensitive data stored in Vault
-- Encrypted communication
-- Input validation and sanitization
-- Audit logging
+- **Modern Cryptography**: AES-256-GCM, ChaCha20-Poly1305, Ed25519, X25519, Argon2id
+- **Post-Quantum Ready**: Architecture prepared for Kyber/Dilithium integration
+- **Zero-Knowledge Security**: Sensitive data never exposed in logs or responses
+- **Authenticated Encryption**: AEAD (Authenticated Encryption with Associated Data) only
+- **Secure Key Management**: Hardware-backed key storage with automatic rotation
+- **All sensitive data stored in Vault**
+- **Encrypted communication**
+- **Input validation and sanitization**
+- **Comprehensive audit logging**
 
 ## Technology Stack
 
@@ -84,10 +98,24 @@ The API exposes endpoints under two main categories:
 - `GET /auth/me` - Get current user info
 
 ### Key Management Endpoints (`/api/keys/*`)
-- `POST /api/keys` - Create new API key
+- `POST /api/keys` - Create new API key (with `sk_` prefix)
 - `GET /api/keys` - List API keys
 - `GET /api/keys/{id}` - Get specific API key
 - `DELETE /api/keys/{id}` - Revoke API key
+
+### Security & Cryptography Endpoints (`/api/v1/security/*`)
+- `GET /security/status` - Security system status and active algorithms
+- `POST /security/keys/encryption/generate` - Generate encryption keys
+- `POST /security/keys/signing/generate` - Generate signing keys (Ed25519/ECDSA)
+- `POST /security/encrypt` - Encrypt data with AES-256-GCM or ChaCha20-Poly1305
+- `POST /security/decrypt` - Decrypt data
+- `POST /security/sign` - Sign data with Ed25519 or ECDSA
+- `POST /security/verify` - Verify digital signatures
+- `POST /security/password/hash` - Hash passwords with Argon2id
+- `POST /security/password/verify` - Verify password hashes
+- `POST /security/key-exchange` - Perform X25519 key exchange
+- `POST /security/hash` - Hash data with SHA-512
+- `POST /security/random` - Generate cryptographically secure random data
 
 ## Development
 

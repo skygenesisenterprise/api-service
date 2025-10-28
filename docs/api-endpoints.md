@@ -430,6 +430,257 @@ Error response format:
 }
 ```
 
+### WebSocket Endpoints
+
+#### Public WebSocket Connection
+- **GET** `/ws`
+- **Description**: Establish a public WebSocket connection for real-time communication
+- **Authentication**: None required
+- **Protocol**: WebSocket with JSON messages
+
+#### Authenticated WebSocket Connection
+- **GET** `/ws/auth`
+- **Headers**: `Authorization: Bearer <jwt_token>`
+- **Description**: Establish an authenticated WebSocket connection
+- **Authentication**: JWT token required
+
+#### WebSocket Status
+- **GET** `/ws/status`
+- **Description**: Get WebSocket server status and statistics
+- **Response**:
+  ```json
+  {
+    "status": "active",
+    "clients_connected": 5,
+    "channels_active": 3,
+    "timestamp": 1640995200
+  }
+  ```
+
+#### Broadcast Message
+- **POST** `/ws/broadcast/{channel}`
+- **Headers**: `Authorization: Bearer <jwt_token>`
+- **Body**: JSON message to broadcast
+- **Description**: Send a message to all clients subscribed to a channel
+
+#### Send Notification
+- **POST** `/ws/notify/{user_id}`
+- **Headers**: `Authorization: Bearer <jwt_token>`
+- **Body**:
+  ```json
+  {
+    "title": "Notification Title",
+    "message": "Notification message",
+    "level": "info|success|warning|error"
+  }
+  ```
+
+### Security & Cryptography Endpoints
+
+#### Security Status
+- **GET** `/api/v1/security/status`
+- **Description**: Get comprehensive security system status
+- **Response**:
+  ```json
+  {
+    "status": "active",
+    "encryption_keys_active": 5,
+    "signing_keys_active": 3,
+    "algorithms": {
+      "symmetric_encryption": ["AES-256-GCM", "ChaCha20-Poly1305"],
+      "key_exchange": ["X25519"],
+      "signatures": ["Ed25519", "ECDSA-P384"],
+      "hash_functions": ["SHA-512", "SHA-3-512"],
+      "key_derivation": ["HKDF-SHA-512"],
+      "password_hashing": ["Argon2id"]
+    },
+    "security_level": "high",
+    "post_quantum_ready": false,
+    "timestamp": 1640995200
+  }
+  ```
+
+#### Generate Encryption Key
+- **POST** `/api/v1/security/keys/encryption/generate`
+- **Headers**: `Authorization: Bearer <jwt_token>`
+- **Body**:
+  ```json
+  {
+    "key_id": "my-encryption-key"
+  }
+  ```
+- **Description**: Generate and store a new encryption key
+
+#### Generate Signing Key
+- **POST** `/api/v1/security/keys/signing/generate`
+- **Headers**: `Authorization: Bearer <jwt_token>`
+- **Body**:
+  ```json
+  {
+    "key_id": "my-signing-key",
+    "key_type": "ed25519"  // or "ecdsa-p384"
+  }
+  ```
+- **Description**: Generate a new signing keypair (Ed25519 or ECDSA P-384)
+
+#### Encrypt Data
+- **POST** `/api/v1/security/encrypt`
+- **Headers**: `Authorization: Bearer <jwt_token>`
+- **Body**:
+  ```json
+  {
+    "key_id": "my-encryption-key",
+    "data": "SGVsbG8gV29ybGQ="  // base64 encoded plaintext
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "ciphertext": "encrypted_data_base64"
+  }
+  ```
+
+#### Decrypt Data
+- **POST** `/api/v1/security/decrypt`
+- **Headers**: `Authorization: Bearer <jwt_token>`
+- **Body**:
+  ```json
+  {
+    "key_id": "my-encryption-key",
+    "data": "encrypted_data_base64"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "plaintext": "decrypted_data_base64"
+  }
+  ```
+
+#### Sign Data
+- **POST** `/api/v1/security/sign`
+- **Headers**: `Authorization: Bearer <jwt_token>`
+- **Body**:
+  ```json
+  {
+    "key_id": "my-signing-key",
+    "data": "data_to_sign_base64"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "signature": "signature_base64"
+  }
+  ```
+
+#### Verify Signature
+- **POST** `/api/v1/security/verify`
+- **Headers**: `Authorization: Bearer <jwt_token>`
+- **Body**:
+  ```json
+  {
+    "key_id": "my-signing-key",
+    "data": "original_data_base64",
+    "signature": "signature_base64"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "valid": true
+  }
+  ```
+
+#### Hash Password
+- **POST** `/api/v1/security/password/hash`
+- **Headers**: `Authorization: Bearer <jwt_token>`
+- **Body**:
+  ```json
+  {
+    "password": "my_secure_password"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "salt": "salt_base64",
+    "hash": "argon2id_hash"
+  }
+  ```
+
+#### Verify Password
+- **POST** `/api/v1/security/password/verify`
+- **Headers**: `Authorization: Bearer <jwt_token>`
+- **Body**:
+  ```json
+  {
+    "password": "my_secure_password",
+    "salt": "salt_base64",
+    "hash": "argon2id_hash"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "valid": true
+  }
+  ```
+
+#### Perform Key Exchange
+- **POST** `/api/v1/security/key-exchange`
+- **Headers**: `Authorization: Bearer <jwt_token>`
+- **Description**: Perform X25519 key exchange simulation
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "shared_key": "derived_shared_key_base64",
+    "note": "In production, keys would be exchanged securely between parties"
+  }
+  ```
+
+#### Hash Data
+- **POST** `/api/v1/security/hash`
+- **Headers**: `Authorization: Bearer <jwt_token>`
+- **Body**:
+  ```json
+  {
+    "data": "data_to_hash_base64"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "algorithm": "SHA-512",
+    "hash": "hash_base64"
+  }
+  ```
+
+#### Generate Random Data
+- **POST** `/api/v1/security/random`
+- **Headers**: `Authorization: Bearer <jwt_token>`
+- **Body**:
+  ```json
+  {
+    "length": 32
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "data": "random_bytes_base64"
+  }
+  ```
+
 ## Rate Limiting
 
 API endpoints implement rate limiting to prevent abuse. Rate limits vary by endpoint and user role.
