@@ -25,6 +25,7 @@ pub struct CertificateInfo {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ApiKey {
     pub id: String,
+    pub key: Option<String>, // The actual API key value, only returned on creation
     pub key_type: KeyType,
     pub tenant: String, // For isolation
     pub ttl: u64, // Time to live in seconds

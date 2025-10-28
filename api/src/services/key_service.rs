@@ -44,6 +44,7 @@ impl KeyService {
 
         let api_key = ApiKey {
             id: id.clone(),
+            key: Some(key_value.clone()),
             key_type,
             tenant,
             ttl,

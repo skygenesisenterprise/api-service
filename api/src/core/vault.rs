@@ -86,10 +86,11 @@ impl VaultClient {
 
     // Auto-rotation for keys
     pub async fn rotate_key(&self, key_type: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let new_key = crate::utils::key_utils::generate_key();
+        let raw_key = crate::utils::key_utils::generate_key();
+        let formatted_key = crate::utils::key_utils::format_api_key(raw_key);
         let path = format!("secret/{}", key_type);
-        let data = serde_json::json!({ "key": new_key });
+        let data = serde_json::json!({ "key": formatted_key });
         self.set_secret(&path, data).await?;
-        Ok(new_key)
+        Ok(formatted_key)
     }
 }

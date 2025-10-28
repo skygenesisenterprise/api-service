@@ -14,6 +14,10 @@ pub fn generate_key() -> String {
     Uuid::new_v4().to_string()
 }
 
+pub fn format_api_key(raw_key: String) -> String {
+    format!("sk_{}", raw_key)
+}
+
 pub fn hash_key(key: &str) -> String {
     // Placeholder hash
     format!("hashed_{}", key)
