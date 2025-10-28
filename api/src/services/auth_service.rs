@@ -6,6 +6,7 @@ use crate::services::session_service::{SessionService, Session};
 use crate::services::application_service::{ApplicationService, ApplicationAccessRequest, ApplicationAccessResponse};
 use crate::services::two_factor_service::{TwoFactorService, TwoFactorVerificationRequest, TwoFactorVerificationResponse};
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
 pub struct LoginRequest {
@@ -87,39 +88,6 @@ impl AuthService {
         let session_token = self.session_service.generate_session_token(&session)?;
 
         let internal_token = tokens::generate_jwt(&user)?;
-
-        Ok(LoginResponse {
-            access_token: internal_token,
-            refresh_token: token_resp.refresh_token,
-            expires_in: token_resp.expires_in,
-            user,
-            session_token: Some(session_token),
-        })
-    }
-        // Validate app_token via Vault
-        let valid = self.vault.validate_access("app", app_token).await?;
-        if !valid {
-            return Err("Invalid app token".into());
-        }
-
-        let token_resp = self.keycloak.login(&req.email, &req.password).await?;
-        let user_info = self.keycloak.get_user_info(&token_resp.access_token).await?;
-
-        let user = User {
-            id: user_info["sub"].as_str().unwrap_or("").to_string(),
-            email: req.email,
-            first_name: user_info.get("given_name").and_then(|v| v.as_str()).map(|s| s.to_string()),
-            last_name: user_info.get("family_name").and_then(|v| v.as_str()).map(|s| s.to_string()),
-            roles: vec!["employee".to_string()], // From user_info
-            created_at: chrono::Utc::now(),
-            enabled: true,
-        };
-
-        let internal_token = tokens::generate_jwt(&user)?;
-
-        // Create session for cross-app authentication
-        let session = self.session_service.create_session(&user, user_agent, ip_address).await?;
-        let session_token = self.session_service.generate_session_token(&session)?;
 
         Ok(LoginResponse {
             access_token: internal_token,

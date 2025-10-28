@@ -160,6 +160,228 @@ X-API-Key: <api_key>
   }
   ```
 
+## Contextual Email Sending
+
+### Overview
+
+The API provides specialized routes for sending contextual emails with predefined configurations, templates, and security policies. This enables applications to send emails through dedicated channels for different purposes.
+
+### Supported Contexts
+
+- **`no-reply`**: Automated system emails (password resets, notifications)
+- **`security`**: Security-related communications (2FA codes, alerts)
+- **`support`**: Customer support communications
+- **`marketing`**: Marketing and promotional emails
+- **`billing`**: Billing and payment-related emails
+- **`legal`**: Legal and compliance communications
+
+### Send Contextual Email
+
+#### Basic Contextual Send
+- **POST** `/api/v1/mail/send/{context}`
+- **Description**: Send an email through a specific contextual route
+- **Parameters**:
+  - `context`: Email context (`no-reply`, `security`, `support`, `marketing`, `billing`, `legal`)
+- **Body**:
+  ```json
+  {
+    "to": [
+      {"name": "John Doe", "email": "john@example.com"}
+    ],
+    "template": "welcome",
+    "templateData": {
+      "userName": "John Doe",
+      "activationLink": "https://app.example.com/activate/12345",
+      "companyName": "Sky Genesis"
+    },
+    "priority": "normal",
+    "attachments": []
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "messageId": "msg_ctx_12346",
+    "context": "no-reply",
+    "status": "sent",
+    "timestamp": "2024-01-15T10:30:15Z",
+    "from": "no-reply@skygenesisenterprise.com"
+  }
+  ```
+
+#### Template-Based Send
+- **POST** `/api/v1/mail/send/{context}/template/{templateId}`
+- **Description**: Send an email using a predefined template
+- **Parameters**:
+  - `context`: Email context
+  - `templateId`: Template identifier
+- **Body**:
+  ```json
+  {
+    "to": ["user@example.com"],
+    "data": {
+      "userName": "John",
+      "resetToken": "abc123",
+      "expiryHours": 24
+    },
+    "locale": "en-US"
+  }
+  ```
+
+#### Bulk Contextual Send
+- **POST** `/api/v1/mail/send/{context}/bulk`
+- **Description**: Send emails to multiple recipients through contextual route
+- **Body**:
+  ```json
+  {
+    "recipients": [
+      {
+        "to": ["user1@example.com"],
+        "templateData": {"name": "User 1"},
+        "locale": "en-US"
+      },
+      {
+        "to": ["user2@example.com"],
+        "templateData": {"name": "User 2"},
+        "locale": "fr-FR"
+      }
+    ],
+    "template": "newsletter",
+    "batchId": "campaign_2024_001"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "batchId": "campaign_2024_001",
+    "totalRecipients": 2,
+    "messages": [
+      {"messageId": "msg_001", "status": "sent", "recipient": "user1@example.com"},
+      {"messageId": "msg_002", "status": "sent", "recipient": "user2@example.com"}
+    ],
+    "timestamp": "2024-01-15T10:30:15Z"
+  }
+  ```
+
+### Context-Specific Features
+
+#### No-Reply Context
+- **From Address**: `no-reply@skygenesisenterprise.com`
+- **Purpose**: System notifications, password resets, account activations
+- **Templates**: `password-reset`, `email-verification`, `welcome`, `notification`
+- **Rate Limits**: 100 emails/minute per application
+- **Security**: No replies accepted, DKIM/SPF configured
+
+#### Security Context
+- **From Address**: `security@skygenesisenterprise.com`
+- **Purpose**: Security alerts, 2FA codes, login notifications
+- **Templates**: `login-alert`, `2fa-code`, `password-changed`, `suspicious-activity`
+- **Rate Limits**: 50 emails/minute per user
+- **Security**: Encrypted delivery, audit logging, high priority
+
+#### Support Context
+- **From Address**: `support@skygenesisenterprise.com`
+- **Purpose**: Customer support communications
+- **Templates**: `ticket-created`, `ticket-updated`, `support-response`
+- **Rate Limits**: 20 emails/minute per application
+- **Features**: Reply-to handling, ticket integration
+
+#### Marketing Context
+- **From Address**: `news@skygenesisenterprise.com`
+- **Purpose**: Marketing campaigns, newsletters, promotions
+- **Templates**: `newsletter`, `promotion`, `product-update`
+- **Rate Limits**: 1000 emails/hour per application
+- **Features**: Unsubscribe handling, analytics tracking
+
+#### Billing Context
+- **From Address**: `billing@skygenesisenterprise.com`
+- **Purpose**: Invoices, payment confirmations, billing alerts
+- **Templates**: `invoice`, `payment-receipt`, `billing-alert`
+- **Rate Limits**: 100 emails/minute per application
+- **Security**: PCI compliance, encrypted attachments
+
+#### Legal Context
+- **From Address**: `legal@skygenesisenterprise.com`
+- **Purpose**: Legal notices, terms updates, compliance communications
+- **Templates**: `terms-update`, `privacy-notice`, `legal-alert`
+- **Rate Limits**: 10 emails/minute per application
+- **Security**: Legal hold capabilities, audit trails
+
+### Template Management
+
+#### List Available Templates
+- **GET** `/api/v1/mail/templates/{context}`
+- **Description**: Get available templates for a context
+- **Response**:
+  ```json
+  {
+    "context": "no-reply",
+    "templates": [
+      {
+        "id": "welcome",
+        "name": "Welcome Email",
+        "description": "New user welcome message",
+        "variables": ["userName", "activationLink", "companyName"],
+        "locales": ["en-US", "fr-FR", "es-ES"]
+      }
+    ]
+  }
+  ```
+
+#### Get Template Details
+- **GET** `/api/v1/mail/templates/{context}/{templateId}`
+- **Description**: Get template details and preview
+- **Response**:
+  ```json
+  {
+    "id": "welcome",
+    "subject": "Welcome to {{companyName}}!",
+    "body": {
+      "text": "Hi {{userName}},\n\nWelcome to {{companyName}}! Please activate your account: {{activationLink}}",
+      "html": "<p>Hi {{userName}},</p><p>Welcome to {{companyName}}! Please <a href=\"{{activationLink}}\">activate your account</a>.</p>"
+    },
+    "variables": ["userName", "activationLink", "companyName"]
+  }
+  ```
+
+### Email Analytics
+
+#### Get Context Statistics
+- **GET** `/api/v1/mail/stats/{context}`
+- **Description**: Get sending statistics for a context
+- **Query Parameters**:
+  - `period`: Time period (`hour`, `day`, `week`, `month`)
+- **Response**:
+  ```json
+  {
+    "context": "no-reply",
+    "period": "day",
+    "stats": {
+      "sent": 1250,
+      "delivered": 1220,
+      "opened": 340,
+      "clicked": 85,
+      "bounced": 15,
+      "complained": 2
+    }
+  }
+  ```
+
+#### Get Batch Status
+- **GET** `/api/v1/mail/batch/{batchId}`
+- **Description**: Get status of a bulk email batch
+- **Response**:
+  ```json
+  {
+    "batchId": "campaign_2024_001",
+    "status": "completed",
+    "total": 1000,
+    "sent": 980,
+    "failed": 20,
+    "progress": 100.0
+  }
+  ```
+
 #### Update Message
 - **PATCH** `/api/v1/mail/messages/{messageId}`
 - **Description**: Update message flags or move between mailboxes

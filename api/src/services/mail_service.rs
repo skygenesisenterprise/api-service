@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use crate::core::stalwart_client::StalwartClient;
 use crate::core::vault::VaultClient;
-use crate::models::mail::{Mailbox, Message, SendRequest, SearchResult};
+use crate::models::mail::{Mailbox, Message, SendRequest, SearchResult, EmailContext, ContextualSendRequest, ContextualSendResponse, BulkContextualSendRequest, BulkSendResponse, EmailTemplate, TemplateListResponse, ContextStats, BatchStatus};
 use crate::models::user::User;
 
 pub struct MailService {
@@ -175,6 +175,134 @@ impl MailService {
         Ok(result)
     }
 
+    // Contextual email methods
+
+    pub async fn send_contextual_email(&self, context: EmailContext, request: &ContextualSendRequest, user: &User) -> Result<ContextualSendResponse, MailError> {
+        // Validate context and request
+        self.validate_contextual_request(&context, request, user)?;
+
+        // Check rate limits for context
+        self.check_context_rate_limits(&context, user)?;
+
+        // Get template if specified
+        let (subject, body) = if let Some(template_id) = &request.template {
+            self.render_template(&context, template_id, &request.template_data)?
+        } else if let (Some(subject), Some(body)) = (&request.subject, &request.body) {
+            (subject.clone(), body.clone())
+        } else {
+            return Err(MailError::new("MISSING_CONTENT", "Either template or subject/body must be provided"));
+        };
+
+        // Create send request
+        let send_request = SendRequest {
+            to: request.to.clone(),
+            cc: None,
+            bcc: None,
+            subject,
+            body,
+            attachments: request.attachments.clone(),
+            priority: request.priority.clone(),
+            request_read_receipt: None,
+        };
+
+        // Send via Stalwart with context-specific from address
+        let result = self.stalwart_client.send_contextual_email(&context, &send_request, user).await?;
+
+        // Log contextual sending
+        self.log_contextual_sending(&context, &result, user).await?;
+
+        Ok(ContextualSendResponse {
+            message_id: result.message_id,
+            context: context.as_str().to_string(),
+            status: result.status,
+            timestamp: result.timestamp,
+            from: context.get_from_address().to_string(),
+        })
+    }
+
+    pub async fn send_bulk_contextual_emails(&self, context: EmailContext, request: &BulkContextualSendRequest, user: &User) -> Result<BulkSendResponse, MailError> {
+        // Validate bulk request
+        self.validate_bulk_request(&context, request, user)?;
+
+        // Check bulk rate limits
+        self.check_bulk_rate_limits(&context, request.recipients.len(), user)?;
+
+        let batch_id = request.batch_id.clone().unwrap_or_else(|| format!("batch_{}", chrono::Utc::now().timestamp()));
+
+        // Process each recipient
+        let mut results = Vec::new();
+        for recipient in &request.recipients {
+            let contextual_request = ContextualSendRequest {
+                to: recipient.to.clone(),
+                template: Some(request.template.clone()),
+                template_data: Some(recipient.template_data.clone()),
+                subject: None,
+                body: None,
+                priority: None,
+                attachments: None,
+            };
+
+            match self.send_contextual_email(context.clone(), &contextual_request, user).await {
+                Ok(response) => {
+                    results.push(BulkMessageResult {
+                        message_id: response.message_id,
+                        status: response.status,
+                        recipient: recipient.to.join(", "),
+                    });
+                }
+                Err(e) => {
+                    results.push(BulkMessageResult {
+                        message_id: "".to_string(),
+                        status: SendStatus::Failed,
+                        recipient: recipient.to.join(", "),
+                    });
+                    // Log error but continue processing
+                    eprintln!("Failed to send to {}: {:?}", recipient.to.join(", "), e);
+                }
+            }
+        }
+
+        let sent_count = results.iter().filter(|r| matches!(r.status, SendStatus::Sent | SendStatus::Queued)).count();
+
+        Ok(BulkSendResponse {
+            batch_id,
+            total_recipients: request.recipients.len(),
+            messages: results,
+            timestamp: chrono::Utc::now(),
+        })
+    }
+
+    pub async fn get_context_templates(&self, context: &EmailContext) -> Result<TemplateListResponse, MailError> {
+        // Get templates from storage (could be database or hardcoded)
+        let templates = self.get_templates_for_context(context)?;
+
+        Ok(TemplateListResponse {
+            context: context.as_str().to_string(),
+            templates,
+        })
+    }
+
+    pub async fn get_template(&self, context: &EmailContext, template_id: &str) -> Result<EmailTemplate, MailError> {
+        // Get specific template
+        self.get_template_by_id(context, template_id)
+    }
+
+    pub async fn get_context_stats(&self, context: &EmailContext, period: &str) -> Result<ContextStats, MailError> {
+        // Get stats from analytics storage
+        let stats = self.get_stats_for_context(context, period)?;
+
+        Ok(ContextStats {
+            context: context.as_str().to_string(),
+            period: period.to_string(),
+            stats,
+        })
+    }
+
+    pub async fn get_batch_status(&self, batch_id: &str) -> Result<BatchStatus, MailError> {
+        // Get batch status from storage
+        self.get_batch_status_from_storage(batch_id)
+    }
+
     // Policy and validation methods
 
     fn validate_user_access(&self, user: &User) -> Result<(), MailError> {
@@ -220,6 +348,220 @@ impl MailService {
         // Log access for audit purposes
         // Store in audit database
         todo!("Implement access logging")
+    }
+
+    // Contextual email validation and helper methods
+
+    fn validate_contextual_request(&self, context: &EmailContext, request: &ContextualSendRequest, user: &User) -> Result<(), MailError> {
+        if request.to.is_empty() {
+            return Err(MailError::new("NO_RECIPIENTS", "At least one recipient is required"));
+        }
+
+        // Validate email addresses
+        for email in &request.to {
+            if !self.is_valid_email(email) {
+                return Err(MailError::new("INVALID_EMAIL", &format!("Invalid email address: {}", email)));
+            }
+        }
+
+        // Context-specific validations
+        match context {
+            EmailContext::Legal => {
+                // Legal emails require explicit approval or admin role
+                if !user.roles.contains(&"admin".to_string()) && !user.roles.contains(&"legal".to_string()) {
+                    return Err(MailError::permission_denied());
+                }
+            }
+            EmailContext::Security => {
+                // Security emails should be high priority
+                if let Some(ref priority) = request.priority {
+                    if priority != "high" {
+                        return Err(MailError::new("INVALID_PRIORITY", "Security emails must be high priority"));
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        Ok(())
+    }
+
+    fn validate_bulk_request(&self, context: &EmailContext, request: &BulkContextualSendRequest, user: &User) -> Result<(), MailError> {
+        if request.recipients.is_empty() {
+            return Err(MailError::new("NO_RECIPIENTS", "At least one recipient is required"));
+        }
+
+        if request.recipients.len() > 1000 {
+            return Err(MailError::new("TOO_MANY_RECIPIENTS", "Maximum 1000 recipients per bulk send"));
+        }
+
+        // Validate each recipient
+        for recipient in &request.recipients {
+            if recipient.to.is_empty() {
+                return Err(MailError::new("EMPTY_RECIPIENT", "Each recipient must have at least one email address"));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn check_context_rate_limits(&self, context: &EmailContext, user: &User) -> Result<(), MailError> {
+        // Check rate limits based on context
+        // This would typically check against Redis or similar
+        let limit = context.get_rate_limit();
+        // TODO: Implement actual rate limiting logic
+        Ok(())
+    }
+
+    fn check_bulk_rate_limits(&self, context: &EmailContext, recipient_count: usize, user: &User) -> Result<(), MailError> {
+        // Check bulk rate limits
+        let per_email_limit = context.get_rate_limit();
+        let total_limit = per_email_limit * 10; // Allow 10x for bulk operations
+
+        if recipient_count as u32 > total_limit {
+            return Err(MailError::rate_limit_exceeded());
+        }
+
+        Ok(())
+    }
+
+    fn render_template(&self, context: &EmailContext, template_id: &str, data: &Option<serde_json::Value>) -> Result<(String, MessageBody), MailError> {
+        // Get template
+        let template = self.get_template_by_id(context, template_id)?;
+
+        let data = data.as_ref().unwrap_or(&serde_json::Value::Null);
+
+        // Simple template rendering (in production, use a proper template engine)
+        let subject = self.render_template_string(&template.subject, data)?;
+        let text_body = self.render_template_string(&template.body.text, data)?;
+        let html_body = self.render_template_string(&template.body.html, data)?;
+
+        Ok((subject, MessageBody {
+            text: Some(text_body),
+            html: Some(html_body),
+        }))
+    }
+
+    fn render_template_string(&self, template: &str, data: &serde_json::Value) -> Result<String, MailError> {
+        // Simple variable replacement: {{variable}}
+        let mut result = template.to_string();
+
+        if let serde_json::Value::Object(map) = data {
+            for (key, value) in map {
+                let placeholder = format!("{{{{{}}}}}", key);
+                let replacement = match value {
+                    serde_json::Value::String(s) => s.clone(),
+                    serde_json::Value::Number(n) => n.to_string(),
+                    serde_json::Value::Bool(b) => b.to_string(),
+                    _ => value.to_string(),
+                };
+                result = result.replace(&placeholder, &replacement);
+            }
+        }
+
+        Ok(result)
+    }
+
+    fn get_templates_for_context(&self, context: &EmailContext) -> Result<Vec<EmailTemplate>, MailError> {
+        // Return hardcoded templates for now (in production, fetch from database)
+        let templates = match context {
+            EmailContext::NoReply => vec![
+                EmailTemplate {
+                    id: "password-reset".to_string(),
+                    context: EmailContext::NoReply,
+                    name: "Password Reset".to_string(),
+                    description: "Email for password reset requests".to_string(),
+                    subject: "Reset your password".to_string(),
+                    body: TemplateBody {
+                        text: "Hi {{userName}},\n\nClick here to reset your password: {{resetLink}}\n\nThis link expires in {{expiryHours}} hours.".to_string(),
+                        html: "<p>Hi {{userName}},</p><p>Click <a href=\"{{resetLink}}\">here</a> to reset your password.</p><p>This link expires in {{expiryHours}} hours.</p>".to_string(),
+                    },
+                    variables: vec!["userName".to_string(), "resetLink".to_string(), "expiryHours".to_string()],
+                    locales: vec!["en-US".to_string()],
+                    created_at: chrono::Utc::now(),
+                    updated_at: chrono::Utc::now(),
+                },
+                EmailTemplate {
+                    id: "welcome".to_string(),
+                    context: EmailContext::NoReply,
+                    name: "Welcome Email".to_string(),
+                    description: "Welcome new users".to_string(),
+                    subject: "Welcome to {{companyName}}!".to_string(),
+                    body: TemplateBody {
+                        text: "Welcome {{userName}}!\n\nYour account has been created. Please verify your email: {{activationLink}}".to_string(),
+                        html: "<p>Welcome {{userName}}!</p><p>Your account has been created. Please <a href=\"{{activationLink}}\">verify your email</a>.</p>".to_string(),
+                    },
+                    variables: vec!["userName".to_string(), "activationLink".to_string(), "companyName".to_string()],
+                    locales: vec!["en-US".to_string()],
+                    created_at: chrono::Utc::now(),
+                    updated_at: chrono::Utc::now(),
+                },
+            ],
+            EmailContext::Security => vec![
+                EmailTemplate {
+                    id: "2fa-code".to_string(),
+                    context: EmailContext::Security,
+                    name: "2FA Code".to_string(),
+                    description: "Two-factor authentication codes".to_string(),
+                    subject: "Your verification code".to_string(),
+                    body: TemplateBody {
+                        text: "Your verification code is: {{code}}\n\nThis code expires in 10 minutes.".to_string(),
+                        html: "<p>Your verification code is: <strong>{{code}}</strong></p><p>This code expires in 10 minutes.</p>".to_string(),
+                    },
+                    variables: vec!["code".to_string()],
+                    locales: vec!["en-US".to_string()],
+                    created_at: chrono::Utc::now(),
+                    updated_at: chrono::Utc::now(),
+                },
+            ],
+            _ => vec![], // Add more templates as needed
+        };
+
+        Ok(templates)
+    }
+
+    fn get_template_by_id(&self, context: &EmailContext, template_id: &str) -> Result<EmailTemplate, MailError> {
+        let templates = self.get_templates_for_context(context)?;
+        templates.into_iter()
+            .find(|t| t.id == template_id)
+            .ok_or_else(|| MailError::new("TEMPLATE_NOT_FOUND", "Template not found"))
+    }
+
+    fn get_stats_for_context(&self, context: &EmailContext, period: &str) -> Result<EmailStats, MailError> {
+        // Return mock stats (in production, fetch from analytics database)
+        Ok(EmailStats {
+            sent: 1250,
+            delivered: 1220,
+            opened: 340,
+            clicked: 85,
+            bounced: 15,
+            complained: 2,
+        })
+    }
+
+    fn get_batch_status_from_storage(&self, batch_id: &str) -> Result<BatchStatus, MailError> {
+        // Return mock batch status (in production, fetch from database)
+        Ok(BatchStatus {
+            batch_id: batch_id.to_string(),
+            status: BatchStatusType::Completed,
+            total: 100,
+            sent: 95,
+            failed: 5,
+            progress: 100.0,
+            created_at: chrono::Utc::now() - chrono::Duration::hours(1),
+            updated_at: chrono::Utc::now(),
+        })
+    }
+
+    fn log_contextual_sending(&self, context: &EmailContext, result: &ContextualSendResponse, user: &User) -> Result<(), MailError> {
+        // Log contextual email sending for audit
+        // TODO: Implement actual logging
+        Ok(())
+    }
+
+    fn is_valid_email(&self, email: &str) -> bool {
+        // Basic email validation
+        email.contains('@') && email.split('@').count() == 2 && email.len() > 3
     }
 
     // Additional helper methods would be implemented here

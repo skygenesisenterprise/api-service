@@ -461,6 +461,187 @@ fn is_valid_email(email: &str) -> bool {
     email.contains('@') && email.split('@').count() == 2
 }
 
+// Contextual email types
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum EmailContext {
+    #[serde(rename = "no-reply")]
+    NoReply,
+    #[serde(rename = "security")]
+    Security,
+    #[serde(rename = "support")]
+    Support,
+    #[serde(rename = "marketing")]
+    Marketing,
+    #[serde(rename = "billing")]
+    Billing,
+    #[serde(rename = "legal")]
+    Legal,
+}
+
+impl EmailContext {
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "no-reply" => Some(EmailContext::NoReply),
+            "security" => Some(EmailContext::Security),
+            "support" => Some(EmailContext::Support),
+            "marketing" => Some(EmailContext::Marketing),
+            "billing" => Some(EmailContext::Billing),
+            "legal" => Some(EmailContext::Legal),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            EmailContext::NoReply => "no-reply",
+            EmailContext::Security => "security",
+            EmailContext::Support => "support",
+            EmailContext::Marketing => "marketing",
+            EmailContext::Billing => "billing",
+            EmailContext::Legal => "legal",
+        }
+    }
+
+    pub fn get_from_address(&self) -> &'static str {
+        match self {
+            EmailContext::NoReply => "no-reply@skygenesisenterprise.com",
+            EmailContext::Security => "security@skygenesisenterprise.com",
+            EmailContext::Support => "support@skygenesisenterprise.com",
+            EmailContext::Marketing => "news@skygenesisenterprise.com",
+            EmailContext::Billing => "billing@skygenesisenterprise.com",
+            EmailContext::Legal => "legal@skygenesisenterprise.com",
+        }
+    }
+
+    pub fn get_rate_limit(&self) -> u32 {
+        match self {
+            EmailContext::NoReply => 100, // emails per minute
+            EmailContext::Security => 50,
+            EmailContext::Support => 20,
+            EmailContext::Marketing => 1000, // per hour
+            EmailContext::Billing => 100,
+            EmailContext::Legal => 10,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextualSendRequest {
+    pub to: Vec<String>,
+    pub template: Option<String>,
+    pub template_data: Option<serde_json::Value>,
+    pub subject: Option<String>,
+    pub body: Option<MessageBody>,
+    pub priority: Option<String>,
+    pub attachments: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextualSendResponse {
+    pub message_id: String,
+    pub context: String,
+    pub status: SendStatus,
+    pub timestamp: DateTime<Utc>,
+    pub from: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BulkContextualSendRequest {
+    pub recipients: Vec<BulkRecipient>,
+    pub template: String,
+    pub batch_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BulkRecipient {
+    pub to: Vec<String>,
+    pub template_data: serde_json::Value,
+    pub locale: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BulkSendResponse {
+    pub batch_id: String,
+    pub total_recipients: usize,
+    pub messages: Vec<BulkMessageResult>,
+    pub timestamp: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BulkMessageResult {
+    pub message_id: String,
+    pub status: SendStatus,
+    pub recipient: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmailTemplate {
+    pub id: String,
+    pub context: EmailContext,
+    pub name: String,
+    pub description: String,
+    pub subject: String,
+    pub body: TemplateBody,
+    pub variables: Vec<String>,
+    pub locales: Vec<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TemplateBody {
+    pub text: String,
+    pub html: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TemplateListResponse {
+    pub context: String,
+    pub templates: Vec<EmailTemplate>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextStats {
+    pub context: String,
+    pub period: String,
+    pub stats: EmailStats,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmailStats {
+    pub sent: u64,
+    pub delivered: u64,
+    pub opened: u64,
+    pub clicked: u64,
+    pub bounced: u64,
+    pub complained: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchStatus {
+    pub batch_id: String,
+    pub status: BatchStatusType,
+    pub total: usize,
+    pub sent: usize,
+    pub failed: usize,
+    pub progress: f64,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum BatchStatusType {
+    #[serde(rename = "pending")]
+    Pending,
+    #[serde(rename = "processing")]
+    Processing,
+    #[serde(rename = "completed")]
+    Completed,
+    #[serde(rename = "failed")]
+    Failed,
+}
+
 // Type aliases for convenience
 pub type SendRequest = SendMessageRequest;
 pub type SendResult = SendMessageResponse;

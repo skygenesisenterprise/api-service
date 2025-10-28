@@ -350,6 +350,18 @@ impl StalwartClient {
         Ok(result)
     }
 
+    pub async fn send_contextual_email(&self, context: &EmailContext, request: &SendRequest, user: &User) -> Result<SendResult, StalwartError> {
+        // For contextual emails, we use the same send mechanism but with context-specific headers
+        let jmap_request = JmapRequest::message_send_with_context(user.id.clone(), request.clone(), context.clone());
+
+        let response = self.execute_jmap(jmap_request, user).await?;
+
+        // Parse send result
+        let result = response.parse_send_result()?;
+
+        Ok(result)
+    }
+
     pub async fn get_attachment(&self, message_id: &str, attachment_id: &str, user: &User) -> Result<Vec<u8>, StalwartError> {
         let server_url = self.server_resolver.resolve_server(user, "attachment_download").await?;
         let url = format!("{}/attachment/{}/{}", server_url, message_id, attachment_id);
@@ -678,6 +690,12 @@ impl JmapRequest {
 
     fn authenticate(user: User) -> Self {
         todo!("Implement authentication request")
+    }
+
+    fn message_send_with_context(account_id: String, request: SendRequest, context: EmailContext) -> Self {
+        // Create a contextual send request with context-specific metadata
+        // This would include context in the JMAP arguments for proper routing
+        todo!("Implement contextual message send request")
     }
 }
 

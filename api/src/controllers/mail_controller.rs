@@ -4,7 +4,8 @@
 use warp::Filter;
 use std::sync::Arc;
 use crate::services::mail_service::MailService;
-use crate::models::mail::{MailRequest, MailResponse, Mailbox, Message, SendRequest};
+use crate::models::mail::{MailRequest, MailResponse, Mailbox, Message, SendRequest, EmailContext, ContextualSendRequest, ContextualSendResponse, BulkContextualSendRequest, BulkSendResponse, TemplateListResponse, ContextStats, BatchStatus};
+use crate::models::user::User;
 
 pub struct MailController {
     mail_service: Arc<MailService>,
@@ -117,6 +118,85 @@ impl MailController {
         // Upload to Stalwart
         // Return attachment ID
         todo!("Implement attachment upload")
+    }
+
+    // Contextual email endpoints
+
+    pub async fn send_contextual_email(&self, context_str: String, request: ContextualSendRequest, user_id: String, tenant: String) -> Result<impl warp::Reply, warp::Rejection> {
+        let context = EmailContext::from_str(&context_str)
+            .ok_or_else(|| warp::reject::custom("Invalid context"))?;
+
+        let user = self.get_user_from_id(&user_id).await
+            .map_err(|_| warp::reject::custom("User not found"))?;
+
+        let result = self.mail_service.send_contextual_email(context, &request, &user).await
+            .map_err(|e| warp::reject::custom(e))?;
+
+        Ok(warp::reply::json(&result))
+    }
+
+    pub async fn send_bulk_contextual_emails(&self, context_str: String, request: BulkContextualSendRequest, user_id: String, tenant: String) -> Result<impl warp::Reply, warp::Rejection> {
+        let context = EmailContext::from_str(&context_str)
+            .ok_or_else(|| warp::reject::custom("Invalid context"))?;
+
+        let user = self.get_user_from_id(&user_id).await
+            .map_err(|_| warp::reject::custom("User not found"))?;
+
+        let result = self.mail_service.send_bulk_contextual_emails(context, &request, &user).await
+            .map_err(|e| warp::reject::custom(e))?;
+
+        Ok(warp::reply::json(&result))
+    }
+
+    pub async fn get_context_templates(&self, context_str: String) -> Result<impl warp::Reply, warp::Rejection> {
+        let context = EmailContext::from_str(&context_str)
+            .ok_or_else(|| warp::reject::custom("Invalid context"))?;
+
+        let result = self.mail_service.get_context_templates(&context).await
+            .map_err(|e| warp::reject::custom(e))?;
+
+        Ok(warp::reply::json(&result))
+    }
+
+    pub async fn get_template(&self, context_str: String, template_id: String) -> Result<impl warp::Reply, warp::Rejection> {
+        let context = EmailContext::from_str(&context_str)
+            .ok_or_else(|| warp::reject::custom("Invalid context"))?;
+
+        let result = self.mail_service.get_template(&context, &template_id).await
+            .map_err(|e| warp::reject::custom(e))?;
+
+        Ok(warp::reply::json(&result))
+    }
+
+    pub async fn get_context_stats(&self, context_str: String, period: String) -> Result<impl warp::Reply, warp::Rejection> {
+        let context = EmailContext::from_str(&context_str)
+            .ok_or_else(|| warp::reject::custom("Invalid context"))?;
+
+        let result = self.mail_service.get_context_stats(&context, &period).await
+            .map_err(|e| warp::reject::custom(e))?;
+
+        Ok(warp::reply::json(&result))
+    }
+
+    pub async fn get_batch_status(&self, batch_id: String) -> Result<impl warp::Reply, warp::Rejection> {
+        let result = self.mail_service.get_batch_status(&batch_id).await
+            .map_err(|e| warp::reject::custom(e))?;
+
+        Ok(warp::reply::json(&result))
+    }
+
+    // Helper method to get user (placeholder - implement based on your user service)
+    async fn get_user_from_id(&self, user_id: &str) -> Result<User, MailError> {
+        // TODO: Implement actual user lookup
+        // For now, return a mock user
+        Ok(User {
+            id: user_id.to_string(),
+            email: format!("{}@example.com", user_id),
+            roles: vec!["user".to_string()],
+            tenant_id: "default".to_string(),
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        })
     }
 }
 

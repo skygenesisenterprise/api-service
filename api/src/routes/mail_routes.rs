@@ -42,6 +42,14 @@ pub fn mail_routes(
     // Attachment routes
     let attachments = attachment_routes(mail_controller.clone());
 
+    // Contextual email routes
+    let contextual_send = contextual_send_routes(mail_controller.clone());
+    let contextual_bulk_send = contextual_bulk_send_routes(mail_controller.clone());
+    let contextual_templates = contextual_templates_routes(mail_controller.clone());
+    let contextual_template = contextual_template_routes(mail_controller.clone());
+    let contextual_stats = contextual_stats_routes(mail_controller.clone());
+    let batch_status = batch_status_routes(mail_controller.clone());
+
     // Combine all routes
     mail_base.and(
         mailboxes
@@ -55,6 +63,12 @@ pub fn mail_routes(
             .or(threads)
             .or(drafts)
             .or(attachments)
+            .or(contextual_send)
+            .or(contextual_bulk_send)
+            .or(contextual_templates)
+            .or(contextual_template)
+            .or(contextual_stats)
+            .or(batch_status)
     )
 }
 
@@ -321,6 +335,88 @@ fn extract_tenant_from_claims(claims: &Claims) -> String {
     claims.tenant.clone().unwrap_or_else(|| "default".to_string())
 }
 
+// Contextual email routes
+
+fn contextual_send_routes(
+    controller: Arc<MailController>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("send" / String)
+        .and(warp::post())
+        .and(jwt_auth())
+        .and(warp::body::json())
+        .and(warp::any().map(move || controller.clone()))
+        .and_then(|context: String, claims: Claims, request: ContextualSendRequest, ctrl: Arc<MailController>| async move {
+            let user_id = claims.sub;
+            let tenant = extract_tenant_from_claims(&claims);
+            ctrl.send_contextual_email(context, request, user_id, tenant).await
+        })
+}
+
+fn contextual_bulk_send_routes(
+    controller: Arc<MailController>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("send" / String / "bulk")
+        .and(warp::post())
+        .and(jwt_auth())
+        .and(warp::body::json())
+        .and(warp::any().map(move || controller.clone()))
+        .and_then(|context: String, claims: Claims, request: BulkContextualSendRequest, ctrl: Arc<MailController>| async move {
+            let user_id = claims.sub;
+            let tenant = extract_tenant_from_claims(&claims);
+            ctrl.send_bulk_contextual_emails(context, request, user_id, tenant).await
+        })
+}
+
+fn contextual_templates_routes(
+    controller: Arc<MailController>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("templates" / String)
+        .and(warp::get())
+        .and(jwt_auth())
+        .and(warp::any().map(move || controller.clone()))
+        .and_then(|context: String, claims: Claims, ctrl: Arc<MailController>| async move {
+            ctrl.get_context_templates(context).await
+        })
+}
+
+fn contextual_template_routes(
+    controller: Arc<MailController>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("templates" / String / String)
+        .and(warp::get())
+        .and(jwt_auth())
+        .and(warp::any().map(move || controller.clone()))
+        .and_then(|context: String, template_id: String, claims: Claims, ctrl: Arc<MailController>| async move {
+            ctrl.get_template(context, template_id).await
+        })
+}
+
+fn contextual_stats_routes(
+    controller: Arc<MailController>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("stats" / String)
+        .and(warp::get())
+        .and(jwt_auth())
+        .and(warp::query::<StatsQuery>())
+        .and(warp::any().map(move || controller.clone()))
+        .and_then(|context: String, claims: Claims, query: StatsQuery, ctrl: Arc<MailController>| async move {
+            let period = query.period.unwrap_or_else(|| "day".to_string());
+            ctrl.get_context_stats(context, period).await
+        })
+}
+
+fn batch_status_routes(
+    controller: Arc<MailController>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("batch" / String)
+        .and(warp::get())
+        .and(jwt_auth())
+        .and(warp::any().map(move || controller.clone()))
+        .and_then(|batch_id: String, claims: Claims, ctrl: Arc<MailController>| async move {
+            ctrl.get_batch_status(batch_id).await
+        })
+}
+
 // Import necessary types (these would be defined in the actual implementation)
 use crate::controllers::mail_controller::*;
 use crate::services::mail_service::*;
@@ -380,4 +476,9 @@ struct SearchQueryParams {
     date_from: Option<String>,
     date_to: Option<String>,
     has_attachment: Option<bool>,
+}
+
+#[derive(Deserialize)]
+struct StatsQuery {
+    period: Option<String>,
 }

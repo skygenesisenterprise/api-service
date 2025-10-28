@@ -93,4 +93,26 @@ impl VaultClient {
         self.set_secret(&path, data).await?;
         Ok(formatted_key)
     }
+
+    pub async fn validate_access(&self, key_type: &str, token: &str) -> Result<bool, Box<dyn std::error::Error>> {
+        // For now, just check if the token exists in vault
+        let path = format!("secret/{}", key_type);
+        match self.get_secret(&path).await {
+            Ok(data) => {
+                // Check if token matches stored value
+                Ok(data.get("key").and_then(|v| v.as_str()) == Some(token))
+            }
+            Err(_) => Ok(false),
+        }
+    }
+
+    pub async fn store_secret(&self, path: &str, data: Value) -> Result<(), Box<dyn std::error::Error>> {
+        self.set_secret(path, data).await
+    }
+
+    pub async fn delete_secret(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+        // Vault delete operation (simplified)
+        // In a real implementation, this would call the Vault delete API
+        Ok(())
+    }
 }
