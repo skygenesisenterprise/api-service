@@ -2,6 +2,7 @@ use warp::{Filter, Reply};
 use std::convert::Infallible;
 use std::sync::Arc;
 use dotenv::dotenv;
+use std::collections::HashMap;
 
 mod models;
 mod services;
@@ -14,11 +15,35 @@ mod utils;
 mod websocket;
 mod tests;
 
+// Function to load default values from .env.example
+fn load_defaults_from_env_example() -> HashMap<String, String> {
+    let mut defaults = HashMap::new();
+
+    // Read .env.example file
+    if let Ok(content) = std::fs::read_to_string(".env.example") {
+        for line in content.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            if let Some((key, value)) = line.split_once('=') {
+                defaults.insert(key.to_string(), value.to_string());
+            }
+        }
+    }
+
+    defaults
+}
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
 
-    let vault_addr = std::env::var("VAULT_ADDR").unwrap_or("https://vault.skygenesisenterprise.com".to_string());
+    let defaults = load_defaults_from_env_example();
+
+    let vault_addr = std::env::var("VAULT_ADDR")
+        .or_else(|_| std::env::var("VAULT_BASE_URL"))
+        .unwrap_or_else(|_| defaults.get("VAULT_ADDR").unwrap_or(&"https://vault.skygenesisenterprise.com".to_string()).clone());
     let role_id = std::env::var("VAULT_ROLE_ID").expect("VAULT_ROLE_ID must be set");
     let secret_id = std::env::var("VAULT_SECRET_ID").expect("VAULT_SECRET_ID must be set");
     let vault_client = Arc::new(crate::core::vault::VaultClient::new(vault_addr, role_id, secret_id).await.unwrap());

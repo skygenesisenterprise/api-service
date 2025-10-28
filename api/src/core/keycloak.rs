@@ -3,6 +3,27 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
 use crate::core::vault::VaultClient;
+use std::collections::HashMap;
+
+// Function to load default values from .env.example
+fn load_defaults_from_env_example() -> HashMap<String, String> {
+    let mut defaults = HashMap::new();
+
+    // Read .env.example file
+    if let Ok(content) = std::fs::read_to_string(".env.example") {
+        for line in content.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            if let Some((key, value)) = line.split_once('=') {
+                defaults.insert(key.to_string(), value.to_string());
+            }
+        }
+    }
+
+    defaults
+}
 
 #[derive(Deserialize)]
 struct TokenResponse {
@@ -48,7 +69,12 @@ pub struct KeycloakClient {
 
 impl KeycloakClient {
     pub async fn new(vault: Arc<VaultClient>) -> Result<Self, Box<dyn std::error::Error>> {
-        let base_url = std::env::var("KEYCLOAK_URL").unwrap_or("https://keycloak.skygenesisenterprise.com".to_string());
+        // Load defaults from .env.example
+        let defaults = super::load_defaults_from_env_example();
+
+        let base_url = std::env::var("KEYCLOAK_URL")
+            .or_else(|_| std::env::var("KEYCLOAK_BASE_URL"))
+            .unwrap_or_else(|_| defaults.get("KEYCLOAK_URL").unwrap_or(&"https://keycloak.skygenesisenterprise.com".to_string()).clone());
         let realm = std::env::var("KEYCLOAK_REALM").unwrap_or("skygenesisenterpirse".to_string());
         let client_id = std::env::var("KEYCLOAK_CLIENT_ID").unwrap_or("api-client".to_string());
         let client_secret = vault.get_secret("keycloak/client_secret").await?["data"].as_str().unwrap().to_string();

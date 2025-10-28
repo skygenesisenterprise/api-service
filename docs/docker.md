@@ -140,6 +140,8 @@ docker build -f infrastructure/docker/Dockerfile.frontend -t sky-genesis/fronten
 
 ### Variables d'environnement
 
+Le backend charge automatiquement les valeurs par défaut depuis le fichier `.env.example` si les variables d'environnement ne sont pas définies. Cela permet de modifier facilement les domaines des serveurs en éditant ce fichier.
+
 En production, configurez les variables suivantes :
 
 ```bash
@@ -149,9 +151,6 @@ DATABASE_URL=postgresql://user:password@host:5432/api_service
 # Cache Redis
 REDIS_URL=redis://host:6379
 
-# Gestion des secrets
-VAULT_ADDR=https://vault.example.com:8200
-
 # Authentification
 JWT_SECRET=votre_cle_secrete_jwt
 
@@ -160,7 +159,32 @@ API_URL=https://api.example.com
 
 # Frontend
 NEXT_PUBLIC_API_URL=https://api.example.com
+
+# Serveurs externes (valeurs par défaut dans .env.example)
+VAULT_ADDR=https://vault.skygenesisenterprise.com
+KEYCLOAK_URL=https://keycloak.skygenesisenterprise.com
+STALWART_URL=https://stalwart.skygenesisenterprise.com
 ```
+
+#### Modification des domaines
+
+Pour changer le domaine des serveurs (par exemple passer de `.com` à `.local`) :
+
+1. **Éditez le fichier `.env.example`** :
+   ```bash
+   VAULT_ADDR=https://vault.skygenesisenterprise.local
+   KEYCLOAK_URL=https://keycloak.skygenesisenterprise.local
+   STALWART_URL=https://stalwart.skygenesisenterprise.local
+   ```
+
+2. **Ou définissez les variables d'environnement** :
+   ```bash
+   export VAULT_ADDR=https://vault.skygenesisenterprise.local
+   export KEYCLOAK_URL=https://keycloak.skygenesisenterprise.local
+   export STALWART_URL=https://stalwart.skygenesisenterprise.local
+   ```
+
+Les variables d'environnement ont la priorité sur les valeurs dans `.env.example`.
 
 ### Déploiement
 

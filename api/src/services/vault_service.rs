@@ -1,6 +1,27 @@
 use reqwest::Client;
 use serde_json::Value;
 use std::env;
+use std::collections::HashMap;
+
+// Function to load default values from .env.example
+fn load_defaults_from_env_example() -> HashMap<String, String> {
+    let mut defaults = HashMap::new();
+
+    // Read .env.example file
+    if let Ok(content) = std::fs::read_to_string(".env.example") {
+        for line in content.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            if let Some((key, value)) = line.split_once('=') {
+                defaults.insert(key.to_string(), value.to_string());
+            }
+        }
+    }
+
+    defaults
+}
 
 pub struct VaultService {
     client: Client,
@@ -10,7 +31,11 @@ pub struct VaultService {
 
 impl VaultService {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let base_url = env::var("VAULT_ADDR").unwrap_or("https://vault.skygenesisenterprise.com".to_string());
+        let defaults = load_defaults_from_env_example();
+
+        let base_url = env::var("VAULT_ADDR")
+            .or_else(|_| env::var("VAULT_BASE_URL"))
+            .unwrap_or_else(|_| defaults.get("VAULT_ADDR").unwrap_or(&"https://vault.skygenesisenterprise.com".to_string()).clone());
         let token = env::var("VAULT_TOKEN")?; // Assume token auth
 
         let client = Client::new();

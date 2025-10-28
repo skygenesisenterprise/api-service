@@ -7,6 +7,27 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use async_trait::async_trait;
 use crate::core::vault::VaultClient;
+use std::collections::HashMap;
+
+// Function to load default values from .env.example
+fn load_defaults_from_env_example() -> HashMap<String, String> {
+    let mut defaults = HashMap::new();
+
+    // Read .env.example file
+    if let Ok(content) = std::fs::read_to_string(".env.example") {
+        for line in content.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            if let Some((key, value)) = line.split_once('=') {
+                defaults.insert(key.to_string(), value.to_string());
+            }
+        }
+    }
+
+    defaults
+}
 use crate::models::user::User;
 use crate::models::mail::*;
 
@@ -22,7 +43,11 @@ pub struct OfficialStalwartResolver;
 #[async_trait]
 impl StalwartServerResolver for OfficialStalwartResolver {
     async fn resolve_server(&self, _user: &User, _operation: &str) -> Result<String, StalwartError> {
-        Ok("https://stalwart.skygenesisenterprise.com".to_string())
+        let defaults = load_defaults_from_env_example();
+
+        let base_url = std::env::var("STALWART_URL")
+            .unwrap_or_else(|_| defaults.get("STALWART_URL").unwrap_or(&"https://stalwart.skygenesisenterprise.com".to_string()).clone());
+        Ok(base_url)
     }
 }
 
