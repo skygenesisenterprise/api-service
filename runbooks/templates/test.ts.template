@@ -1,0 +1,9 @@
+import { describe, it, expect } from 'vitest';
+
+describe('{{TEST_NAME}}', () => {
+  it('should pass', () => {
+    expect(true).toBe(true);
+  });
+
+  // Add more test cases
+});

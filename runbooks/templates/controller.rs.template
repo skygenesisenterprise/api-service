@@ -1,0 +1,22 @@
+use actix_web::{web, HttpResponse, Result};
+use serde::{Deserialize, Serialize};
+
+use crate::models::{{MODEL_NAME}};
+
+#[derive(Serialize, Deserialize)]
+pub struct {{CONTROLLER_NAME}}Response {
+    pub data: {{MODEL_NAME}},
+    pub message: String,
+}
+
+pub async fn {{action_name}}(
+    path: web::Path<String>,
+    // Add other parameters
+) -> Result<HttpResponse> {
+    // Controller logic here
+
+    Ok(HttpResponse::Ok().json({{CONTROLLER_NAME}}Response {
+        data: {{MODEL_NAME}}::default(),
+        message: "Success".to_string(),
+    }))
+}

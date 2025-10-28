@@ -1,0 +1,17 @@
+import React from 'react';
+
+interface {{COMPONENT_NAME}}Props {
+  // Add props here
+}
+
+export const {{COMPONENT_NAME}}: React.FC<{{COMPONENT_NAME}}Props> = ({
+  // Destructure props
+}) => {
+  return (
+    <div className="{{component-name}}">
+      {/* Component content */}
+    </div>
+  );
+};
+
+export default {{COMPONENT_NAME}};
