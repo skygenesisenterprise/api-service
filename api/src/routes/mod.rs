@@ -3,6 +3,7 @@
 pub mod key_routes;
 pub mod auth_routes;
 pub mod websocket_routes;
+pub mod security_routes;
 
 use warp::Filter;
 use std::sync::Arc;
@@ -23,6 +24,7 @@ pub fn routes(
     let key_routes = crate::routes::key_routes::key_routes(key_service);
     let auth_routes = crate::routes::auth_routes::auth_routes(auth_service);
     let websocket_routes = crate::routes::websocket_routes::websocket_routes(ws_server);
+    let security_routes = crate::routes::security_routes::security_routes();
 
-    hello.or(key_routes).or(auth_routes).or(websocket_routes)
+    hello.or(key_routes).or(auth_routes).or(websocket_routes).or(security_routes)
 }
