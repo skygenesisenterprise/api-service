@@ -33,7 +33,7 @@ RUN cargo build --release
 # ------------------------------
 # Runtime Stage
 # ------------------------------
-FROM debian:12-slim
+FROM debian:13-slim
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
