@@ -45,6 +45,48 @@ struct Claims {
 
 **Note:** Implementation details may vary; currently forwards to JWT auth.
 
+### Certificate Authentication Middleware (`cert_auth_middleware.rs`)
+
+```rust
+pub fn certificate_auth(key_service: Arc<KeyService>) -> impl Filter<Extract = (CertAuthClaims,), Error = Rejection> + Clone
+```
+
+**Purpose:** Validates requests signed with private keys corresponding to API key certificates.
+
+**Process:**
+1. Extracts `X-API-Key`, `X-Timestamp`, and `X-Signature` headers
+2. Validates timestamp is within acceptable window (5 minutes)
+3. Retrieves API key and associated certificate
+4. Verifies signature using the public key (RSA or ECDSA)
+5. Returns certificate claims if valid
+
+**Headers Expected:**
+```
+X-API-Key: <api_key_id>
+X-Timestamp: <unix_timestamp>
+X-Signature: <base64_encoded_signature>
+```
+
+**Certificate Claims Structure:**
+```rust
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CertAuthClaims {
+    pub api_key_id: String,
+    pub timestamp: u64,
+    pub signature: String,
+}
+```
+
+**Supported Algorithms:**
+- RSA with PKCS#1 v1.5 padding (for RSA certificates)
+- ECDSA with P-256 curve (for ECDSA certificates)
+
+**Error Handling:**
+- `CertAuthError::InvalidSignature`: Invalid or malformed signature
+- `CertAuthError::KeyNotFound`: API key doesn't exist
+- `CertAuthError::CertificateNotFound`: API key has no certificate
+- `CertAuthError::ExpiredTimestamp`: Timestamp outside acceptable window
+
 ## Logging Middleware (`logging.rs`)
 
 **Purpose:** Logs incoming requests and responses.

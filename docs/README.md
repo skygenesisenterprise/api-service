@@ -104,10 +104,12 @@ Client Request → JWT Middleware → Key Controller → Key Service → Vault C
 - Timeout and reconnection management
 
 ### Security
-- Multi-level authentication (JWT + App Token)
+- Multi-level authentication (JWT + App Token + Certificate-based)
 - Strict input validation
 - Audit logging of sensitive operations
 - Secret encryption via Vault
+- Public/private key certificate authentication
+- RSA and ECDSA certificate support
 
 ## Technologies and Dependencies
 
@@ -140,6 +142,7 @@ dotenv = "0.15"        # Environment variables
 - Complete modular architecture
 - JWT authentication + Keycloak integration
 - API key management with Vault
+- Certificate-based authentication (RSA/ECDSA)
 - Complete REST routes
 - Structured error handling
 - Basic unit tests

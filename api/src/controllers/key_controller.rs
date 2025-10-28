@@ -1,5 +1,5 @@
 use warp::Reply;
-use crate::models::key_model::{ApiKey, KeyType};
+use crate::models::key_model::{ApiKey, KeyType, CertificateType};
 use crate::services::key_service::KeyService;
 use std::sync::Arc;
 
@@ -45,4 +45,58 @@ pub async fn list_keys(
     let keys = key_service.list_keys(&tenant).await
         .map_err(|_| warp::reject::custom(crate::middlewares::auth::AuthError::VaultError))?;
     Ok(warp::reply::json(&keys))
+}
+
+pub async fn create_key_with_certificate(
+    key_service: Arc<KeyService>,
+    key_type: String,
+    tenant: String,
+    ttl: u64,
+    cert_type: String,
+) -> Result<impl Reply, warp::Rejection> {
+    let kt = match key_type.as_str() {
+        "client" => KeyType::Client,
+        "server" => KeyType::Server,
+        "database" => KeyType::Database,
+        _ => return Err(warp::reject::custom(crate::middlewares::auth::AuthError::InvalidKeyType)),
+    };
+
+    let ct = match cert_type.as_str() {
+        "rsa" => CertificateType::RSA,
+        "ecdsa" => CertificateType::ECDSA,
+        _ => return Err(warp::reject::custom(crate::middlewares::auth::AuthError::InvalidKeyType)),
+    };
+
+    let api_key = key_service.create_key_with_certificate_specific(kt, tenant, ttl, ct).await
+        .map_err(|_| warp::reject::custom(crate::middlewares::auth::AuthError::VaultError))?;
+    Ok(warp::reply::json(&api_key))
+}
+
+pub async fn get_public_key(
+    key_service: Arc<KeyService>,
+    id: String,
+) -> Result<impl Reply, warp::Rejection> {
+    let api_key = key_service.get_key(&id).await
+        .map_err(|_| warp::reject::custom(crate::middlewares::auth::AuthError::VaultError))?;
+
+    if let Some(certificate) = api_key.certificate {
+        Ok(warp::reply::json(&serde_json::json!({
+            "public_key": certificate.public_key,
+            "certificate_type": certificate.certificate_type,
+            "fingerprint": certificate.fingerprint
+        })))
+    } else {
+        Err(warp::reject::custom(crate::middlewares::auth::AuthError::InvalidKeyType))
+    }
+}
+
+pub async fn revoke_certificate(
+    key_service: Arc<KeyService>,
+    id: String,
+) -> Result<impl Reply, warp::Rejection> {
+    // For certificate revocation, we mark the key as revoked
+    // In a real implementation, you might want to maintain a CRL (Certificate Revocation List)
+    key_service.revoke_key(&id).await
+        .map_err(|_| warp::reject::custom(crate::middlewares::auth::AuthError::VaultError))?;
+    Ok(warp::reply::json(&serde_json::json!({"message": "Certificate revoked"})))
 }

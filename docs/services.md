@@ -34,6 +34,26 @@ Creates a new API key with the specified parameters.
 
 **Returns:** `Result<ApiKey, Box<dyn std::error::Error>>`
 
+#### `create_key_with_certificate(key_type, tenant, ttl, cert_type)`
+Creates a new API key with an associated public/private certificate pair for enhanced security.
+
+**Parameters:**
+- `key_type`: `KeyType` enum (Client, Server, Database)
+- `tenant`: String identifier for tenant isolation
+- `ttl`: Time-to-live in seconds
+- `cert_type`: `CertificateType` enum (RSA, ECDSA)
+
+**Process:**
+1. Generate unique key ID
+2. Generate certificate pair (RSA or ECDSA)
+3. Store private key securely in Vault
+4. Rotate symmetric key in Vault
+5. Create ApiKey struct with certificate metadata
+6. Log key creation to database
+7. Return the created key with certificate info
+
+**Returns:** `Result<ApiKey, Box<dyn std::error::Error>>`
+
 #### `revoke_key(id)`
 Revokes an API key by marking it as inactive.
 

@@ -9,6 +9,20 @@ pub enum KeyType {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum CertificateType {
+    RSA,
+    ECDSA,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CertificateInfo {
+    pub public_key: String, // PEM encoded public key
+    pub private_key_path: String, // Path in vault for private key
+    pub certificate_type: CertificateType,
+    pub fingerprint: String, // SHA256 fingerprint for verification
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ApiKey {
     pub id: String,
     pub key_type: KeyType,
@@ -17,4 +31,5 @@ pub struct ApiKey {
     pub created_at: DateTime<Utc>,
     pub permissions: Vec<String>,
     pub vault_path: String,
+    pub certificate: Option<CertificateInfo>, // Optional certificate for enhanced security
 }

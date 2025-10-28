@@ -57,6 +57,9 @@ CREATE TABLE api_keys (
     status VARCHAR(50) DEFAULT 'active',
     public_key TEXT,
     private_key TEXT,
+    certificate_type VARCHAR(50), -- 'RSA', 'ECDSA', or NULL for no certificate
+    certificate_fingerprint VARCHAR(128), -- SHA256 fingerprint for certificate verification
+    private_key_path TEXT, -- Path in vault where private key is stored
     created_at TIMESTAMP DEFAULT now()
 );
 

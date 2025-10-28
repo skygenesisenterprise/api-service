@@ -41,6 +41,40 @@ Calculates and validates TTL value.
 
 **Returns:** Validated TTL value
 
+### Certificate Generation Functions
+
+#### `generate_rsa_certificate() -> Result<CertificateInfo, Box<dyn std::error::Error>>`
+Generates a new RSA key pair (2048-bit) for certificate-based authentication.
+
+**Process:**
+1. Generates RSA private key using cryptographically secure random number generation
+2. Derives public key from private key
+3. Encodes keys in PEM format
+4. Calculates SHA256 fingerprint of public key
+5. Returns CertificateInfo struct
+
+**Returns:** `CertificateInfo` with RSA keys and metadata
+
+#### `generate_ecdsa_certificate() -> Result<CertificateInfo, Box<dyn std::error::Error>>`
+Generates a new ECDSA key pair using P-256 curve for certificate-based authentication.
+
+**Process:**
+1. Generates ECDSA private key using cryptographically secure random number generation
+2. Derives public key from private key
+3. Encodes keys in PEM format
+4. Calculates SHA256 fingerprint of public key
+5. Returns CertificateInfo struct
+
+**Returns:** `CertificateInfo` with ECDSA keys and metadata
+
+#### `generate_certificate(cert_type: CertificateType) -> Result<CertificateInfo, Box<dyn std::error::Error>>`
+Unified function to generate certificates of any supported type.
+
+**Parameters:**
+- `cert_type`: `CertificateType::RSA` or `CertificateType::ECDSA`
+
+**Returns:** `CertificateInfo` with generated keys and metadata
+
 ## Token Utilities (`tokens.rs`)
 
 ### JWT Token Management
@@ -95,6 +129,12 @@ pub struct Claims {
 - `uuid`: For unique identifier generation
 - `jsonwebtoken`: For JWT token handling
 - `chrono`: For timestamp operations
+- `rsa`: For RSA key pair generation and operations
+- `p256`: For ECDSA key pair generation with P-256 curve
+- `ecdsa`: For ECDSA signature operations
+- `sha2`: For SHA256 fingerprint calculation
+- `rand`: For cryptographically secure random number generation
+- `base64`: For signature encoding/decoding
 
 ### Environment Variables
 - `JWT_SECRET`: Secret key for JWT signing/validation

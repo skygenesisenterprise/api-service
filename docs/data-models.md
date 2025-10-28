@@ -43,6 +43,20 @@ pub enum KeyType {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum CertificateType {
+    RSA,
+    ECDSA,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CertificateInfo {
+    pub public_key: String,        // PEM-encoded public key
+    pub private_key_path: String,  // Path to private key in vault
+    pub certificate_type: CertificateType,
+    pub fingerprint: String,       // SHA256 fingerprint for verification
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ApiKey {
     pub id: String,
     pub key_type: KeyType,
@@ -51,6 +65,7 @@ pub struct ApiKey {
     pub created_at: DateTime<Utc>,
     pub permissions: Vec<String>,
     pub vault_path: String,
+    pub certificate: Option<CertificateInfo>, // Optional certificate for enhanced security
 }
 ```
 
@@ -100,6 +115,33 @@ pub struct Claims {
 }
 ```
 
+## Certificate Authentication Models
+
+### Certificate Authentication Claims
+
+Used for certificate-based authentication validation.
+
+```rust
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CertAuthClaims {
+    pub api_key_id: String,  // API key identifier
+    pub timestamp: u64,      // Request timestamp
+    pub signature: String,   // Base64-encoded signature
+}
+```
+
+### Certificate Authentication Errors
+
+```rust
+#[derive(Debug)]
+pub enum CertAuthError {
+    InvalidSignature,      // Signature verification failed
+    KeyNotFound,          // API key doesn't exist
+    CertificateNotFound,  // API key has no certificate
+    ExpiredTimestamp,     // Timestamp outside acceptable window
+}
+```
+
 ## Keycloak Integration Models
 
 ### Token Response (from Keycloak)
@@ -137,6 +179,13 @@ struct RegisterRequest {
 - `tenant`: Non-empty string
 - `ttl`: Positive integer (seconds)
 - `permissions`: Array of valid permission strings
+- `certificate`: Optional certificate information
+
+### Certificate Validation
+- `certificate_type`: Must be RSA or ECDSA
+- `public_key`: Valid PEM-encoded public key
+- `private_key_path`: Valid vault path
+- `fingerprint`: Valid SHA256 hash (64 characters hex)
 
 ## Serialization
 
@@ -173,7 +222,10 @@ CREATE TABLE api_keys (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     permissions TEXT[], -- Array of permissions
     vault_path VARCHAR(255) NOT NULL,
-    revoked BOOLEAN DEFAULT FALSE
+    revoked BOOLEAN DEFAULT FALSE,
+    certificate_type VARCHAR(50), -- 'RSA', 'ECDSA', or NULL
+    certificate_fingerprint VARCHAR(128), -- SHA256 fingerprint
+    private_key_path TEXT -- Path to private key in vault
 );
 ```
 
