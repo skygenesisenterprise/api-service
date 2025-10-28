@@ -1,0 +1,145 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sky-genesis-api
+  labels:
+    app: sky-genesis-api
+    component: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: sky-genesis-api
+  template:
+    metadata:
+      labels:
+        app: sky-genesis-api
+        component: backend
+    spec:
+      serviceAccountName: sky-genesis-api
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 2000
+      containers:
+      - name: api
+        image: sky-genesis/api:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: sky-genesis-secrets
+              key: database-url
+        - name: VAULT_ADDR
+          valueFrom:
+            secretKeyRef:
+              name: sky-genesis-secrets
+              key: vault-addr
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: sky-genesis-secrets
+              key: jwt-secret
+        - name: REDIS_URL
+          value: "redis://sky-genesis-redis:6379"
+        - name: APP_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: sky-genesis-config
+              key: app-env
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: sky-genesis-config
+              key: log-level
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: tmp-volume
+        emptyDir: {}
+      - name: cache-volume
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sky-genesis-api
+  labels:
+    app: sky-genesis-api
+    component: backend
+spec:
+  selector:
+    app: sky-genesis-api
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sky-genesis-api
+  labels:
+    app: sky-genesis-api
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: sky-genesis-api
+  labels:
+    app: sky-genesis-api
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sky-genesis-api
+  labels:
+    app: sky-genesis-api
+subjects:
+- kind: ServiceAccount
+  name: sky-genesis-api
+roleRef:
+  kind: Role
+  name: sky-genesis-api
+  apiGroup: rbac.authorization.k8s.io

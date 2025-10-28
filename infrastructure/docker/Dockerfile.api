@@ -1,0 +1,70 @@
+# ================================
+# Sky Genesis API - Production Build
+# ================================
+
+# ------------------------------
+# Builder Stage
+# ------------------------------
+FROM rust:1.70-slim AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+WORKDIR /api
+
+# Copy dependency files for better caching
+COPY api/Cargo.toml api/Cargo.lock ./
+
+# Create dummy src to cache dependencies
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release && rm -rf src target/release/deps/sky_genesis*
+
+# Copy source code
+COPY api/src ./src
+
+# Build optimized release binary
+RUN cargo build --release
+
+# ------------------------------
+# Runtime Stage
+# ------------------------------
+FROM debian:12-slim
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user
+RUN groupadd -r apiuser && useradd -r -g apiuser apiuser
+
+# Copy binary from builder
+COPY --from=builder /api/target/release/api /usr/local/bin/api
+
+# Set ownership
+RUN chown apiuser:apiuser /usr/local/bin/api
+
+# Switch to non-root user
+USER apiuser
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Default environment
+ENV RUST_LOG=info
+ENV APP_ENV=production
+
+# Start application
+CMD ["/usr/local/bin/api"]

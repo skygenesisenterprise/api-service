@@ -269,6 +269,32 @@ curl -X POST "http://localhost:8080/api/keys/with-certificate?type=client&tenant
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
+## 🏭 Infrastructure as Code
+
+Complete infrastructure setup available in [`infrastructure/`](./infrastructure/) directory:
+
+- **🐳 Docker**: Multi-stage builds, security scanning, production containers
+- **☸️ Kubernetes**: Helm charts, Kustomize overlays, production deployments
+- **🌍 Terraform**: Multi-cloud infrastructure, automated provisioning
+- **🔧 Ansible**: Configuration management, server provisioning
+- **📊 Monitoring**: Prometheus/Grafana stack, alerting
+- **🚀 CI/CD**: GitHub Actions, Jenkins, GitLab CI pipelines
+- **🔒 Security**: Container scanning, runtime security, compliance
+- **💾 Backup**: Automated backups, disaster recovery
+
+### Quick Infrastructure Setup
+
+```bash
+# Local development with Docker
+cd infrastructure/docker && docker-compose up -d
+
+# Production deployment with Kubernetes
+cd infrastructure/kubernetes && kubectl apply -k overlays/production
+
+# Full infrastructure with Terraform
+cd infrastructure/terraform && terraform apply
+```
+
 ## 📚 API Documentation
 
 ### Core Endpoints

@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sky-genesis-frontend
+  labels:
+    app: sky-genesis-frontend
+    component: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sky-genesis-frontend
+  template:
+    metadata:
+      labels:
+        app: sky-genesis-frontend
+        component: frontend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        fsGroup: 101
+      containers:
+      - name: frontend
+        image: sky-genesis/frontend:latest
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: API_URL
+          value: "http://sky-genesis-api:8080"
+        - name: NEXT_PUBLIC_API_URL
+          value: "/api"
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: sky-genesis-config
+              key: node-env
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 101
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: tmp-volume
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sky-genesis-frontend
+  labels:
+    app: sky-genesis-frontend
+    component: frontend
+spec:
+  selector:
+    app: sky-genesis-frontend
+  ports:
+  - name: http
+    port: 3000
+    targetPort: 3000
+  type: ClusterIP
