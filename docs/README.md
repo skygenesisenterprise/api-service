@@ -56,6 +56,25 @@ The API follows a modular layered architecture with clear separation of responsi
 - **[Middlewares](middlewares.md)** - JWT authentication and request processing
 - **[Utilities](utils.md)** - Helper functions (tokens, keys, hashing)
 
+### 🔐 Certificate-Coupled API Keys
+- **[Certificate Authentication Example](certificate-auth-example.md)** - Complete guide for using certificate-coupled API keys
+
+#### Certificate-Coupled Authentication
+Certificate-coupled API keys provide enhanced security through two-factor authentication:
+
+1. **JWT Token**: Proves user identity and permissions
+2. **Digital Signature**: Proves ownership of the specific API key
+
+**Benefits:**
+- Protection against JWT token theft
+- Cryptographic proof of request origin
+- Non-repudiation of API calls
+- Enhanced security for sensitive operations
+
+**Supported Algorithms:**
+- RSA with SHA256 (PKCS#1 v1.5)
+- ECDSA with P-256 curve and SHA256
+
 ### 📧 Mail Module (Dynamic Routing)
 - **[Mail Overview](mail-overview.md)** - Mail module architecture and security model
 - **[Mail Endpoints](mail-endpoints.md)** - Complete mail API reference
@@ -104,12 +123,13 @@ Client Request → JWT Middleware → Key Controller → Key Service → Vault C
 - Timeout and reconnection management
 
 ### Security
-- Multi-level authentication (JWT + App Token + Certificate-based)
+- Multi-level authentication (JWT + App Token + Certificate-coupled keys)
+- Two-factor authentication for API requests (JWT + digital signatures)
 - Strict input validation
 - Audit logging of sensitive operations
 - Secret encryption via Vault
-- Public/private key certificate authentication
-- RSA and ECDSA certificate support
+- Certificate-coupled API keys with RSA/ECDSA support
+- Cryptographic proof of request origin
 
 ## Technologies and Dependencies
 
@@ -134,6 +154,10 @@ reqwest = "0.11"       # HTTP client
 uuid = "1.0"           # ID generation
 chrono = "0.4"         # Date/time handling
 dotenv = "0.15"        # Environment variables
+rsa = { version = "0.9", features = ["sha2", "pem", "pkcs1v15"] }  # RSA cryptography
+p256 = { version = "0.13", features = ["ecdsa", "pem"] }            # ECDSA cryptography
+sha2 = "0.10"          # SHA256 hashing
+base64 = "0.21"        # Base64 encoding
 ```
 
 ## Implementation Status
@@ -142,9 +166,11 @@ dotenv = "0.15"        # Environment variables
 - Complete modular architecture
 - JWT authentication + Keycloak integration
 - API key management with Vault
-- Certificate-based authentication (RSA/ECDSA)
+- Certificate-coupled API keys (RSA/ECDSA)
+- Two-factor authentication (JWT + digital signatures)
 - Complete REST routes
 - Structured error handling
+- Cryptographic signature verification
 - Basic unit tests
 
 ### 🚧 In Development
@@ -193,9 +219,11 @@ api/src/
 
 ### Security First
 - Systematic input validation
-- Mandatory authentication
+- Mandatory authentication with certificate-coupled keys
+- Two-factor authentication (JWT + digital signatures)
 - Complete audit logging
 - Secrets never hardcoded
+- Cryptographic proof of request origin
 
 ---
 

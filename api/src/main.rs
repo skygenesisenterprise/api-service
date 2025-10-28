@@ -32,9 +32,15 @@ async fn main() {
 
     let routes = routes::routes(vault_manager, key_service, auth_service);
 
-    println!("Server started at http://localhost:3000");
+    // Get port from environment variable or default to 8080
+    let port = std::env::var("PORT")
+        .unwrap_or_else(|_| "8080".to_string())
+        .parse::<u16>()
+        .expect("PORT must be a valid port number");
+
+    println!("Server started at http://localhost:{}", port);
 
     warp::serve(routes)
-        .run(([127, 0, 0, 1], 3000))
+        .run(([127, 0, 0, 1], port))
         .await;
 }

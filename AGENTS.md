@@ -5,7 +5,7 @@ This document provides essential information for AI coding agents working on thi
 ## Build/Lint/Test Commands
 
 ### Development
-- **Start backend**: `pnpm run dev:backend` or `ts-node api/index.ts`
+- **Start backend**: `pnpm run dev:backend` or `cargo run` (Rust API on port 8080)
 - **Start frontend**: `pnpm run dev:frontend` or `next dev --turbopack`
 - **Start both**: `pnpm run dev`
 

@@ -65,15 +65,15 @@ let routes = routes::routes(vault_manager, key_service, auth_service);
 
 ### 7. Server Startup
 ```rust
-println!("Server started at http://localhost:3000");
+println!("Server started at http://localhost:{}", port);
 warp::serve(routes)
-    .run(([127, 0, 0, 1], 3000))
+    .run(([127, 0, 0, 1], port))
     .await;
 ```
 
 **Configuration:**
 - Host: 127.0.0.1 (localhost)
-- Port: 3000
+- Port: 8080 (configurable via PORT environment variable)
 - Server: Warp HTTP server
 
 ## Module Imports
@@ -191,7 +191,7 @@ Server Startup
 - Check Vault secrets and Keycloak configuration
 
 ### Port Binding Failure
-- Port 3000 may be in use
+- Port 8080 may be in use
 - Check for other running services
 - Configure alternative port if needed
 

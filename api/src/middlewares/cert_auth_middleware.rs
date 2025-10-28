@@ -13,6 +13,12 @@ pub struct CertAuthClaims {
     pub signature: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CombinedAuthClaims {
+    pub jwt_claims: crate::middlewares::auth_middleware::Claims,
+    pub cert_claims: CertAuthClaims,
+}
+
 #[derive(Debug)]
 pub enum CertAuthError {
     InvalidSignature,
@@ -86,40 +92,49 @@ pub fn certificate_auth(key_service: Arc<KeyService>) -> impl Filter<Extract = (
 }
 
 fn verify_rsa_signature(message: &str, signature: &[u8], public_key_pem: &str) -> bool {
-    // Simplified RSA verification - in production, implement proper RSA signature verification
-    // using the rsa crate with the public key
     use rsa::{RsaPublicKey, pkcs8::DecodePublicKey};
+    use rsa::signature::{Verifier, Signature};
+    use sha2::Sha256;
 
     match RsaPublicKey::from_public_key_pem(public_key_pem) {
         Ok(public_key) => {
-            // For demonstration, we're using a simple hash comparison
-            // In real implementation, use proper PKCS#1 v1.5 or PSS verification
+            // Hash the message with SHA256
             let mut hasher = Sha256::new();
             hasher.update(message.as_bytes());
-            let expected_hash = hasher.finalize();
+            let hashed = hasher.finalize();
 
-            // This is not secure - just for demonstration
-            signature.len() == 256 && signature.iter().zip(expected_hash.iter()).all(|(a, b)| a == b)
+            // Create verifying key for PKCS#1 v1.5
+            let verifying_key = rsa::pkcs1v15::VerifyingKey::<Sha256>::new(public_key);
+
+            // Convert signature bytes to Signature type
+            if let Ok(sig) = rsa::pkcs1v15::Signature::try_from(signature) {
+                verifying_key.verify(&hashed, &sig).is_ok()
+            } else {
+                false
+            }
         },
         Err(_) => false,
     }
 }
 
 fn verify_ecdsa_signature(message: &str, signature: &[u8], public_key_pem: &str) -> bool {
-    // Simplified ECDSA verification - in production, implement proper ECDSA verification
     use p256::ecdsa::{VerifyingKey, Signature};
     use p256::pkcs8::DecodePublicKey;
+    use sha2::Sha256;
 
     match VerifyingKey::from_public_key_pem(public_key_pem) {
         Ok(verifying_key) => {
-            // For demonstration, we're using a simple hash comparison
-            // In real implementation, use proper ECDSA verification
+            // Hash the message with SHA256
             let mut hasher = Sha256::new();
             hasher.update(message.as_bytes());
-            let expected_hash = hasher.finalize();
+            let hashed = hasher.finalize();
 
-            // This is not secure - just for demonstration
-            signature.len() == 64 && signature.iter().zip(expected_hash.iter()).take(32).all(|(a, b)| a == b)
+            // Convert signature bytes to ECDSA Signature
+            if let Ok(signature) = Signature::from_slice(signature) {
+                verifying_key.verify(&hashed, &signature).is_ok()
+            } else {
+                false
+            }
         },
         Err(_) => false,
     }

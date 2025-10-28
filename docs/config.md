@@ -115,7 +115,7 @@ Sensitive configuration retrieved from Vault at runtime.
 
 ### Server Configuration
 - `SERVER_HOST`: Server bind address (default: 127.0.0.1)
-- `SERVER_PORT`: Server port (default: 3000)
+- `PORT`: Server port (default: 8080)
 - `SERVER_WORKERS`: Number of worker threads (default: number of CPUs)
 
 ### Database Configuration

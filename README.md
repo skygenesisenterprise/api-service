@@ -128,7 +128,7 @@ pnpm run dev:admin
 ### 6. Access the Application
 
 - **API**: `http://localhost:3001/api/v1`
-- **Admin Portal**: `http://localhost:3000`
+- **Admin Portal**: `http://localhost:8080`
 
 ## 🏗️ API Architecture
 
@@ -170,7 +170,7 @@ The web-based admin portal provides:
 
 ### Accessing the Admin Portal
 
-1. Navigate to `http://localhost:3000`
+1. Navigate to `http://localhost:8080`
 2. Click "Access Admin Portal"
 3. Enter your Organization ID and API key with admin permissions
 4. Start managing your API ecosystem
