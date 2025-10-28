@@ -1,0 +1,48 @@
+# Code owners for security and quality control
+# Military-grade access control principles
+
+# Global owners (security team)
+* @security-team @maintainers
+
+# Security-critical files
+.github/ @security-team
+.github/workflows/ @security-team @ci-team
+.github/codeql-config.yml @security-team
+.github/dependabot.yml @security-team
+.github/CODEOWNERS @security-team
+
+# API security
+api/src/core/ @security-team @backend-team
+api/src/middlewares/ @security-team @backend-team
+api/src/services/ @security-team @backend-team
+
+# Infrastructure security
+infrastructure/ @security-team @devops-team
+infrastructure/kubernetes/ @security-team @devops-team
+infrastructure/terraform/ @security-team @devops-team
+
+# Frontend security
+app/ @frontend-team
+app/components/ @frontend-team
+
+# Documentation
+docs/ @documentation-team
+runbooks/ @documentation-team @security-team
+
+# Tests
+api/src/tests/ @qa-team @backend-team
+**/*.test.* @qa-team
+**/*.spec.* @qa-team
+
+# Configuration files
+*.config.* @devops-team
+*.toml @backend-team
+*.json @frontend-team
+*.yml @devops-team
+*.yaml @devops-team
+
+# Require security review for changes to these patterns
+/SECURITY.md @security-team
+/package.json @security-team
+/Cargo.toml @security-team
+/Dockerfile* @security-team @devops-team

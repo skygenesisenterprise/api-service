@@ -1,0 +1,181 @@
+name: Incident Response
+
+on:
+  workflow_dispatch:
+    inputs:
+      incident_type:
+        description: 'Type of incident'
+        required: true
+        default: 'security'
+        type: choice
+        options:
+        - security
+        - performance
+        - availability
+        - data-breach
+        - other
+      severity:
+        description: 'Incident severity'
+        required: true
+        default: 'medium'
+        type: choice
+        options:
+        - critical
+        - high
+        - medium
+        - low
+      description:
+        description: 'Brief description'
+        required: true
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  security-events: read
+
+jobs:
+  incident-response:
+    name: Incident Response
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Create incident issue
+      uses: actions/github-script@v6
+      id: create-issue
+      with:
+        script: |
+          const incident = {
+            type: '${{ inputs.incident_type }}',
+            severity: '${{ inputs.severity }}',
+            description: '${{ inputs.description }}',
+            timestamp: new Date().toISOString()
+          };
+
+          const body = `# 🚨 Incident Report
+
+          ## Incident Details
+          - **Type:** ${incident.type}
+          - **Severity:** ${incident.severity.toUpperCase()}
+          - **Time:** ${incident.timestamp}
+          - **Description:** ${incident.description}
+
+          ## Response Checklist
+          - [ ] Acknowledge incident
+          - [ ] Assess impact
+          - [ ] Notify stakeholders
+          - [ ] Contain incident
+          - [ ] Investigate root cause
+          - [ ] Implement fix
+          - [ ] Test fix
+          - [ ] Monitor for recurrence
+          - [ ] Document lessons learned
+
+          ## Evidence
+          <!-- Add logs, screenshots, etc. -->
+
+          ## Timeline
+          <!-- Document all actions taken -->
+
+          ## Impact Assessment
+          <!-- Describe affected systems/users -->
+
+          ## Resolution
+          <!-- Final resolution steps -->
+          `;
+
+          const issue = await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `🚨 ${incident.severity.toUpperCase()} Incident: ${incident.type} - ${incident.timestamp.split('T')[0]}`,
+            body: body,
+            labels: ['incident', `severity-${incident.severity}`, `type-${incident.type}`]
+          });
+
+          return issue.data.number;
+
+    - name: Notify security team
+      if: inputs.incident_type == 'security'
+      run: |
+        echo "Security incident detected - notifying security team"
+        # In real scenario, this would send notifications to security team
+        # via Slack, email, PagerDuty, etc.
+
+    - name: Isolate affected systems
+      if: inputs.severity == 'critical' || inputs.severity == 'high'
+      run: |
+        echo "High severity incident - isolating systems"
+        # Commands to isolate systems, disable services, etc.
+
+    - name: Collect evidence
+      run: |
+        # Collect logs, system state, etc.
+        mkdir -p incident-evidence
+        date > incident-evidence/timestamp.txt
+        echo "${{ inputs.description }}" > incident-evidence/description.txt
+
+        # Get recent commits
+        git log --oneline -10 > incident-evidence/recent-commits.txt
+
+        # Get system information
+        uname -a > incident-evidence/system-info.txt
+
+    - name: Upload evidence
+      uses: actions/upload-artifact@v3
+      with:
+        name: incident-evidence-${{ steps.create-issue.outputs.result }}
+        path: incident-evidence/
+
+    - name: Escalate if needed
+      if: inputs.severity == 'critical'
+      run: |
+        echo "Critical incident - escalating to senior management"
+        # Additional escalation procedures
+
+  post-incident-review:
+    name: Post-Incident Review
+    runs-on: ubuntu-latest
+    needs: incident-response
+    if: inputs.severity != 'low'
+
+    steps:
+    - name: Schedule post-mortem
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const reviewDate = new Date();
+          reviewDate.setDate(reviewDate.getDate() + 7); // 1 week later
+
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `Post-Incident Review: ${new Date().toISOString().split('T')[0]}`,
+            body: `# Post-Incident Review
+
+            ## Incident Reference
+            Related to incident #${{ steps.create-issue.outputs.result }}
+
+            ## Review Questions
+            1. What happened?
+            2. Why did it happen?
+            3. What was the impact?
+            4. What did we learn?
+            5. What can we do to prevent this?
+
+            ## Action Items
+            - [ ] Identify root cause
+            - [ ] Implement preventive measures
+            - [ ] Update documentation
+            - [ ] Train team members
+            - [ ] Test improvements
+
+            ## Scheduled For
+            ${reviewDate.toISOString().split('T')[0]}
+
+            ## Attendees
+            - Security Team
+            - Development Team
+            - Operations Team
+            `,
+            labels: ['post-mortem', 'review']
+          });

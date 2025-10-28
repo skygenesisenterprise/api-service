@@ -1,0 +1,195 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag'
+        required: true
+
+permissions:
+  contents: write
+  id-token: write
+  packages: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      tag_name: ${{ steps.create_release.outputs.tag_name }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'pnpm'
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    # Build artifacts
+    - name: Build frontend
+      run: pnpm run build
+
+    - name: Build backend
+      run: cargo build --release
+
+    # Create release archives
+    - name: Create release archives
+      run: |
+        # API binary
+        tar -czf api-service-${{ github.ref_name }}-linux-x64.tar.gz target/release/api-service
+
+        # Frontend build
+        tar -czf frontend-${{ github.ref_name }}.tar.gz app/.next public package.json
+
+        # Source code
+        tar -czf source-${{ github.ref_name }}.tar.gz --exclude='.git' --exclude='target' --exclude='node_modules' .
+
+    # Generate SBOM
+    - name: Generate SBOM
+      run: |
+        npx @cyclonedx/cli generatebom --output sbom.json
+        cargo cyclonedx --output-file rust-sbom.json
+        npx @cyclonedx/cli merge --input-files sbom.json rust-sbom.json --output-file release-sbom.json
+
+    # Sign artifacts
+    - name: Import GPG key
+      uses: crazy-max/ghaction-import-gpg@v5
+      with:
+        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+        passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+    - name: Sign artifacts
+      run: |
+        for file in *.tar.gz; do
+          gpg --detach-sign --armor "$file"
+        done
+        gpg --detach-sign --armor release-sbom.json
+
+    # Verify signatures
+    - name: Verify signatures
+      run: |
+        for file in *.tar.gz; do
+          gpg --verify "$file.asc" "$file"
+        done
+        gpg --verify release-sbom.json.asc release-sbom.json
+
+    # Attest build provenance
+    - name: Attest build provenance
+      uses: actions/attest-build-provenance@v1
+      with:
+        subject-path: |
+          api-service-*.tar.gz
+          frontend-*.tar.gz
+          source-*.tar.gz
+          release-sbom.json
+
+    # Upload artifacts
+    - name: Upload release assets
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          api-service-*.tar.gz
+          api-service-*.tar.gz.asc
+          frontend-*.tar.gz
+          frontend-*.tar.gz.asc
+          source-*.tar.gz
+          source-*.tar.gz.asc
+          release-sbom.json
+          release-sbom.json.asc
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Publish to package registries
+  publish:
+    name: Publish Packages
+    runs-on: ubuntu-latest
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'pnpm'
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    # Publish to npm (if applicable)
+    - name: Publish to npm
+      run: |
+        npm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
+        npm publish
+      continue-on-error: true
+
+    # Publish to crates.io (if applicable)
+    - name: Publish to crates.io
+      run: |
+        cargo login ${{ secrets.CRATES_IO_TOKEN }}
+        cargo publish
+      continue-on-error: true
+
+    # Publish Docker images
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push API image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./infrastructure/docker/Dockerfile.api
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/api-service:latest
+          ${{ secrets.DOCKER_USERNAME }}/api-service:${{ github.ref_name }}
+
+    - name: Build and push frontend image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./infrastructure/docker/Dockerfile.frontend
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/frontend-service:latest
+          ${{ secrets.DOCKER_USERNAME }}/frontend-service:${{ github.ref_name }}
+
+    # Sign images
+    - name: Install cosign
+      uses: sigstore/cosign-installer@v3
+
+    - name: Sign Docker images
+      run: |
+        cosign sign ${{ secrets.DOCKER_USERNAME }}/api-service:${{ github.ref_name }}
+        cosign sign ${{ secrets.DOCKER_USERNAME }}/frontend-service:${{ github.ref_name }}
+      env:
+        COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+
+    # Generate SLSA provenance
+    - name: Generate SLSA provenance
+      uses: slsa-framework/slsa-github-generator@v1
+      with:
+        base64-subjects: ""  # Will be filled by the action
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

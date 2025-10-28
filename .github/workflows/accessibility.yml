@@ -1,0 +1,91 @@
+name: Accessibility Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  accessibility-test:
+    name: Accessibility Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'pnpm'
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Build application
+      run: pnpm run build
+
+    - name: Start application
+      run: |
+        pnpm start &
+        sleep 10
+
+    - name: Run axe-core accessibility tests
+      run: |
+        npx axe-playwright http://localhost:3000 --format=json --output=accessibility-results.json
+
+    - name: Run pa11y accessibility tests
+      run: |
+        npx pa11y-ci --config .pa11yci.json --json > pa11y-results.json
+
+    - name: Run lighthouse accessibility audit
+      uses: treosh/lighthouse-ci-action@v10
+      with:
+        urls: http://localhost:3000
+        configPath: .lighthouserc-accessibility.json
+
+    - name: Upload accessibility results
+      uses: actions/upload-artifact@v3
+      with:
+        name: accessibility-results
+        path: |
+          accessibility-results.json
+          pa11y-results.json
+          .lighthouseci/
+
+    - name: Check accessibility score
+      run: |
+        score=$(jq '.categories.accessibility.score * 100' .lighthouseci/lhr-*.json | head -1)
+        if (( $(echo "$score < 90" | bc -l) )); then
+          echo "Accessibility score too low: $score"
+          exit 1
+        fi
+
+    - name: Comment PR with accessibility results
+      uses: actions/github-script@v6
+      if: github.event_name == 'pull_request'
+      with:
+        script: |
+          const fs = require('fs');
+          const results = JSON.parse(fs.readFileSync('accessibility-results.json', 'utf8'));
+
+          const violations = results.violations.length;
+          const score = results.score || 'N/A';
+
+          const comment = `## ♿ Accessibility Test Results
+
+          **Violations:** ${violations}
+          **Accessibility Score:** ${score}
+
+          ${violations > 0 ? '⚠️ Please review and fix accessibility issues.' : '✅ No accessibility violations found.'}
+
+          [View detailed report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });

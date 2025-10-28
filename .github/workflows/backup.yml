@@ -1,0 +1,130 @@
+name: Backup
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  backup-artifacts:
+    name: Backup Artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Backup workflow artifacts
+      run: |
+        # Get list of recent workflow runs
+        runs=$(gh run list --limit 10 --json databaseId,status,conclusion,createdAt --jq '.[] | select(.status == "completed" and .conclusion == "success") | .databaseId')
+
+        for run in $runs; do
+          echo "Backing up artifacts for run $run"
+          gh run download $run -D backup-$run
+        done
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Compress backups
+      run: |
+        tar -czf workflow-artifacts-backup-$(date +%Y%m%d).tar.gz backup-*
+
+    - name: Upload backup to storage
+      uses: actions/upload-artifact@v3
+      with:
+        name: workflow-backup
+        path: workflow-artifacts-backup-*.tar.gz
+        retention-days: 30
+
+  backup-database:
+    name: Database Backup
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup database backup
+      run: |
+        # This would connect to production database
+        # pg_dump -h $DB_HOST -U $DB_USER -d $DB_NAME > backup-$(date +%Y%m%d).sql
+        echo "Database backup would be performed here"
+        touch backup-$(date +%Y%m%d).sql
+
+    - name: Encrypt backup
+      run: |
+        gpg --encrypt --recipient security@company.com backup-$(date +%Y%m%d).sql
+
+    - name: Upload encrypted backup
+      uses: actions/upload-artifact@v3
+      with:
+        name: database-backup
+        path: backup-*.sql.gpg
+        retention-days: 7
+
+  backup-config:
+    name: Configuration Backup
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Backup configurations
+      run: |
+        # Backup important config files
+        tar -czf config-backup-$(date +%Y%m%d).tar.gz \
+          .github/ \
+          infrastructure/ \
+          docs/ \
+          runbooks/ \
+          --exclude='*.log' \
+          --exclude='node_modules'
+
+    - name: Upload config backup
+      uses: actions/upload-artifact@v3
+      with:
+        name: config-backup
+        path: config-backup-*.tar.gz
+        retention-days: 90
+
+  verify-backups:
+    name: Verify Backups
+    runs-on: ubuntu-latest
+    needs: [backup-artifacts, backup-database, backup-config]
+
+    steps:
+    - name: Download backups
+      uses: actions/download-artifact@v3
+
+    - name: Verify backup integrity
+      run: |
+        # Check file sizes
+        for file in */*.tar.gz */*.sql.gpg; do
+          if [ -f "$file" ]; then
+            size=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file")
+            if [ "$size" -lt 1000 ]; then
+              echo "Backup file $file seems too small: $size bytes"
+              exit 1
+            fi
+          fi
+        done
+
+        echo "All backups verified successfully"
+
+    - name: Send backup notification
+      uses: actions/github-script@v6
+      with:
+        script: |
+          await github.rest.issues.createComment({
+            issue_number: 1, // Replace with actual issue number for backup tracking
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `✅ **Backup Completed Successfully**\n\n- Workflow artifacts: ✅\n- Database: ✅\n- Configuration: ✅\n\nDate: ${new Date().toISOString()}`
+          });

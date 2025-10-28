@@ -1,0 +1,98 @@
+name: Integration Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'pnpm'
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Cache dependencies
+      uses: Swatinem/rust-cache@v2
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Setup test database
+      run: |
+        createdb -h localhost -U postgres test_integration
+        psql -h localhost -U postgres -d test_integration -f data/schema-pgsql.sql
+
+    - name: Build backend
+      run: cargo build --release
+
+    - name: Build frontend
+      run: pnpm run build
+
+    - name: Start services
+      run: |
+        ./target/release/api-service &
+        pnpm start &
+        sleep 15
+
+    - name: Run API integration tests
+      run: |
+        npm run test:integration
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_integration
+        REDIS_URL: redis://localhost:6379
+
+    - name: Run E2E tests
+      run: |
+        npm run test:e2e
+      env:
+        BASE_URL: http://localhost:3000
+
+    - name: Generate integration test report
+      run: |
+        npx junit-merge -d test-results -o integration-results.xml
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: integration-test-results
+        path: |
+          test-results/
+          integration-results.xml
+          screenshots/
+          videos/
+
+    - name: Publish test results
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      if: always()
+      with:
+        files: integration-results.xml

@@ -1,0 +1,160 @@
+name: Security
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly on Monday
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+jobs:
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'pnpm'
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    # Comprehensive dependency scanning
+    - name: Run OWASP Dependency Check
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: 'Sky Genesis API Service'
+        path: '.'
+        format: 'ALL'
+        args: >
+          --enableRetired
+          --enableExperimental
+          --nvdValidForHours 24
+
+    - name: Run Snyk
+      uses: snyk/actions/node@master
+      continue-on-error: true
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --file=package.json --sarif-file-output=snyk.sarif
+
+    - name: Upload Snyk results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: snyk.sarif
+
+    # Supply chain security
+    - name: Scorecard supply-chain security
+      uses: ossf/scorecard-action@v2
+      with:
+        results_file: results.sarif
+        results_format: sarif
+        publish_results: true
+
+    - name: Upload Scorecard results
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: results.sarif
+
+    # Container scanning
+    - name: Build and scan containers
+      run: |
+        docker build -f infrastructure/docker/Dockerfile.api -t api-service:scan .
+        docker build -f infrastructure/docker/Dockerfile.frontend -t frontend-service:scan .
+
+    - name: Scan with Trivy
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'image'
+        scan-ref: 'api-service:scan,frontend-service:scan'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy results
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: trivy-results.sarif
+
+    # License compliance
+    - name: Check licenses
+      uses: fossas/fossa-action@v1
+      with:
+        api-key: ${{ secrets.FOSSA_API_KEY }}
+
+    # Upload reports
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          reports/
+          *.sarif
+
+  # Fuzz testing (optional, for critical components)
+  fuzz-test:
+    name: Fuzz Testing
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        components: rustfmt, clippy
+
+    - name: Install cargo-fuzz
+      run: cargo install cargo-fuzz
+
+    - name: Run fuzz tests
+      run: |
+        cargo fuzz run fuzz_target -- -runs=10000
+      continue-on-error: true
+
+  # Compliance checks
+  compliance:
+    name: Compliance Checks
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check for secrets in code
+      uses: gitleaks/gitleaks-action@v2
+
+    - name: Check commit signatures
+      run: |
+        # Verify all commits are signed
+        if ! git log --oneline --show-signature | grep -q "gpg:"; then
+          echo "Unsigned commits detected"
+          exit 1
+        fi
+
+    - name: Validate CODEOWNERS
+      run: |
+        if [ ! -f .github/CODEOWNERS ]; then
+          echo "CODEOWNERS file missing"
+          exit 1
+        fi

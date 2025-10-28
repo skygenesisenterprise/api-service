@@ -1,0 +1,158 @@
+name: Compliance
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 9 1 * *'  # Monthly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  license-compliance:
+    name: License Compliance
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'pnpm'
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Run FOSSA license scan
+      uses: fossas/fossa-action@v1
+      with:
+        api-key: ${{ secrets.FOSSA_API_KEY }}
+
+    - name: Check license compatibility
+      run: |
+        npx license-checker --production --onlyAllow 'MIT;ISC;BSD-3-Clause;Apache-2.0' --excludePackages 'typescript@4.9.5'
+
+    - name: Generate license report
+      run: |
+        npx license-checker --json > license-report.json
+
+    - name: Upload license report
+      uses: actions/upload-artifact@v3
+      with:
+        name: license-report
+        path: license-report.json
+
+  security-compliance:
+    name: Security Compliance
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run OpenSSF Scorecard
+      uses: ossf/scorecard-action@v2
+      with:
+        results_file: scorecard-results.json
+        results_format: json
+        publish_results: false
+
+    - name: Check minimum security score
+      run: |
+        score=$(jq '.score' scorecard-results.json)
+        if (( $(echo "$score < 7.0" | bc -l) )); then
+          echo "Security score too low: $score/10"
+          exit 1
+        fi
+
+    - name: Upload scorecard results
+      uses: actions/upload-artifact@v3
+      with:
+        name: scorecard-results
+        path: scorecard-results.json
+
+  gdpr-compliance:
+    name: GDPR Compliance
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check for PII handling
+      run: |
+        # Scan for potential PII patterns
+        patterns=("email" "phone" "address" "ssn" "credit.card" "password")
+        for pattern in "${patterns[@]}"; do
+          if grep -r -i "$pattern" --include="*.rs" --include="*.ts" --include="*.tsx" api/src/ app/; then
+            echo "Potential PII handling found for: $pattern"
+            # In real scenario, this would require manual review
+          fi
+        done
+
+    - name: Check data retention policies
+      run: |
+        # Verify data retention documentation exists
+        if [ ! -f docs/data-retention.md ]; then
+          echo "Data retention policy documentation missing"
+          exit 1
+        fi
+
+    - name: Validate privacy policy
+      run: |
+        if [ ! -f PRIVACY.md ]; then
+          echo "Privacy policy missing"
+          exit 1
+        fi
+
+  audit-report:
+    name: Generate Audit Report
+    runs-on: ubuntu-latest
+    needs: [license-compliance, security-compliance, gdpr-compliance]
+
+    steps:
+    - name: Download reports
+      uses: actions/download-artifact@v3
+
+    - name: Generate compliance report
+      run: |
+        echo "# Compliance Audit Report" > compliance-report.md
+        echo "Generated on: $(date)" >> compliance-report.md
+        echo "" >> compliance-report.md
+
+        echo "## License Compliance" >> compliance-report.md
+        cat license-report/license-report.json | jq '. | keys[]' >> compliance-report.md
+
+        echo "## Security Score" >> compliance-report.md
+        cat scorecard-results/scorecard-results.json | jq '.score' >> compliance-report.md
+
+        echo "## GDPR Compliance" >> compliance-report.md
+        echo "PII scan completed" >> compliance-report.md
+
+    - name: Upload compliance report
+      uses: actions/upload-artifact@v3
+      with:
+        name: compliance-report
+        path: compliance-report.md
+
+    - name: Create compliance issue
+      if: github.event_name == 'schedule'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const report = fs.readFileSync('compliance-report.md', 'utf8');
+
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `Monthly Compliance Audit - ${new Date().toISOString().split('T')[0]}`,
+            body: report,
+            labels: ['compliance', 'audit']
+          });

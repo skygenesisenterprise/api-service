@@ -1,0 +1,89 @@
+name: Performance Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 3 * * 1'  # Weekly
+
+jobs:
+  performance-test:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'pnpm'
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Build application
+      run: |
+        pnpm run build
+        cargo build --release
+
+    - name: Run Lighthouse CI
+      uses: treosh/lighthouse-ci-action@v10
+      with:
+        urls: |
+          http://localhost:3000
+        configPath: .lighthouserc.json
+        uploadArtifacts: true
+        temporaryPublicStorage: true
+
+    - name: Performance regression check
+      uses: CodSpeed/benchmark-action@v1
+      with:
+        tool: 'custom'
+        output-file-path: output.json
+        external-data-json-path: ./benchmark/data.json
+
+    - name: Run k6 load testing
+      uses: k6io/action@v0.1
+      with:
+        filename: performance/k6-script.js
+        flags: --out json=results.json
+
+    - name: Upload performance results
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-results
+        path: |
+          .lighthouseci/
+          results.json
+          output.json
+
+    - name: Comment PR with performance results
+      uses: actions/github-script@v6
+      if: github.event_name == 'pull_request'
+      with:
+        script: |
+          const fs = require('fs');
+          const results = JSON.parse(fs.readFileSync('results.json', 'utf8'));
+
+          const comment = `## 🚀 Performance Test Results
+
+          **Response Time:** ${results.metrics.http_req_duration.avg}ms
+          **Requests/Second:** ${results.metrics.http_req_rate.rate}
+          **Error Rate:** ${(results.metrics.http_req_failed.rate * 100).toFixed(2)}%
+
+          [View detailed report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });

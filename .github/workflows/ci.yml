@@ -1,0 +1,238 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  merge_group:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Security checks first
+  security-checks:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'pnpm'
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        components: rustfmt, clippy
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    # Dependency review for PRs
+    - name: Dependency Review
+      if: github.event_name == 'pull_request'
+      uses: actions/dependency-review-action@v3
+
+    # Secret scanning
+    - name: Secret Scanning
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # CodeQL analysis
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: javascript, rust
+        queries: security-and-quality
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: "/language:javascript"
+        upload: false
+
+    - name: Perform CodeQL Analysis (Rust)
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: "/language:rust"
+        upload: false
+
+    # Upload results
+    - name: Upload CodeQL results
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: results.sarif
+
+  # Build and test
+  build-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    needs: security-checks
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'pnpm'
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    # Code quality checks
+    - name: Run ESLint
+      run: pnpm run lint
+
+    - name: Run TypeScript check
+      run: npx tsc --noEmit
+
+    - name: Run Clippy
+      run: cargo clippy -- -D warnings
+
+    - name: Check formatting
+      run: |
+        cargo fmt --check
+        npx prettier --check "**/*.{ts,tsx,js,jsx,json,md}"
+
+    # Security scans
+    - name: Run npm audit
+      run: npm audit --audit-level high
+
+    - name: Run cargo audit
+      uses: actions-rs/audit@v1
+
+    # Tests
+    - name: Run tests
+      run: pnpm test
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+
+    - name: Generate test coverage
+      run: pnpm run test:coverage
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/lcov.info
+        fail_ci_if_error: true
+
+    # Build
+    - name: Build frontend
+      run: pnpm run build
+
+    - name: Build backend
+      run: cargo build --release
+
+    # Container security scan
+    - name: Build Docker images
+      run: |
+        docker build -f infrastructure/docker/Dockerfile.api -t api-service:test .
+        docker build -f infrastructure/docker/Dockerfile.frontend -t frontend-service:test .
+
+    - name: Scan Docker images
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'image'
+        scan-ref: 'api-service:test'
+        format: 'sarif'
+        output: 'trivy-api.sarif'
+
+    - name: Scan frontend image
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'image'
+        scan-ref: 'frontend-service:test'
+        format: 'sarif'
+        output: 'trivy-frontend.sarif'
+
+    - name: Upload Trivy results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-api.sarif,trivy-frontend.sarif'
+
+  # SBOM generation
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    needs: build-test
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'pnpm'
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Generate CycloneDX SBOM
+      uses: CycloneDX/gh-node-module-generatebom@v1
+      with:
+        output: sbom.json
+
+    - name: Generate Rust SBOM
+      run: |
+        cargo install cargo-cyclonedx
+        cargo cyclonedx --output-file rust-sbom.json
+
+    - name: Merge SBOMs
+      run: |
+        npx @cyclonedx/cli merge --input-files sbom.json rust-sbom.json --output-file combined-sbom.json
+
+    - name: Upload SBOM
+      uses: actions/upload-artifact@v3
+      with:
+        name: sbom
+        path: combined-sbom.json
+
+    - name: Attest SBOM
+      uses: actions/attest-build-provenance@v1
+      with:
+        subject-path: combined-sbom.json

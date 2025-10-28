@@ -1,0 +1,61 @@
+name: "CodeQL"
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 6 * * 3'  # Weekly on Wednesday
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'javascript', 'rust' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      if: matrix.language == 'javascript'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'pnpm'
+
+    - name: Setup Rust
+      if: matrix.language == 'rust'
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Install dependencies
+      if: matrix.language == 'javascript'
+      run: pnpm install --frozen-lockfile
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-and-quality
+        config-file: ./.github/codeql-config.yml
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: "/language:${{ matrix.language }}"
