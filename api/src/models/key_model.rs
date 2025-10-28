@@ -15,6 +15,14 @@ pub enum CertificateType {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum ApiKeyStatus {
+    #[serde(rename = "sandbox")]
+    Sandbox,
+    #[serde(rename = "production")]
+    Production,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CertificateInfo {
     pub public_key: String, // PEM encoded public key
     pub private_key_path: String, // Path in vault for private key
@@ -28,6 +36,7 @@ pub struct ApiKey {
     pub key: Option<String>, // The actual API key value, only returned on creation
     pub key_type: KeyType,
     pub tenant: String, // For isolation
+    pub status: ApiKeyStatus, // Environment status: sandbox or production
     pub ttl: u64, // Time to live in seconds
     pub created_at: DateTime<Utc>,
     pub permissions: Vec<String>,

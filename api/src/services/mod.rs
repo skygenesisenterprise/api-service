@@ -8,3 +8,4 @@ pub mod security_service;
 pub mod session_service;
 pub mod application_service;
 pub mod two_factor_service;
+pub mod authorization_service;

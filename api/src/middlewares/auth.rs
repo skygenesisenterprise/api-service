@@ -1,5 +1,5 @@
 use warp::{Filter, Rejection, Reply};
-use crate::models::key_model::{ApiKey, KeyType};
+use crate::models::key_model::{ApiKey, KeyType, ApiKeyStatus};
 use crate::services::vault_manager::VaultManager;
 use std::sync::Arc;
 
@@ -31,6 +31,7 @@ pub async fn validate_key(vault_manager: Arc<VaultManager>, key: String, key_typ
         key: None, // Don't expose the key value in auth context
         key_type,
         tenant: "default".to_string(), // Default tenant for auth
+        status: ApiKeyStatus::Sandbox, // Default to sandbox; should be fetched from storage
         ttl: 3600, // Default TTL
         vault_path: format!("secret/{}", key_type_str),
         created_at: chrono::Utc::now(),

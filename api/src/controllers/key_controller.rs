@@ -1,5 +1,5 @@
 use warp::Reply;
-use crate::models::key_model::{ApiKey, KeyType, CertificateType};
+use crate::models::key_model::{ApiKey, KeyType, CertificateType, ApiKeyStatus};
 use crate::services::key_service::KeyService;
 use std::sync::Arc;
 
@@ -8,6 +8,7 @@ pub async fn create_key(
     key_type: String,
     tenant: String,
     ttl: u64,
+    status: String,
 ) -> Result<impl Reply, warp::Rejection> {
     let kt = match key_type.as_str() {
         "client" => KeyType::Client,
@@ -15,7 +16,14 @@ pub async fn create_key(
         "database" => KeyType::Database,
         _ => return Err(warp::reject::custom(crate::middlewares::auth::AuthError::InvalidKeyType)),
     };
-    let api_key = key_service.create_key(kt, tenant, ttl).await
+
+    let status = match status.as_str() {
+        "sandbox" => ApiKeyStatus::Sandbox,
+        "production" => ApiKeyStatus::Production,
+        _ => return Err(warp::reject::custom(crate::middlewares::auth::AuthError::InvalidKeyType)),
+    };
+
+    let api_key = key_service.create_key(kt, tenant, ttl, status).await
         .map_err(|_| warp::reject::custom(crate::middlewares::auth::AuthError::VaultError))?;
     Ok(warp::reply::json(&api_key))
 }
@@ -53,6 +61,7 @@ pub async fn create_key_with_certificate(
     tenant: String,
     ttl: u64,
     cert_type: String,
+    status: String,
 ) -> Result<impl Reply, warp::Rejection> {
     let kt = match key_type.as_str() {
         "client" => KeyType::Client,
@@ -67,7 +76,13 @@ pub async fn create_key_with_certificate(
         _ => return Err(warp::reject::custom(crate::middlewares::auth::AuthError::InvalidKeyType)),
     };
 
-    let api_key = key_service.create_key_with_certificate_specific(kt, tenant, ttl, ct).await
+    let status = match status.as_str() {
+        "sandbox" => ApiKeyStatus::Sandbox,
+        "production" => ApiKeyStatus::Production,
+        _ => return Err(warp::reject::custom(crate::middlewares::auth::AuthError::InvalidKeyType)),
+    };
+
+    let api_key = key_service.create_key_with_certificate_specific(kt, tenant, ttl, ct, status).await
         .map_err(|_| warp::reject::custom(crate::middlewares::auth::AuthError::VaultError))?;
     Ok(warp::reply::json(&api_key))
 }
@@ -99,4 +114,43 @@ pub async fn revoke_certificate(
     key_service.revoke_key(&id).await
         .map_err(|_| warp::reject::custom(crate::middlewares::auth::AuthError::VaultError))?;
     Ok(warp::reply::json(&serde_json::json!({"message": "Certificate revoked"})))
+}
+
+// Convenience functions for creating sandbox and production keys
+pub async fn create_sandbox_key(
+    key_service: Arc<KeyService>,
+    key_type: String,
+    tenant: String,
+    ttl: u64,
+) -> Result<impl Reply, warp::Rejection> {
+    create_key(key_service, key_type, tenant, ttl, "sandbox".to_string()).await
+}
+
+pub async fn create_production_key(
+    key_service: Arc<KeyService>,
+    key_type: String,
+    tenant: String,
+    ttl: u64,
+) -> Result<impl Reply, warp::Rejection> {
+    create_key(key_service, key_type, tenant, ttl, "production".to_string()).await
+}
+
+pub async fn create_sandbox_key_with_certificate(
+    key_service: Arc<KeyService>,
+    key_type: String,
+    tenant: String,
+    ttl: u64,
+    cert_type: String,
+) -> Result<impl Reply, warp::Rejection> {
+    create_key_with_certificate(key_service, key_type, tenant, ttl, cert_type, "sandbox".to_string()).await
+}
+
+pub async fn create_production_key_with_certificate(
+    key_service: Arc<KeyService>,
+    key_type: String,
+    tenant: String,
+    ttl: u64,
+    cert_type: String,
+) -> Result<impl Reply, warp::Rejection> {
+    create_key_with_certificate(key_service, key_type, tenant, ttl, cert_type, "production".to_string()).await
 }

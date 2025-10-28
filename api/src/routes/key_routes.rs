@@ -15,7 +15,8 @@ pub fn key_routes(key_service: Arc<KeyService>) -> impl Filter<Extract = impl wa
             let key_type = query.get("type").cloned().unwrap_or_default();
             let tenant = query.get("tenant").cloned().unwrap_or_default();
             let ttl = query.get("ttl").and_then(|s| s.parse().ok()).unwrap_or(3600);
-            key_controller::create_key(ks, key_type, tenant, ttl).await
+            let status = query.get("status").cloned().unwrap_or("sandbox".to_string());
+            key_controller::create_key(ks, key_type, tenant, ttl, status).await
         });
 
     let revoke = warp::path!("api" / "keys" / String)
@@ -55,7 +56,59 @@ pub fn key_routes(key_service: Arc<KeyService>) -> impl Filter<Extract = impl wa
             let tenant = query.get("tenant").cloned().unwrap_or_default();
             let ttl = query.get("ttl").and_then(|s| s.parse().ok()).unwrap_or(3600);
             let cert_type = query.get("cert_type").cloned().unwrap_or("rsa".to_string());
-            key_controller::create_key_with_certificate(ks, key_type, tenant, ttl, cert_type).await
+            let status = query.get("status").cloned().unwrap_or("sandbox".to_string());
+            key_controller::create_key_with_certificate(ks, key_type, tenant, ttl, cert_type, status).await
+        });
+
+    // Convenience routes for sandbox and production keys
+    let create_sandbox = warp::path!("api" / "keys" / "sandbox")
+        .and(warp::post())
+        .and(jwt_auth())
+        .and(warp::query::<std::collections::HashMap<String, String>>())
+        .and(warp::any().map(move || key_service.clone()))
+        .and_then(|_claims, query: std::collections::HashMap<String, String>, ks| async move {
+            let key_type = query.get("type").cloned().unwrap_or_default();
+            let tenant = query.get("tenant").cloned().unwrap_or_default();
+            let ttl = query.get("ttl").and_then(|s| s.parse().ok()).unwrap_or(3600);
+            key_controller::create_sandbox_key(ks, key_type, tenant, ttl).await
+        });
+
+    let create_production = warp::path!("api" / "keys" / "production")
+        .and(warp::post())
+        .and(jwt_auth())
+        .and(warp::query::<std::collections::HashMap<String, String>>())
+        .and(warp::any().map(move || key_service.clone()))
+        .and_then(|_claims, query: std::collections::HashMap<String, String>, ks| async move {
+            let key_type = query.get("type").cloned().unwrap_or_default();
+            let tenant = query.get("tenant").cloned().unwrap_or_default();
+            let ttl = query.get("ttl").and_then(|s| s.parse().ok()).unwrap_or(3600);
+            key_controller::create_production_key(ks, key_type, tenant, ttl).await
+        });
+
+    let create_sandbox_with_cert = warp::path!("api" / "keys" / "sandbox" / "with-certificate")
+        .and(warp::post())
+        .and(jwt_auth())
+        .and(warp::query::<std::collections::HashMap<String, String>>())
+        .and(warp::any().map(move || key_service.clone()))
+        .and_then(|_claims, query: std::collections::HashMap<String, String>, ks| async move {
+            let key_type = query.get("type").cloned().unwrap_or_default();
+            let tenant = query.get("tenant").cloned().unwrap_or_default();
+            let ttl = query.get("ttl").and_then(|s| s.parse().ok()).unwrap_or(3600);
+            let cert_type = query.get("cert_type").cloned().unwrap_or("rsa".to_string());
+            key_controller::create_sandbox_key_with_certificate(ks, key_type, tenant, ttl, cert_type).await
+        });
+
+    let create_production_with_cert = warp::path!("api" / "keys" / "production" / "with-certificate")
+        .and(warp::post())
+        .and(jwt_auth())
+        .and(warp::query::<std::collections::HashMap<String, String>>())
+        .and(warp::any().map(move || key_service.clone()))
+        .and_then(|_claims, query: std::collections::HashMap<String, String>, ks| async move {
+            let key_type = query.get("type").cloned().unwrap_or_default();
+            let tenant = query.get("tenant").cloned().unwrap_or_default();
+            let ttl = query.get("ttl").and_then(|s| s.parse().ok()).unwrap_or(3600);
+            let cert_type = query.get("cert_type").cloned().unwrap_or("rsa".to_string());
+            key_controller::create_production_key_with_certificate(ks, key_type, tenant, ttl, cert_type).await
         });
 
     let get_public_key = warp::path!("api" / "keys" / String / "public-key")
@@ -85,5 +138,5 @@ pub fn key_routes(key_service: Arc<KeyService>) -> impl Filter<Extract = impl wa
             })))
         });
 
-    create.or(revoke).or(get).or(list).or(create_with_cert).or(get_public_key).or(revoke_cert).or(cert_authenticated_route)
+    create.or(revoke).or(get).or(list).or(create_with_cert).or(get_public_key).or(revoke_cert).or(cert_authenticated_route).or(create_sandbox).or(create_production).or(create_sandbox_with_cert).or(create_production_with_cert)
 }

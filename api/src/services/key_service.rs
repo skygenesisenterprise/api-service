@@ -1,5 +1,5 @@
 use crate::core::vault::VaultClient;
-use crate::models::key_model::{ApiKey, KeyType, CertificateInfo, CertificateType};
+use crate::models::key_model::{ApiKey, KeyType, CertificateInfo, CertificateType, ApiKeyStatus};
 use crate::queries::key_queries;
 use crate::utils::key_utils;
 use std::sync::Arc;
@@ -13,11 +13,11 @@ impl KeyService {
         KeyService { vault }
     }
 
-    pub async fn create_key(&self, key_type: KeyType, tenant: String, ttl: u64) -> Result<ApiKey, Box<dyn std::error::Error>> {
-        self.create_key_with_certificate(key_type, tenant, ttl, false).await
+    pub async fn create_key(&self, key_type: KeyType, tenant: String, ttl: u64, status: ApiKeyStatus) -> Result<ApiKey, Box<dyn std::error::Error>> {
+        self.create_key_with_certificate(key_type, tenant, ttl, false, status).await
     }
 
-    pub async fn create_key_with_certificate(&self, key_type: KeyType, tenant: String, ttl: u64, with_certificate: bool) -> Result<ApiKey, Box<dyn std::error::Error>> {
+    pub async fn create_key_with_certificate(&self, key_type: KeyType, tenant: String, ttl: u64, with_certificate: bool, status: ApiKeyStatus) -> Result<ApiKey, Box<dyn std::error::Error>> {
         let cert_type = if with_certificate {
             Some(match key_type {
                 KeyType::Client => CertificateType::RSA,
@@ -27,10 +27,10 @@ impl KeyService {
         } else {
             None
         };
-        self.create_key_with_certificate_specific(key_type, tenant, ttl, cert_type.unwrap_or(CertificateType::RSA)).await
+        self.create_key_with_certificate_specific(key_type, tenant, ttl, cert_type.unwrap_or(CertificateType::RSA), status).await
     }
 
-    pub async fn create_key_with_certificate_specific(&self, key_type: KeyType, tenant: String, ttl: u64, cert_type: CertificateType) -> Result<ApiKey, Box<dyn std::error::Error>> {
+    pub async fn create_key_with_certificate_specific(&self, key_type: KeyType, tenant: String, ttl: u64, cert_type: CertificateType, status: ApiKeyStatus) -> Result<ApiKey, Box<dyn std::error::Error>> {
         let id = key_utils::generate_id();
         let key_value = self.vault.rotate_key(&format!("{:?}", key_type).to_lowercase()).await?;
 
@@ -47,6 +47,7 @@ impl KeyService {
             key: Some(key_value.clone()),
             key_type,
             tenant,
+            status,
             ttl,
             created_at: chrono::Utc::now(),
             permissions: vec!["read".to_string()],
@@ -70,5 +71,42 @@ impl KeyService {
 
     pub async fn list_keys(&self, tenant: &str) -> Result<Vec<ApiKey>, Box<dyn std::error::Error>> {
         key_queries::list_keys_by_tenant(tenant).await
+    }
+
+    // Convenience methods for creating sandbox and production keys
+    pub async fn create_sandbox_key(&self, key_type: KeyType, tenant: String, ttl: u64) -> Result<ApiKey, Box<dyn std::error::Error>> {
+        self.create_key(key_type, tenant, ttl, ApiKeyStatus::Sandbox).await
+    }
+
+    pub async fn create_production_key(&self, key_type: KeyType, tenant: String, ttl: u64) -> Result<ApiKey, Box<dyn std::error::Error>> {
+        self.create_key(key_type, tenant, ttl, ApiKeyStatus::Production).await
+    }
+
+    pub async fn create_sandbox_key_with_certificate(&self, key_type: KeyType, tenant: String, ttl: u64, with_certificate: bool) -> Result<ApiKey, Box<dyn std::error::Error>> {
+        self.create_key_with_certificate(key_type, tenant, ttl, with_certificate, ApiKeyStatus::Sandbox).await
+    }
+
+    pub async fn create_production_key_with_certificate(&self, key_type: KeyType, tenant: String, ttl: u64, with_certificate: bool) -> Result<ApiKey, Box<dyn std::error::Error>> {
+        self.create_key_with_certificate(key_type, tenant, ttl, with_certificate, ApiKeyStatus::Production).await
+    }
+
+    // Validation methods for status-based access control
+    pub fn validate_key_status(&self, api_key: &ApiKey, required_status: &ApiKeyStatus) -> Result<(), Box<dyn std::error::Error>> {
+        match (&api_key.status, required_status) {
+            (ApiKeyStatus::Sandbox, ApiKeyStatus::Sandbox) => Ok(()),
+            (ApiKeyStatus::Production, ApiKeyStatus::Production) => Ok(()),
+            (ApiKeyStatus::Production, ApiKeyStatus::Sandbox) => Ok(()), // Production keys can access sandbox
+            (ApiKeyStatus::Sandbox, ApiKeyStatus::Production) => {
+                Err("Sandbox API key cannot access production resources".into())
+            }
+        }
+    }
+
+    pub fn is_production_key(&self, api_key: &ApiKey) -> bool {
+        matches!(api_key.status, ApiKeyStatus::Production)
+    }
+
+    pub fn is_sandbox_key(&self, api_key: &ApiKey) -> bool {
+        matches!(api_key.status, ApiKeyStatus::Sandbox)
     }
 }
