@@ -5,7 +5,7 @@
 # ------------------------------
 # Builder Stage
 # ------------------------------
-FROM node:18-alpine AS builder
+FROM node:25-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -30,7 +30,7 @@ RUN npm run build
 # ------------------------------
 # Runtime Stage
 # ------------------------------
-FROM node:18-alpine AS runner
+FROM node:25-alpine AS runner
 
 # Install curl for health checks
 RUN apk add --no-cache curl
