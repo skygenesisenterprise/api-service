@@ -46,6 +46,10 @@ base32 = "0.4"
 urlencoding = "2.1"
 sha1 = "0.10"
 
+# OpenAPI/Swagger
+utoipa = { version = "4.0", features = ["chrono"] }
+utoipa-swagger-ui = "6.0"
+
 [[bin]]
 name = "api"
 path = "src/main.rs"

@@ -14,6 +14,7 @@ mod queries;
 mod utils;
 mod websocket;
 mod tests;
+mod openapi;
 
 // Function to load default values from .env.example
 fn load_defaults_from_env_example() -> HashMap<String, String> {

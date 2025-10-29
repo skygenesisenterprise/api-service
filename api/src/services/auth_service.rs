@@ -8,13 +8,13 @@ use crate::services::two_factor_service::{TwoFactorService, TwoFactorVerificatio
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct LoginRequest {
     pub email: String,
     pub password: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct LoginResponse {
     pub access_token: String,
     pub refresh_token: String,

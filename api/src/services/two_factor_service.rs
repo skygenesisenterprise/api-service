@@ -27,7 +27,7 @@ pub struct TwoFactorMethod {
     pub last_used: Option<chrono::DateTime<Utc>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct TwoFactorSetupRequest {
     pub method_type: TwoFactorType,
     pub name: String,
@@ -43,7 +43,7 @@ pub struct TwoFactorSetupResponse {
     pub verification_code: Option<String>, // For immediate verification
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct TwoFactorVerificationRequest {
     pub method_id: String,
     pub code: String,

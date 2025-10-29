@@ -25,7 +25,7 @@ pub struct ApplicationToken {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ApplicationAccessRequest {
     pub application_id: String,
     pub requested_permissions: Vec<String>,

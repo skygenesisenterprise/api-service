@@ -6,6 +6,15 @@ use crate::services::two_factor_service::{TwoFactorSetupRequest, TwoFactorVerifi
 use std::sync::Arc;
 use warp::http::StatusCode;
 
+#[utoipa::path(
+    post,
+    path = "/auth/login",
+    request_body = LoginRequest,
+    responses(
+        (status = 200, description = "Login successful", body = LoginResponse),
+        (status = 401, description = "Invalid credentials", body = ErrorResponse)
+    )
+)]
 pub async fn login(
     auth_service: Arc<AuthService>,
     req: LoginRequest,
