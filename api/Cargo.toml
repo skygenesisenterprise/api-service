@@ -41,7 +41,7 @@ hex = "0.4"
 tokio-stream = "0.1"
 futures-util = "0.3"
 lazy_static = "1.4"
-redis = { version = "0.23", features = ["tokio-comp"] }
+redis = { version = "0.32", features = ["tokio-comp"] }
 base32 = "0.4"
 urlencoding = "2.1"
 sha1 = "0.10"
