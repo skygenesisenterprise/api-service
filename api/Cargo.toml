@@ -36,7 +36,7 @@ sha2 = "0.10"
 
 # Utilities
 rand = "0.8"
-base64 = "0.21"
+base64 = "0.22"
 hex = "0.4"
 tokio-stream = "0.1"
 futures-util = "0.3"
