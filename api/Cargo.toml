@@ -50,6 +50,11 @@ sha1 = "0.10"
 utoipa = { version = "4.0", features = ["chrono"] }
 utoipa-swagger-ui = "6.0"
 
+# SNMP Integration
+snmp = "0.2"
+snmp-parser = "0.9"
+thiserror = "1.0"
+
 [[bin]]
 name = "api"
 path = "src/main.rs"

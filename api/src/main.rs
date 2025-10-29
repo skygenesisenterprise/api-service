@@ -80,7 +80,49 @@ async fn main() {
     // Initialize WebSocket server
     let ws_server = Arc::new(crate::websocket::WebSocketServer::new());
 
-    let routes = routes::routes(vault_manager, key_service, auth_service, session_service, application_service, two_factor_service, ws_server);
+    // Initialize SNMP components
+    let snmp_manager = Arc::new(crate::core::snmp_manager::SnmpManager::new(vault_client.clone()));
+    let audit_manager = Arc::new(crate::core::audit_manager::AuditManager::new(vault_client.clone()));
+    let snmp_agent = Arc::new(crate::core::snmp_agent::SnmpAgent::new(vault_client.clone(), audit_manager.clone()));
+    let trap_listener = Arc::new(crate::core::snmp_trap_listener::SnmpTrapListener::new(
+        vault_client.clone(),
+        audit_manager.clone(),
+    ));
+
+    // Start SNMP agent
+    let snmp_agent_clone = Arc::clone(&snmp_agent);
+    tokio::spawn(async move {
+        if let Err(e) = snmp_agent_clone.start("127.0.0.1:161").await {
+            eprintln!("Failed to start SNMP agent: {}", e);
+        }
+    });
+
+    // Start trap listener
+    let trap_listener_clone = Arc::clone(&trap_listener);
+    tokio::spawn(async move {
+        let mut listener = Arc::try_unwrap(trap_listener_clone).unwrap();
+        if let Err(e) = listener.start().await {
+            eprintln!("Failed to start SNMP trap listener: {}", e);
+            return;
+        }
+        if let Err(e) = listener.listen().await {
+            eprintln!("SNMP trap listener error: {}", e);
+        }
+    });
+
+    let routes = routes::routes(
+        vault_manager,
+        key_service,
+        auth_service,
+        session_service,
+        application_service,
+        two_factor_service,
+        ws_server,
+        snmp_manager,
+        snmp_agent,
+        trap_listener,
+        audit_manager,
+    );
 
     // Get port from environment variable or default to 8080
     let port = std::env::var("PORT")

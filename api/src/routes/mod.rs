@@ -4,6 +4,7 @@ pub mod key_routes;
 pub mod auth_routes;
 pub mod websocket_routes;
 pub mod security_routes;
+pub mod snmp_routes;
 
 use warp::Filter;
 use std::sync::Arc;
@@ -14,6 +15,11 @@ use crate::services::session_service::SessionService;
 use crate::services::application_service::ApplicationService;
 use crate::services::two_factor_service::TwoFactorService;
 use crate::websocket::WebSocketServer;
+use crate::core::snmp_manager::SnmpManager;
+use crate::core::snmp_agent::SnmpAgent;
+use crate::core::snmp_trap_listener::SnmpTrapListener;
+use crate::core::audit_manager::AuditManager;
+use crate::core::vault::VaultClient;
 
 pub fn routes(
     vault_manager: Arc<VaultManager>,
@@ -22,7 +28,11 @@ pub fn routes(
     session_service: Arc<SessionService>,
     application_service: Arc<ApplicationService>,
     two_factor_service: Arc<TwoFactorService>,
-    ws_server: Arc<WebSocketServer>
+    ws_server: Arc<WebSocketServer>,
+    snmp_manager: Arc<SnmpManager>,
+    snmp_agent: Arc<SnmpAgent>,
+    trap_listener: Arc<SnmpTrapListener>,
+    audit_manager: Arc<AuditManager>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let hello = warp::path!("hello")
         .map(|| "Hello, World!");
@@ -31,6 +41,7 @@ pub fn routes(
     let auth_routes = crate::routes::auth_routes::auth_routes(auth_service, session_service, application_service, two_factor_service);
     let websocket_routes = crate::routes::websocket_routes::websocket_routes(ws_server);
     let security_routes = crate::routes::security_routes::security_routes();
+    let snmp_routes = crate::routes::snmp_routes::snmp_routes(snmp_manager, snmp_agent, trap_listener, audit_manager);
 
     // OpenAPI JSON endpoint
     let openapi_json = warp::path!("api-docs" / "openapi.json")
@@ -77,5 +88,5 @@ pub fn routes(
             "#)
         });
 
-    hello.or(key_routes).or(auth_routes).or(websocket_routes).or(security_routes).or(openapi_json).or(swagger_ui)
+    hello.or(key_routes).or(auth_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(openapi_json).or(swagger_ui)
 }
