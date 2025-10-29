@@ -180,35 +180,6 @@ impl StalwartClient {
         let resolver = Arc::new(RegionBasedResolver::new(vault_client.clone(), default_region));
         Self::new(vault_client, resolver).await
     }
-        // Load mTLS certificates from Vault
-        let cert_pem = vault_client.get_secret("stalwart/client_cert").await?;
-        let key_pem = vault_client.get_secret("stalwart/client_key").await?;
-        let ca_pem = vault_client.get_secret("stalwart/ca_cert").await?;
-
-        // Create client identity
-        let identity_pem = format!("{}\n{}", cert_pem, key_pem);
-        let identity = Identity::from_pem(identity_pem.as_bytes())?;
-
-        // Create CA certificate
-        let ca_cert = Certificate::from_pem(ca_pem.as_bytes())?;
-
-        // Build HTTP client with mTLS
-        let client = Client::builder()
-            .identity(identity.clone())
-            .add_root_certificate(ca_cert)
-            .timeout(std::time::Duration::from_secs(30))
-            .pool_max_idle_per_host(10)
-            .build()?;
-
-        Ok(StalwartClient {
-            client,
-            base_url,
-            jmap_path: "/jmap".to_string(),
-            identity: Arc::new(Mutex::new(Some(identity))),
-            vault_client,
-            session_token: Arc::new(Mutex::new(None)),
-        })
-    }
 
     // Core JMAP operations
 
@@ -532,25 +503,25 @@ impl StalwartClient {
         Ok(response.status().is_success())
     }
 
-    pub async fn rotate_certificates(&self) -> Result<(), StalwartError> {
-        // Load new certificates from Vault
-        let cert_pem = self.vault_client.get_secret("stalwart/client_cert").await?;
-        let key_pem = self.vault_client.get_secret("stalwart/client_key").await?;
-
-        // Create new identity
-        let identity_pem = format!("{}\n{}", cert_pem, key_pem);
-        let new_identity = Identity::from_pem(identity_pem.as_bytes())?;
-
-        // Update identity
-        let mut identity = self.identity.lock().await;
-        *identity = Some(new_identity);
-
-        // Clear session token to force re-authentication
-        let mut token = self.session_token.lock().await;
-        *token = None;
-
-        Ok(())
-    }
+    // pub async fn rotate_certificates(&self) -> Result<(), StalwartError> {
+    //     // Load new certificates from Vault
+    //     let cert_pem = self.vault_client.get_secret("stalwart/client_cert").await?;
+    //     let key_pem = self.vault_client.get_secret("stalwart/client_key").await?;
+    //
+    //     // Create new identity
+    //     let identity_pem = format!("{}\n{}", cert_pem, key_pem);
+    //     let new_identity = Identity::from_pem(identity_pem.as_bytes())?;
+    //
+    //     // Update identity
+    //     let mut identity = self.identity.lock().await;
+    //     *identity = Some(new_identity);
+    //
+    //     // Clear session token to force re-authentication
+    //     let mut token = self.session_token.lock().await;
+    //     *token = None;
+    //
+    //     Ok(())
+    // }
 }
 
 // Helper functions

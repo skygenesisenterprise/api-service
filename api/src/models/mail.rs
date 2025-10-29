@@ -642,6 +642,45 @@ pub enum BatchStatusType {
     Failed,
 }
 
+// IMAP-specific types
+
+#[derive(Debug, Clone)]
+pub struct MailboxInfo {
+    pub flags: String,
+    pub delimiter: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct MessageInfo {
+    pub uid: String,
+    pub flags: String,
+    pub internal_date: String,
+    pub size: u32,
+    pub envelope: Option<Envelope>,
+    pub body: Option<MessageBody>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Envelope {
+    pub date: String,
+    pub subject: String,
+    pub from: Vec<Address>,
+    pub to: Vec<Address>,
+    pub cc: Option<Vec<Address>>,
+    pub bcc: Option<Vec<Address>>,
+    pub reply_to: Option<Vec<Address>>,
+    pub in_reply_to: Option<String>,
+    pub message_id: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Address {
+    pub name: Option<String>,
+    pub mailbox: String,
+    pub host: Option<String>,
+}
+
 // Type aliases for convenience
 pub type SendRequest = SendMessageRequest;
 pub type SendResult = SendMessageResponse;
