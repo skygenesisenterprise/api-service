@@ -18,6 +18,21 @@ use std::sync::Arc;
 use dotenv::dotenv;
 use std::collections::HashMap;
 
+// Module declarations
+mod config;
+mod controllers;
+mod core;
+mod middlewares;
+mod models;
+mod queries;
+mod routes;
+mod services;
+mod tests;
+mod utils;
+mod search;
+mod openapi;
+mod websocket;
+
 /// [CONFIGURATION LAYER] Environment Variable Loader
 /// @MISSION Load default configuration values from secure template.
 /// @THREAT Configuration injection or missing defaults.

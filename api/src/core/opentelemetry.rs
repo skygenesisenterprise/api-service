@@ -187,6 +187,9 @@ pub struct Metrics {
     pub grpc_request_duration: Histogram<f64>,
     pub vault_operations: Counter<u64>,
     pub db_query_duration: Histogram<f64>,
+    pub search_queries_total: Counter<u64>,
+    pub search_query_duration: Histogram<f64>,
+    pub search_results_total: Counter<u64>,
 }
 
 impl Metrics {
@@ -237,6 +240,18 @@ impl Metrics {
             db_query_duration: meter
                 .f64_histogram("db_query_duration_seconds")
                 .with_description("Database query duration in seconds")
+                .init(),
+            search_queries_total: meter
+                .u64_counter("search_queries_total")
+                .with_description("Total number of search queries")
+                .init(),
+            search_query_duration: meter
+                .f64_histogram("search_query_duration_seconds")
+                .with_description("Search query duration in seconds")
+                .init(),
+            search_results_total: meter
+                .u64_counter("search_results_total")
+                .with_description("Total number of search results returned")
                 .init(),
         })
     }
@@ -340,6 +355,19 @@ impl Metrics {
         ];
 
         self.db_query_duration.record(duration, &labels);
+    }
+
+    /// [SEARCH METRICS] Query Performance and Usage Tracking
+    /// @MISSION Monitor search engine performance and usage patterns.
+    /// @THREAT Slow search queries or high resource consumption.
+    /// @COUNTERMEASURE Labeled metrics with query duration and result counts.
+    /// @DEPENDENCY Search engine integration.
+    /// @PERFORMANCE ~1μs per query recording.
+    /// @AUDIT Search metrics used for query optimization and capacity planning.
+    pub async fn record_search_query(&self, duration_ms: u64, result_count: u64) {
+        self.search_queries_total.add(1, &[]);
+        self.search_query_duration.record(duration_ms as f64 / 1000.0, &[]);
+        self.search_results_total.add(result_count, &[]);
     }
 }
 

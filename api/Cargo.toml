@@ -90,6 +90,12 @@ async-trait = "0.1"
 tower = "0.4"
 tower-http = "0.4"
 
+# Search indexing
+tantivy = "0.21"
+
+# Regular expressions
+regex = "1.0"
+
 [[bin]]
 name = "api"
 path = "src/main.rs"

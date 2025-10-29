@@ -9,6 +9,7 @@ pub mod vpn_routes;
 pub mod grpc_routes;
 pub mod webdav_routes;
 pub mod opentelemetry_routes;
+pub mod search_routes;
 
 use warp::Filter;
 use std::sync::Arc;
@@ -66,6 +67,8 @@ pub fn routes(
     let grpc_routes = crate::routes::grpc_routes::grpc_routes(grpc_client);
     let webdav_routes = crate::routes::webdav_routes::webdav_routes(webdav_handler, caldav_handler, carddav_handler);
     let opentelemetry_routes = crate::routes::opentelemetry_routes::opentelemetry_routes(metrics);
+    let search_routes = crate::routes::search_routes::search_routes(auth_service.clone(), vault_client.clone(), metrics.clone());
+    let search_routes = crate::routes::search_routes::search_routes(auth_service.clone(), vault_client.clone(), metrics.clone());
 
     // OpenAPI JSON endpoint
     let openapi_json = warp::path!("api-docs" / "openapi.json")
@@ -112,5 +115,5 @@ pub fn routes(
             "#)
         });
 
-    hello.or(key_routes).or(auth_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(openapi_json).or(swagger_ui)
+    hello.or(key_routes).or(auth_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(search_routes).or(openapi_json).or(swagger_ui)
 }
