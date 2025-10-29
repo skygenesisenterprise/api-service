@@ -20,14 +20,16 @@ api/src/
 ├── main.rs              # Application entry point
 ├── config/              # Configuration management
 ├── controllers/         # Request handlers
-├── core/                # External service integrations (Vault, Keycloak)
+├── core/                # External service integrations (Vault, Keycloak, Stalwart Mail)
 ├── middlewares/         # Authentication and validation middleware
 ├── models/              # Data structures and types
 ├── queries/             # Database query abstractions
 ├── routes/              # API route definitions
 ├── services/            # Business logic layer
 ├── tests/               # Unit and integration tests
-└── utils/               # Utility functions
+├── utils/               # Utility functions
+├── websocket.rs         # Real-time communication server
+└── openapi.rs           # OpenAPI documentation generation
 ```
 
 ## Key Features
@@ -68,11 +70,14 @@ api/src/
 
 - **Language**: Rust
 - **Web Framework**: Warp
-- **Authentication**: Keycloak
+- **Authentication**: Keycloak + JWT + Sessions (Redis)
 - **Secrets Management**: HashiCorp Vault
 - **Database**: PostgreSQL (planned)
+- **Session Store**: Redis
+- **Mail Server**: Stalwart Mail Server
 - **Serialization**: Serde (JSON)
 - **Async Runtime**: Tokio
+- **Documentation**: OpenAPI/Swagger UI
 
 ## Environment Variables
 
@@ -86,6 +91,10 @@ Required environment variables for operation:
 - `KEYCLOAK_REALM`: Keycloak realm
 - `KEYCLOAK_CLIENT_ID`: Keycloak client ID
 - `JWT_SECRET`: JWT signing secret
+- `REDIS_URL`: Redis server URL for sessions
+- `STALWART_URL`: Stalwart Mail Server URL
+- `SESSION_TTL_SECONDS`: Session timeout (default: 604800)
+- `PORT`: Server port (default: 8080)
 
 ## API Endpoints
 
@@ -117,6 +126,26 @@ The API exposes endpoints under two main categories:
 - `POST /security/hash` - Hash data with SHA-512
 - `POST /security/random` - Generate cryptographically secure random data
 
+### Mail Endpoints (`/api/v1/mail/*`)
+- `GET /mail/mailboxes` - List user mailboxes
+- `GET /mail/mailboxes/{id}` - Get mailbox details
+- `GET /mail/messages` - List messages in mailbox
+- `GET /mail/messages/{id}` - Get message details
+- `POST /mail/messages` - Send new message
+- `PUT /mail/messages/{id}` - Update message
+- `DELETE /mail/messages/{id}` - Delete message
+- `GET /mail/search` - Search messages
+- `GET /mail/threads/{id}` - Get message thread
+- `POST /mail/drafts` - Save draft message
+- `GET /mail/attachments/{id}` - Download attachment
+- `POST /mail/contextual/send` - Send contextual email
+- `POST /mail/contextual/bulk-send` - Bulk contextual email sending
+
+### Application Endpoints (`/api/v1/apps/*`)
+- `GET /apps` - List available applications
+- `POST /apps/{id}/access` - Request application access token
+- `GET /apps/{id}/permissions` - Get application permissions
+
 ## Development
 
 ### Building
@@ -133,6 +162,11 @@ cargo run
 ```bash
 cargo test
 ```
+
+### API Documentation
+The API includes integrated OpenAPI documentation accessible at:
+- **Swagger UI**: `http://localhost:8080/swagger-ui/`
+- **OpenAPI JSON**: `http://localhost:8080/api-docs/openapi.json`
 
 ## Deployment
 

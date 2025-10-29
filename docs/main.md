@@ -40,7 +40,26 @@ let keycloak_client = Arc::new(crate::core::keycloak::KeycloakClient::new(vault_
 
 ### 4. Service Initialization
 ```rust
-let auth_service = Arc::new(crate::services::auth_service::AuthService::new(keycloak_client, vault_client.clone()));
+// Initialize session service
+let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| {
+    let defaults = load_defaults_from_env_example();
+    defaults.get("REDIS_URL").unwrap_or(&"redis://localhost:6379".to_string()).clone()
+});
+let session_service = Arc::new(crate::services::session_service::SessionService::new(&redis_url).unwrap());
+
+// Initialize application service
+let application_service = Arc::new(crate::services::application_service::ApplicationService::new(vault_client.clone()));
+
+// Initialize two-factor authentication service
+let two_factor_service = Arc::new(crate::services::two_factor_service::TwoFactorService::new(vault_client.clone()));
+
+let auth_service = Arc::new(crate::services::auth_service::AuthService::new(
+    keycloak_client,
+    vault_client.clone(),
+    session_service.clone(),
+    application_service.clone(),
+    two_factor_service.clone(),
+));
 let key_service = Arc::new(crate::services::key_service::KeyService::new(vault_client));
 ```
 
@@ -110,6 +129,12 @@ mod tests;
 - **`services::security_service`**: High-level cryptographic operations service
 - **`routes::security_routes`**: API endpoints for cryptographic operations
 - **`websocket`**: Real-time communication server
+- **`services::session_service`**: Redis-based session management
+- **`services::two_factor_service`**: Multi-method 2FA (TOTP, SMS, Email, Recovery)
+- **`services::application_service`**: Application access token management
+- **`services::mail_service`**: Email operations via Stalwart integration
+- **`core::stalwart_client`**: Dynamic mail server routing client
+- **`openapi`**: OpenAPI documentation generation
 
 ## Error Handling Strategy
 
@@ -142,6 +167,16 @@ Environment variables:
 ### JWT Configuration
 - `JWT_SECRET`: Secret key for token signing
 
+### Session Configuration
+- `REDIS_URL`: Redis connection URL for session storage
+- `SESSION_TTL_SECONDS`: Session timeout in seconds (default: 604800)
+- `SESSION_COOKIE_NAME`: Session cookie name (default: sky_genesis_session)
+- `SESSION_COOKIE_DOMAIN`: Session cookie domain
+- `SESSION_COOKIE_SECURE`: Whether to set secure flag on session cookie
+
+### Mail Configuration
+- `STALWART_URL`: Stalwart Mail Server base URL
+
 ### Security Configuration
 - `PORT`: Server port (default: 8080)
 - `RUST_LOG`: Logging level (default: info)
@@ -158,6 +193,38 @@ The application now includes enterprise-grade cryptographic security:
 - **Key Derivation**: HKDF with proper salt handling
 
 All cryptographic operations are performed through the `SecurityService` and exposed via secure API endpoints.
+
+### Session Management
+Session-based authentication with Redis storage:
+- Secure session tokens with configurable TTL
+- Automatic session cleanup and renewal
+- User activity tracking
+- Configurable cookie settings for security
+
+### Two-Factor Authentication
+Multi-method 2FA support:
+- **TOTP**: Time-based one-time passwords (Google Authenticator, etc.)
+- **SMS**: SMS verification codes
+- **Email**: Email verification codes
+- **Recovery Codes**: Backup codes for account recovery
+- Encrypted secret storage in Vault
+
+### Application Access Management
+Application-specific access tokens:
+- Granular permission control per application
+- Token refresh capabilities
+- Application registry with metadata
+- Secure token generation and validation
+
+### Mail Integration
+Complete email functionality via Stalwart Mail Server:
+- SMTP, IMAP, POP3 protocol support
+- DKIM, SPF, DMARC validation
+- Dynamic server routing based on user/tenant
+- Contextual email sending with templates
+- Bulk email operations
+- Attachment handling
+- Thread management
 
 ## Dependency Injection
 
@@ -250,11 +317,13 @@ Server Startup
 
 ## Future Enhancements
 
-- Graceful shutdown handling
-- Health check endpoints
-- Configuration validation
-- Service discovery integration
-- Docker containerization
-- Kubernetes deployment support
-- Monitoring and metrics
+- PostgreSQL database integration for audit logs and metadata
+- Advanced mail filtering and search capabilities
+- Email template management system
+- Real-time notifications via WebSocket
+- API rate limiting and throttling
+- Comprehensive monitoring and metrics
 - Configuration hot-reloading
+- Multi-region deployment support
+- Advanced session analytics
+- Integration with external identity providers
