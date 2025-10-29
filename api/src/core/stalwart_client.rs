@@ -482,9 +482,29 @@ impl StalwartClient {
     }
 
     fn generate_request_signature(&self, headers: &HeaderMap) -> String {
-        // Generate HMAC signature for request integrity
-        // This would use a shared secret from Vault
-        "signature_placeholder".to_string()
+        // Generate HMAC signature for request integrity using Vault Transit
+        // This is a placeholder - in production would use actual HMAC from Vault
+        use sha2::{Sha512, Digest};
+        use hmac::{Hmac, Mac};
+
+        // Create a simple HMAC for now - in production, this would call Vault
+        let mut mac = Hmac::<Sha512>::new_from_slice(b"shared_secret_key").unwrap();
+        let mut header_string = String::new();
+
+        // Include relevant headers in signature
+        if let Some(timestamp) = headers.get("x-sge-timestamp") {
+            header_string.push_str(&format!("timestamp:{};", timestamp.to_str().unwrap_or("")));
+        }
+        if let Some(user_id) = headers.get("x-sge-user-id") {
+            header_string.push_str(&format!("user:{};", user_id.to_str().unwrap_or("")));
+        }
+        if let Some(tenant) = headers.get("x-sge-tenant") {
+            header_string.push_str(&format!("tenant:{};", tenant.to_str().unwrap_or("")));
+        }
+
+        mac.update(header_string.as_bytes());
+        let result = mac.finalize();
+        base64::encode(result.into_bytes())
     }
 
     pub async fn health_check(&self, user: Option<&User>) -> Result<bool, StalwartError> {

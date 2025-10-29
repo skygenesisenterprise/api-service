@@ -1,0 +1,143 @@
+# Stalwart Mail Server Configuration for Sky Genesis Enterprise
+# Military-grade security configuration
+
+[server]
+hostname = "stalwart.skygenesisenterprise.com"
+tls = { enable = true, certificate = "/etc/ssl/stalwart/fullchain.pem", private_key = "/etc/ssl/stalwart/privkey.pem" }
+
+[server.listener.imap]
+bind = ["[::]:993"]
+protocol = "imap"
+tls = { enable = true, implicit = true }
+
+[server.listener.imaps]
+bind = ["[::]:993"]
+protocol = "imap"
+tls = { enable = true, implicit = true }
+
+[server.listener.submission]
+bind = ["[::]:587"]
+protocol = "smtp"
+tls = { enable = true, implicit = false }
+
+[server.listener.smtps]
+bind = ["[::]:465"]
+protocol = "smtp"
+tls = { enable = true, implicit = true }
+
+[server.listener.sieve]
+bind = ["[::]:4190"]
+protocol = "managesieve"
+tls = { enable = true, implicit = false }
+
+# TLS Configuration (Military-Grade)
+[server.tls]
+protocols = ["TLSv1.3"]
+ciphers = [
+    "TLS_AES_256_GCM_SHA384",
+    "TLS_CHACHA20_POLY1305_SHA256"
+]
+prefer_server_ciphers = true
+require_starttls = true
+certificate = "/etc/ssl/stalwart/fullchain.pem"
+private_key = "/etc/ssl/stalwart/privkey.pem"
+
+# MTA-STS Configuration
+[server.mta-sts]
+enable = true
+policy = "enforce"
+max_age = 604800  # 7 days
+
+# DANE/TLSA Configuration
+[server.dane]
+enable = true
+certificates = ["/etc/ssl/stalwart/fullchain.pem"]
+
+# DKIM Configuration
+[server.dkim]
+enable = true
+selector = "default"
+algorithm = "ed25519"
+private_key = "/etc/ssl/stalwart/dkim_private.pem"
+domain = "skygenesisenterprise.com"
+
+# SPF Configuration (via DNS)
+# Note: SPF records must be configured in DNS
+
+# DMARC Configuration (via DNS)
+# Note: DMARC records must be configured in DNS
+
+# Authentication
+[server.auth]
+mechanisms = ["PLAIN", "LOGIN"]
+require_tls = true
+
+# Database Configuration
+[database]
+type = "postgresql"
+url = "postgresql://stalwart:password@localhost/stalwart"
+
+# Storage Configuration
+[storage]
+type = "filesystem"
+path = "/var/lib/stalwart/mail"
+
+# Encryption at Rest (additional layer beyond Vault)
+[storage.encryption]
+enable = true
+key = "/etc/ssl/stalwart/storage_key.pem"
+
+# Logging
+[log]
+level = "info"
+path = "/var/log/stalwart"
+
+# Rate Limiting
+[server.rate-limit]
+imap = 100
+smtp = 50
+submission = 20
+
+# Security Headers
+[server.security]
+hide_version = true
+require_auth = true
+
+# Monitoring
+[server.monitoring]
+enable = true
+metrics = true
+health_check = true
+
+# Backup
+[server.backup]
+enable = true
+schedule = "0 2 * * *"  # Daily at 2 AM
+path = "/var/backup/stalwart"
+
+# Clustering (if needed)
+[cluster]
+enable = false  # Single node for now
+
+# Extensions
+[extensions]
+# Enable required extensions for modern mail clients
+imap4rev2 = true
+binary = true
+move = true
+status = true
+sort = true
+thread = true
+special_use = true
+create_special_use = true
+enable = true
+condstore = true
+qresync = true
+searchres = true
+esearch = true
+within = true
+context = true
+filters = true
+metadata = true
+list_metadata = true
+list_status = true

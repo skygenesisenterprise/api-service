@@ -4,19 +4,23 @@
 use std::sync::Arc;
 use crate::core::stalwart_client::StalwartClient;
 use crate::core::vault::VaultClient;
+use crate::services::encryption_service::{EncryptionService, EncryptionMethod};
 use crate::models::mail::{Mailbox, Message, SendRequest, SearchResult, EmailContext, ContextualSendRequest, ContextualSendResponse, BulkContextualSendRequest, BulkSendResponse, EmailTemplate, TemplateListResponse, ContextStats, BatchStatus};
 use crate::models::user::User;
 
 pub struct MailService {
     stalwart_client: Arc<StalwartClient>,
     vault_client: Arc<VaultClient>,
+    encryption_service: Arc<EncryptionService>,
 }
 
 impl MailService {
     pub fn new(stalwart_client: Arc<StalwartClient>, vault_client: Arc<VaultClient>) -> Self {
+        let encryption_service = Arc::new(EncryptionService::new(vault_client.clone()));
         MailService {
             stalwart_client,
             vault_client,
+            encryption_service,
         }
     }
 
@@ -56,7 +60,48 @@ impl MailService {
         let filtered_query = self.apply_user_filters(query, user);
 
         // Fetch from Stalwart
-        let messages = self.stalwart_client.get_messages(&filtered_query, user).await?;
+        let encrypted_messages = self.stalwart_client.get_messages(&filtered_query, user).await?;
+
+        // Decrypt message bodies using Vault Transit (military-grade)
+        let mut messages = Vec::new();
+        for mut msg in encrypted_messages {
+            if let Some(encrypted_body) = &msg.body {
+                if let Some(text) = &encrypted_body.text {
+                    if text.starts_with("vault:v1:") {
+                        // Decrypt using Vault Transit
+                        let ciphertext = &text[9..]; // Remove "vault:v1:" prefix
+                        match self.vault_client.transit_decrypt("mail_storage_key", ciphertext).await {
+                            Ok(decrypted) => {
+                                msg.body = Some(MessageBody {
+                                    text: Some(String::from_utf8_lossy(&decrypted).to_string()),
+                                    html: encrypted_body.html.clone(),
+                                });
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to decrypt message body: {:?}", e);
+                                // Keep encrypted body as fallback
+                            }
+                        }
+                    }
+                }
+                if let Some(html) = &encrypted_body.html {
+                    if html.starts_with("vault:v1:") {
+                        let ciphertext = &html[9..];
+                        match self.vault_client.transit_decrypt("mail_storage_key", ciphertext).await {
+                            Ok(decrypted) => {
+                                if let Some(ref mut body) = msg.body {
+                                    body.html = Some(String::from_utf8_lossy(&decrypted).to_string());
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to decrypt message HTML: {:?}", e);
+                            }
+                        }
+                    }
+                }
+            }
+            messages.push(msg);
+        }
 
         // Log access for audit
         self.log_message_access(&messages, user).await?;
@@ -93,8 +138,37 @@ impl MailService {
         // Apply content policies
         let filtered_request = self.apply_send_policies(request, user)?;
 
+        // Encrypt message body using Vault Transit (military-grade encryption)
+        let encrypted_request = SendRequest {
+            to: filtered_request.to.clone(),
+            cc: filtered_request.cc.clone(),
+            bcc: filtered_request.bcc.clone(),
+            subject: filtered_request.subject.clone(),
+            body: MessageBody {
+                text: if let Some(text) = &filtered_request.body.text {
+                    Some(format!("vault:v1:{}",
+                        self.vault_client.transit_encrypt("mail_storage_key", text.as_bytes()).await
+                            .map_err(|e| MailError::new("ENCRYPTION_FAILED", &format!("Failed to encrypt message: {}", e)))?
+                    ))
+                } else {
+                    None
+                },
+                html: if let Some(html) = &filtered_request.body.html {
+                    Some(format!("vault:v1:{}",
+                        self.vault_client.transit_encrypt("mail_storage_key", html.as_bytes()).await
+                            .map_err(|e| MailError::new("ENCRYPTION_FAILED", &format!("Failed to encrypt message: {}", e)))?
+                    ))
+                } else {
+                    None
+                },
+            },
+            attachments: filtered_request.attachments.clone(),
+            priority: filtered_request.priority.clone(),
+            request_read_receipt: filtered_request.request_read_receipt.clone(),
+        };
+
         // Send via Stalwart
-        let result = self.stalwart_client.send_message(&filtered_request, user).await?;
+        let result = self.stalwart_client.send_message(&encrypted_request, user).await?;
 
         // Log sending activity
         self.log_message_sending(&result, user).await?;
@@ -301,6 +375,179 @@ impl MailService {
     pub async fn get_batch_status(&self, batch_id: &str) -> Result<BatchStatus, MailError> {
         // Get batch status from storage
         self.get_batch_status_from_storage(batch_id)
+    }
+
+    // ============================================================================
+    // END-TO-END ENCRYPTION METHODS (Military-Grade)
+    // ============================================================================
+
+    /// Send encrypted message using specified E2E method
+    pub async fn send_encrypted_message(&self, request: &SendRequest, encryption_method: EncryptionMethod, user: &User) -> Result<SendResult, MailError> {
+        // Validate send request
+        self.validate_send_request(request, user)?;
+
+        // Check sending limits
+        self.check_sending_limits(user)?;
+
+        // Apply content policies
+        let filtered_request = self.apply_send_policies(request, user)?;
+
+        // Encrypt message body using E2E encryption
+        let encrypted_body = self.encryption_service.encrypt_message_body(
+            &filtered_request.body,
+            encryption_method,
+            &filtered_request.to,
+            user
+        ).await.map_err(|e| MailError::new("E2E_ENCRYPTION_FAILED", &format!("E2E encryption failed: {}", e)))?;
+
+        // Create encrypted request
+        let encrypted_request = SendRequest {
+            to: filtered_request.to.clone(),
+            cc: filtered_request.cc.clone(),
+            bcc: filtered_request.bcc.clone(),
+            subject: filtered_request.subject.clone(),
+            body: encrypted_body,
+            attachments: filtered_request.attachments.clone(),
+            priority: filtered_request.priority.clone(),
+            request_read_receipt: filtered_request.request_read_receipt.clone(),
+        };
+
+        // Send via Stalwart
+        let result = self.stalwart_client.send_message(&encrypted_request, user).await?;
+
+        // Log sending activity
+        self.log_message_sending(&result, user).await?;
+
+        Ok(result)
+    }
+
+    /// Get and decrypt E2E encrypted message
+    pub async fn get_encrypted_message(&self, message_id: &str, user: &User) -> Result<Message, MailError> {
+        // Validate message access
+        self.validate_message_access(message_id, user)?;
+
+        // Check content policies
+        self.check_content_policies(user)?;
+
+        // Fetch from Stalwart
+        let mut message = self.stalwart_client.get_message(message_id, user).await?;
+
+        // Decrypt E2E encrypted body
+        if let Some(body) = &message.body {
+            let decrypted_body = self.encryption_service.decrypt_message_body(body, user)
+                .await
+                .map_err(|e| MailError::new("E2E_DECRYPTION_FAILED", &format!("E2E decryption failed: {}", e)))?;
+            message.body = Some(decrypted_body);
+        }
+
+        // Apply content filtering
+        let filtered = self.apply_content_filtering(message);
+
+        // Log access
+        self.log_message_access(&[filtered.clone()], user).await?;
+
+        Ok(filtered)
+    }
+
+    /// Generate and store PGP keypair for user
+    pub async fn generate_pgp_keypair(&self, user: &User, key_name: &str) -> Result<String, MailError> {
+        // Generate Ed25519 keypair for PGP
+        let keypair = Ed25519Keypair::generate();
+
+        // Store public key in Vault
+        let public_key_b64 = base64::encode(keypair.public_key().to_bytes());
+        let public_key_path = format!("secret/pgp/keys/{}/public", key_name);
+        let public_data = serde_json::json!({
+            "key": public_key_b64,
+            "algorithm": "Ed25519",
+            "user_id": user.id,
+            "created_at": chrono::Utc::now().to_rfc3339()
+        });
+        self.vault_client.set_secret(&public_key_path, public_data).await
+            .map_err(|e| MailError::new("KEY_STORAGE_FAILED", &format!("Failed to store public key: {}", e)))?;
+
+        // Encrypt and store private key in Vault using Transit
+        let private_key_bytes = keypair.keypair.secret.to_bytes();
+        let encrypted_private_key = self.vault_client.transit_encrypt("pgp_key_encryption", &private_key_bytes).await
+            .map_err(|e| MailError::new("KEY_ENCRYPTION_FAILED", &format!("Failed to encrypt private key: {}", e)))?;
+
+        let private_key_path = format!("secret/pgp/users/{}/private_key", user.id);
+        let private_data = serde_json::json!({
+            "encrypted_key": encrypted_private_key,
+            "key_name": key_name,
+            "algorithm": "Ed25519",
+            "created_at": chrono::Utc::now().to_rfc3339()
+        });
+        self.vault_client.set_secret(&private_key_path, private_data).await
+            .map_err(|e| MailError::new("KEY_STORAGE_FAILED", &format!("Failed to store private key: {}", e)))?;
+
+        // Update user's key list
+        self.add_user_pgp_key(user, key_name).await?;
+
+        Ok(key_name.to_string())
+    }
+
+    /// Generate and store S/MIME certificate for user
+    pub async fn generate_smime_certificate(&self, user: &User, common_name: &str) -> Result<String, MailError> {
+        // Issue certificate from Vault PKI
+        let cert_data = self.vault_client.issue_certificate("smime", "user-cert", common_name, None).await
+            .map_err(|e| MailError::new("CERT_ISSUE_FAILED", &format!("Failed to issue S/MIME certificate: {}", e)))?;
+
+        // Extract certificate and key
+        let certificate = cert_data.get("certificate")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| MailError::new("CERT_PARSE_FAILED", "Certificate not found in response"))?;
+
+        let private_key = cert_data.get("private_key")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| MailError::new("KEY_PARSE_FAILED", "Private key not found in response"))?;
+
+        // Encrypt and store private key in Vault using Transit
+        let encrypted_private_key = self.vault_client.transit_encrypt("pgp_key_encryption", private_key.as_bytes()).await
+            .map_err(|e| MailError::new("KEY_ENCRYPTION_FAILED", &format!("Failed to encrypt S/MIME private key: {}", e)))?;
+
+        let cert_path = format!("secret/smime/users/{}/certificate", user.id);
+        let cert_data = serde_json::json!({
+            "certificate": certificate,
+            "encrypted_private_key": encrypted_private_key,
+            "common_name": common_name,
+            "issued_at": chrono::Utc::now().to_rfc3339()
+        });
+        self.vault_client.set_secret(&cert_path, cert_data).await
+            .map_err(|e| MailError::new("CERT_STORAGE_FAILED", &format!("Failed to store S/MIME certificate: {}", e)))?;
+
+        Ok(common_name.to_string())
+    }
+
+    async fn add_user_pgp_key(&self, user: &User, key_name: &str) -> Result<(), MailError> {
+        // Get existing keys
+        let keys_path = format!("secret/pgp/users/{}/keys", user.id);
+        let existing_keys = match self.vault_client.get_secret(&keys_path).await {
+            Ok(data) => data.get("key_ids")
+                .and_then(|v| v.as_array())
+                .unwrap_or(&vec![])
+                .iter()
+                .filter_map(|k| k.as_str())
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>(),
+            Err(_) => vec![],
+        };
+
+        // Add new key
+        let mut updated_keys = existing_keys;
+        if !updated_keys.contains(&key_name.to_string()) {
+            updated_keys.push(key_name.to_string());
+        }
+
+        // Store updated keys
+        let keys_data = serde_json::json!({
+            "key_ids": updated_keys,
+            "updated_at": chrono::Utc::now().to_rfc3339()
+        });
+        self.vault_client.set_secret(&keys_path, keys_data).await
+            .map_err(|e| MailError::new("KEY_UPDATE_FAILED", &format!("Failed to update user keys: {}", e)))?;
+
+        Ok(())
     }
 
     // Policy and validation methods

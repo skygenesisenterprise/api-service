@@ -115,4 +115,345 @@ impl VaultClient {
         // In a real implementation, this would call the Vault delete API
         Ok(())
     }
+
+    // ============================================================================
+    // VAULT TRANSIT ENGINE OPERATIONS (Military-Grade Encryption)
+    // ============================================================================
+
+    /// Create a new encryption key in Vault Transit Engine
+    pub async fn create_transit_key(&self, key_name: &str, key_type: &str) -> Result<(), Box<dyn std::error::Error>> {
+        self.ensure_token().await?;
+        let url = format!("{}/v1/transit/keys/{}", self.base_url, key_name);
+        let token = self.token.lock().await.clone();
+
+        let payload = serde_json::json!({
+            "type": key_type,
+            "derived": false,
+            "exportable": false,
+            "allow_plaintext_backup": false
+        });
+
+        let response = self.client
+            .post(&url)
+            .header("X-Vault-Token", token)
+            .json(&payload)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to create transit key: {}", response.status()).into());
+        }
+
+        Ok(())
+    }
+
+    /// Encrypt data using Vault Transit Engine (AES-256-GCM)
+    pub async fn transit_encrypt(&self, key_name: &str, plaintext: &[u8]) -> Result<String, Box<dyn std::error::Error>> {
+        self.ensure_token().await?;
+        let url = format!("{}/v1/transit/encrypt/{}", self.base_url, key_name);
+        let token = self.token.lock().await.clone();
+
+        let base64_plaintext = base64::encode(plaintext);
+        let payload = serde_json::json!({
+            "plaintext": base64_plaintext
+        });
+
+        let response = self.client
+            .post(&url)
+            .header("X-Vault-Token", token)
+            .json(&payload)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to encrypt data: {}", response.status()).into());
+        }
+
+        let result: serde_json::Value = response.json().await?;
+        let ciphertext = result["data"]["ciphertext"]
+            .as_str()
+            .ok_or("Missing ciphertext in response")?;
+
+        Ok(ciphertext.to_string())
+    }
+
+    /// Decrypt data using Vault Transit Engine (AES-256-GCM)
+    pub async fn transit_decrypt(&self, key_name: &str, ciphertext: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        self.ensure_token().await?;
+        let url = format!("{}/v1/transit/decrypt/{}", self.base_url, key_name);
+        let token = self.token.lock().await.clone();
+
+        let payload = serde_json::json!({
+            "ciphertext": ciphertext
+        });
+
+        let response = self.client
+            .post(&url)
+            .header("X-Vault-Token", token)
+            .json(&payload)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to decrypt data: {}", response.status()).into());
+        }
+
+        let result: serde_json::Value = response.json().await?;
+        let base64_plaintext = result["data"]["plaintext"]
+            .as_str()
+            .ok_or("Missing plaintext in response")?;
+
+        let plaintext = base64::decode(base64_plaintext)
+            .map_err(|e| format!("Failed to decode base64: {}", e))?;
+
+        Ok(plaintext)
+    }
+
+    /// Sign data using Vault Transit Engine (Ed25519 or RSA-4096)
+    pub async fn transit_sign(&self, key_name: &str, algorithm: &str, data: &[u8]) -> Result<String, Box<dyn std::error::Error>> {
+        self.ensure_token().await?;
+        let url = format!("{}/v1/transit/sign/{}/{}", self.base_url, key_name, algorithm);
+        let token = self.token.lock().await.clone();
+
+        let base64_data = base64::encode(data);
+        let payload = serde_json::json!({
+            "input": base64_data
+        });
+
+        let response = self.client
+            .post(&url)
+            .header("X-Vault-Token", token)
+            .json(&payload)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to sign data: {}", response.status()).into());
+        }
+
+        let result: serde_json::Value = response.json().await?;
+        let signature = result["data"]["signature"]
+            .as_str()
+            .ok_or("Missing signature in response")?;
+
+        Ok(signature.to_string())
+    }
+
+    /// Verify signature using Vault Transit Engine
+    pub async fn transit_verify(&self, key_name: &str, algorithm: &str, signature: &str, data: &[u8]) -> Result<bool, Box<dyn std::error::Error>> {
+        self.ensure_token().await?;
+        let url = format!("{}/v1/transit/verify/{}/{}", self.base_url, key_name, algorithm);
+        let token = self.token.lock().await.clone();
+
+        let base64_data = base64::encode(data);
+        let payload = serde_json::json!({
+            "input": base64_data,
+            "signature": signature
+        });
+
+        let response = self.client
+            .post(&url)
+            .header("X-Vault-Token", token)
+            .json(&payload)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to verify signature: {}", response.status()).into());
+        }
+
+        let result: serde_json::Value = response.json().await?;
+        let valid = result["data"]["valid"]
+            .as_bool()
+            .ok_or("Missing valid field in response")?;
+
+        Ok(valid)
+    }
+
+    /// Generate HMAC using Vault Transit Engine
+    pub async fn transit_hmac(&self, key_name: &str, algorithm: &str, data: &[u8]) -> Result<String, Box<dyn std::error::Error>> {
+        self.ensure_token().await?;
+        let url = format!("{}/v1/transit/hmac/{}/{}", self.base_url, key_name, algorithm);
+        let token = self.token.lock().await.clone();
+
+        let base64_data = base64::encode(data);
+        let payload = serde_json::json!({
+            "input": base64_data
+        });
+
+        let response = self.client
+            .post(&url)
+            .header("X-Vault-Token", token)
+            .json(&payload)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to generate HMAC: {}", response.status()).into());
+        }
+
+        let result: serde_json::Value = response.json().await?;
+        let hmac = result["data"]["hmac"]
+            .as_str()
+            .ok_or("Missing hmac in response")?;
+
+        Ok(hmac.to_string())
+    }
+
+    /// Rotate encryption key in Vault Transit Engine
+    pub async fn rotate_transit_key(&self, key_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+        self.ensure_token().await?;
+        let url = format!("{}/v1/transit/keys/{}/rotate", self.base_url, key_name);
+        let token = self.token.lock().await.clone();
+
+        let response = self.client
+            .post(&url)
+            .header("X-Vault-Token", token)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to rotate key: {}", response.status()).into());
+        }
+
+        Ok(())
+    }
+
+    /// Get key version information
+    pub async fn get_transit_key_info(&self, key_name: &str) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        self.ensure_token().await?;
+        let url = format!("{}/v1/transit/keys/{}", self.base_url, key_name);
+        let token = self.token.lock().await.clone();
+
+        let response = self.client
+            .get(&url)
+            .header("X-Vault-Token", token)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to get key info: {}", response.status()).into());
+        }
+
+        let result: serde_json::Value = response.json().await?;
+        Ok(result)
+    }
+
+    // ============================================================================
+    // VAULT PKI OPERATIONS (Certificate Management)
+    // ============================================================================
+
+    /// Issue certificate from Vault PKI
+    pub async fn issue_certificate(&self, pki_mount: &str, role_name: &str, common_name: &str, alt_names: Option<Vec<String>>) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        self.ensure_token().await?;
+        let url = format!("{}/v1/{}/issue/{}", self.base_url, pki_mount, role_name);
+        let token = self.token.lock().await.clone();
+
+        let mut payload = serde_json::json!({
+            "common_name": common_name
+        });
+
+        if let Some(alt_names) = alt_names {
+            payload["alt_names"] = serde_json::json!(alt_names.join(","));
+        }
+
+        let response = self.client
+            .post(&url)
+            .header("X-Vault-Token", token)
+            .json(&payload)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to issue certificate: {}", response.status()).into());
+        }
+
+        let result: serde_json::Value = response.json().await?;
+        Ok(result)
+    }
+
+    /// Revoke certificate
+    pub async fn revoke_certificate(&self, pki_mount: &str, serial_number: &str) -> Result<(), Box<dyn std::error::Error>> {
+        self.ensure_token().await?;
+        let url = format!("{}/v1/{}/revoke", self.base_url, pki_mount);
+        let token = self.token.lock().await.clone();
+
+        let payload = serde_json::json!({
+            "serial_number": serial_number
+        });
+
+        let response = self.client
+            .post(&url)
+            .header("X-Vault-Token", token)
+            .json(&payload)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to revoke certificate: {}", response.status()).into());
+        }
+
+        Ok(())
+    }
+
+    /// Get CA certificate
+    pub async fn get_ca_certificate(&self, pki_mount: &str) -> Result<String, Box<dyn std::error::Error>> {
+        self.ensure_token().await?;
+        let url = format!("{}/v1/{}/ca", self.base_url, pki_mount);
+        let token = self.token.lock().await.clone();
+
+        let response = self.client
+            .get(&url)
+            .header("X-Vault-Token", token)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to get CA certificate: {}", response.status()).into());
+        }
+
+        let cert_pem = response.text().await?;
+        Ok(cert_pem)
+    }
+
+    // ============================================================================
+    // MILITARY-GRADE SECURITY HELPERS
+    // ============================================================================
+
+    /// Encrypt email data for storage (military-grade)
+    pub async fn encrypt_email_data(&self, data: &[u8]) -> Result<String, Box<dyn std::error::Error>> {
+        self.transit_encrypt("mail_storage_key", data).await
+    }
+
+    /// Decrypt email data from storage (military-grade)
+    pub async fn decrypt_email_data(&self, ciphertext: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        self.transit_decrypt("mail_storage_key", ciphertext).await
+    }
+
+    /// Sign email for DKIM using Vault Transit
+    pub async fn sign_email_dkim(&self, email_data: &[u8]) -> Result<String, Box<dyn std::error::Error>> {
+        self.transit_sign("dkim_key", "ed25519", email_data).await
+    }
+
+    /// Generate HMAC for API request integrity
+    pub async fn generate_request_hmac(&self, data: &[u8]) -> Result<String, Box<dyn std::error::Error>> {
+        self.transit_hmac("api_hmac_key", "sha2-512", data).await
+    }
+
+    /// Initialize military-grade encryption keys
+    pub async fn initialize_military_keys(&self) -> Result<(), Box<dyn std::error::Error>> {
+        // Create mail storage encryption key
+        self.create_transit_key("mail_storage_key", "aes256-gcm96").await?;
+
+        // Create DKIM signing key
+        self.create_transit_key("dkim_key", "ed25519").await?;
+
+        // Create API HMAC key
+        self.create_transit_key("api_hmac_key", "hmac").await?;
+
+        // Create PGP key encryption key
+        self.create_transit_key("pgp_key_encryption", "aes256-gcm96").await?;
+
+        Ok(())
+    }
 }
