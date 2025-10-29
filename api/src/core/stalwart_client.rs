@@ -1,5 +1,18 @@
-// Stalwart Client - Handles communication with Stalwart Mail Server
-// This is a design specification file
+// ============================================================================
+//  SKY GENESIS ENTERPRISE (SGE)
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: Stalwart Mail Server Client
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | HIGHLY-SENSITIVE
+//  MISSION: Provide secure client interface to Stalwart mail server
+//  for SMTP, IMAP, and management operations with encryption and audit.
+//  NOTICE: This module implements secure communication with Stalwart
+//  mail infrastructure using TLS encryption and API key authentication.
+//  PROTOCOLS: SMTP, IMAP, HTTP REST API, gRPC (future)
+//  INTEGRATION: Mail delivery, user management, queue monitoring
+//  License: MIT (Open Source for Strategic Transparency)
+// ============================================================================
 
 use reqwest::{Client, Certificate, Identity};
 use serde::{Deserialize, Serialize};

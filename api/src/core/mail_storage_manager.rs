@@ -1,5 +1,19 @@
-// Mail Storage Manager - Secure Interface to Stalwart Mail Server
-// Provides encrypted communication and storage with Vault Transit AES-256-GCM
+// ============================================================================
+//  SKY GENESIS ENTERPRISE (SGE)
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: Secure Mail Storage Manager
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | HIGHLY-SENSITIVE
+//  MISSION: Provide encrypted mail storage and retrieval with Stalwart
+//  integration, Vault-backed encryption, and comprehensive audit logging.
+//  NOTICE: This module implements zero-knowledge email storage with
+//  AES-256-GCM encryption, metadata isolation, and compliance monitoring.
+//  STORAGE: Stalwart IMAP/SMTP server, Vault Transit encryption,
+//  PostgreSQL metadata, Redis caching
+//  SECURITY: End-to-end encryption, access controls, data masking
+//  License: MIT (Open Source for Strategic Transparency)
+// ============================================================================
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -37,7 +51,13 @@ impl std::error::Error for StorageError {}
 
 pub type StorageResult<T> = Result<T, StorageError>;
 
-/// Mail Storage Manager - Secure interface to mail storage
+/// [MAIL STORAGE MANAGER STRUCT] Secure Email Storage Interface
+/// @MISSION Provide encrypted email storage and retrieval with Stalwart integration.
+/// @THREAT Email data exposure or unauthorized access to stored messages.
+/// @COUNTERMEASURE AES-256-GCM encryption, access controls, and comprehensive audit.
+/// @DEPENDENCY Stalwart mail server, Vault encryption, and audit logging.
+/// @INVARIANT All stored emails are encrypted and access is auditable.
+/// @AUDIT Storage operations logged for compliance and security monitoring.
 pub struct MailStorageManager {
     stalwart_client: Arc<StalwartClient>,
     vault_client: Arc<VaultClient>,
@@ -46,6 +66,13 @@ pub struct MailStorageManager {
     cache: Arc<RwLock<std::collections::HashMap<String, CachedMailData>>>,
 }
 
+/// [CACHED MAIL DATA STRUCT] Performance-Optimized Email Caching
+/// @MISSION Cache encrypted email data for improved retrieval performance.
+/// @THREAT Cache poisoning or data exposure through memory dumps.
+/// @COUNTERMEASURE Time-limited caching with encryption status tracking.
+/// @DEPENDENCY RwLock for thread-safe access and automatic cleanup.
+/// @INVARIANT Cached data expires and is validated before use.
+/// @AUDIT Cache operations logged for performance and security monitoring.
 #[derive(Clone)]
 struct CachedMailData {
     data: Vec<u8>,

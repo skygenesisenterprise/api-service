@@ -20,7 +20,7 @@ jsonwebtoken = "8.0"
 # Cryptographic primitives - Modern algorithms
 aes-gcm = "0.10"
 chacha20poly1305 = "0.10"
-x25519-dalek = { version = "2.0", features = ["getrandom"] }
+x25519-dalek = { version = "2.0.1", features = ["getrandom"] }
 ed25519-dalek = { version = "2.0", features = ["serde"] }
 p384 = { version = "0.13", features = ["ecdsa", "pem"] }
 sha3 = "0.10"
@@ -67,9 +67,9 @@ quinn = "0.10"
 h3 = "0.0.2"
 
 # WebDAV/CalDAV/CardDAV
-webdav-handler = "0.4"
+webdav-handler = "0.2"
 icalendar = "0.16"
-vcard = "0.5"
+vcard = "0.4"
 
 # OAuth2/OIDC + FIDO2
 openidconnect = "3.0"
@@ -82,8 +82,8 @@ opentelemetry-otlp = { version = "0.14", features = ["grpc-sys"] }
 opentelemetry-prometheus = "0.14"
 
 # IPSec/WireGuard/Tailscale
-wireguard-control = "0.1"
-boringtun = "0.6"
+# wireguard-control = "1.7"
+# boringtun = "0.6"
 
 # Additional utilities
 async-trait = "0.1"

@@ -1,5 +1,18 @@
-// Transport Security Module - Military-Grade TLS 1.3 + mTLS Implementation
-// Provides secure transport layer with Perfect Forward Secrecy and approved cipher suites
+// ============================================================================
+//  SKY GENESIS ENTERPRISE (SGE)
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: Transport Security Layer
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | SECURITY-CRITICAL
+//  MISSION: Provide military-grade transport security with TLS 1.3,
+//  mutual TLS authentication, and approved cryptographic cipher suites.
+//  NOTICE: This module implements FIPS-compliant transport encryption
+//  with perfect forward secrecy, certificate management, and zero-trust networking.
+//  PROTOCOLS: TLS 1.3, mTLS, X.509 certificates, OCSP stapling
+//  SECURITY: PFS, certificate pinning, HSTS, secure renegotiation
+//  License: MIT (Open Source for Strategic Transparency)
+// ============================================================================
 
 use std::sync::Arc;
 use tokio::net::TcpStream;

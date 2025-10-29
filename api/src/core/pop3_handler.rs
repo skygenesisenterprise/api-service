@@ -1,5 +1,18 @@
-// POP3 Handler - Native POP3 Protocol Handler with Military-Grade Security
-// Implements RFC 1939 with TLS 1.3, HMAC integrity, and comprehensive audit
+// ============================================================================
+//  SKY GENESIS ENTERPRISE (SGE)
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: POP3 Email Protocol Handler
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | HIGHLY-SENSITIVE
+//  MISSION: Provide secure POP3 email retrieval with TLS 1.3 encryption,
+//  HMAC integrity verification, and comprehensive audit logging.
+//  NOTICE: This module implements RFC 1939 with military-grade security
+//  enhancements, zero-knowledge email access, and compliance monitoring.
+//  PROTOCOLS: POP3 (RFC 1939), TLS 1.3, HMAC-SHA2, STARTTLS
+//  SECURITY: Transport encryption, message integrity, access auditing
+//  License: MIT (Open Source for Strategic Transparency)
+// ============================================================================
 
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
@@ -14,6 +27,12 @@ use crate::core::mail_storage_manager::MailStorageManager;
 use crate::models::user::User;
 use crate::models::mail::*;
 
+/// [POP3 ERROR ENUM] Comprehensive POP3 Protocol Failure Classification
+/// @MISSION Categorize all POP3 server failure modes for proper incident response.
+/// @THREAT Silent protocol failures or information leakage through error messages.
+/// @COUNTERMEASURE Detailed error types with sanitized messages and audit logging.
+/// @INVARIANT All POP3 errors trigger security alerts and are logged.
+/// @AUDIT Error occurrences are tracked for compliance reporting.
 #[derive(Debug)]
 pub enum Pop3Error {
     IoError(std::io::Error),
@@ -41,9 +60,19 @@ impl std::fmt::Display for Pop3Error {
 
 impl std::error::Error for Pop3Error {}
 
+/// [POP3 RESULT TYPE] Secure POP3 Operation Outcome
+/// @MISSION Provide type-safe POP3 operation results with comprehensive error handling.
+/// @THREAT Type confusion or error handling bypass in POP3 operations.
+/// @COUNTERMEASURE Strongly typed results with detailed error enumeration.
+/// @INVARIANT All POP3 operations return this type for consistent error handling.
 pub type Pop3Result<T> = Result<T, Pop3Error>;
 
-/// POP3 Session State
+/// [POP3 SESSION STATE ENUM] RFC 1939 Protocol State Machine
+/// @MISSION Track POP3 client session state for access control and command validation.
+/// @THREAT Session state confusion or unauthorized command execution.
+/// @COUNTERMEASURE State-based command filtering with authentication requirements.
+/// @INVARIANT Session state determines available commands and permissions.
+/// @AUDIT State transitions logged for security monitoring.
 #[derive(Debug, Clone)]
 pub enum SessionState {
     Authorization,
@@ -51,7 +80,12 @@ pub enum SessionState {
     Update,
 }
 
-/// POP3 Command
+/// [POP3 COMMAND ENUM] RFC 1939 Command Classification
+/// @MISSION Provide type-safe POP3 command parsing and validation.
+/// @THREAT Command injection or unauthorized command execution.
+/// @COUNTERMEASURE Strict command parsing with state-based validation.
+/// @INVARIANT All commands are validated against session state and permissions.
+/// @AUDIT Command execution logged with parameters and results.
 #[derive(Debug)]
 pub enum Pop3Command {
     User(String),

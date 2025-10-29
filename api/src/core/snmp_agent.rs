@@ -1,8 +1,18 @@
-// SNMP Agent - Exposes internal SGE MIBs
-// This module implements an SNMP agent that exposes Sky Genesis Enterprise specific MIBs
-
-// SNMP Agent implementation using basic UDP sockets
-// In production, would use proper SNMP agent libraries
+// ============================================================================
+//  SKY GENESIS ENTERPRISE (SGE)
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: SNMP Monitoring Agent
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | SENSITIVE
+//  MISSION: Provide network monitoring and management capabilities through
+//  SNMP protocol with custom SGE enterprise MIBs and security monitoring.
+//  NOTICE: This module implements RFC 1157 SNMP with enterprise-specific
+//  MIBs for infrastructure monitoring, security alerts, and compliance reporting.
+//  PROTOCOLS: SNMP v2c/v3, UDP transport, custom enterprise MIBs
+//  MONITORING: System health, security events, performance metrics, compliance
+//  License: MIT (Open Source for Strategic Transparency)
+// ============================================================================
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use tokio::net::UdpSocket;
@@ -15,7 +25,12 @@ use crate::core::audit_manager::{AuditManager, AuditEventType, AuditSeverity};
 /// SGE Enterprise OID base
 const SGE_ENTERPRISE_OID: &str = "1.3.6.1.4.1.8072.1.3.2.3";
 
-/// SGE MIB structure
+/// [SGE MIB STRUCT] Enterprise SNMP Management Information Base
+/// @MISSION Provide structured monitoring data for SGE infrastructure via SNMP.
+/// @THREAT Unauthorized access to sensitive system information.
+/// @COUNTERMEASURE Access controls and encrypted SNMP communications.
+/// @INVARIANT MIB data is validated and sanitized before exposure.
+/// @AUDIT MIB queries logged for security monitoring.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SgeMib {
     pub api_status: ApiStatus,

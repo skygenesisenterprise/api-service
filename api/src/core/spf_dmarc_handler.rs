@@ -1,5 +1,18 @@
-// SPF/DMARC Handler - Email Authentication Configuration
-// Implements RFC 7208 (SPF) and RFC 7489 (DMARC) with DNS management
+// ============================================================================
+//  SKY GENESIS ENTERPRISE (SGE)
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: SPF/DMARC Email Authentication Handler
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | HIGHLY-SENSITIVE
+//  MISSION: Provide email authentication configuration and validation
+//  using SPF and DMARC protocols to prevent email spoofing and phishing.
+//  NOTICE: This module implements RFC 7208 (SPF) and RFC 7489 (DMARC)
+//  with automated DNS management and compliance reporting.
+//  PROTOCOLS: SPF (RFC 7208), DMARC (RFC 7489), DNS TXT records
+//  SECURITY: Anti-spoofing, domain reputation, phishing prevention
+//  License: MIT (Open Source for Strategic Transparency)
+// ============================================================================
 
 use std::sync::Arc;
 use std::collections::HashMap;

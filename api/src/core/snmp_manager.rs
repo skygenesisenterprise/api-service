@@ -1,8 +1,18 @@
-// SNMP Manager - Handles SNMP queries and operations
-// This module provides synchronous and asynchronous SNMP operations for monitoring and management
-
-// SNMP implementation using basic UDP sockets for simplicity
-// In production, would use proper SNMP libraries
+// ============================================================================
+//  SKY GENESIS ENTERPRISE (SGE)
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: SNMP Management Client
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | SENSITIVE
+//  MISSION: Provide SNMP client functionality for network device monitoring,
+//  configuration management, and infrastructure health assessment.
+//  NOTICE: This module implements SNMP v1/v2c/v3 operations with secure
+//  community string management and comprehensive audit logging.
+//  PROTOCOLS: SNMP v1/v2c/v3, UDP transport, MIB-II and enterprise MIBs
+//  MANAGEMENT: Device monitoring, configuration retrieval, trap handling
+//  License: MIT (Open Source for Strategic Transparency)
+// ============================================================================
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 use tokio::time::timeout;

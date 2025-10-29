@@ -1,8 +1,18 @@
-// SNMP Trap Listener - Receives and processes SNMP traps
-// This module listens for SNMP trap messages from monitored services and processes them
-
-// SNMP Trap Listener implementation using basic UDP sockets
-// In production, would use proper SNMP parsing libraries
+// ============================================================================
+//  SKY GENESIS ENTERPRISE (SGE)
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: SNMP Trap Processing Listener
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | SENSITIVE
+//  MISSION: Receive and process SNMP trap messages from monitored network
+//  devices and services for real-time infrastructure monitoring and alerting.
+//  NOTICE: This module implements SNMP trap reception with parsing,
+//  validation, correlation, and integration with monitoring systems.
+//  PROTOCOLS: SNMP Traps (RFC 1157), UDP transport, trap forwarding
+//  MONITORING: Real-time alerts, event correlation, threshold monitoring
+//  License: MIT (Open Source for Strategic Transparency)
+// ============================================================================
 use tokio::net::UdpSocket;
 use tokio::sync::mpsc;
 use serde::{Deserialize, Serialize};

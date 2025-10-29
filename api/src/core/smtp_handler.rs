@@ -1,5 +1,18 @@
-// SMTP Handler - Native SMTP Protocol Handler with Military-Grade Security
-// Implements RFC 5321 with TLS 1.3, command inspection, quotas, and comprehensive audit
+// ============================================================================
+//  SKY GENESIS ENTERPRISE (SGE)
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: SMTP Email Protocol Handler
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | HIGHLY-SENSITIVE
+//  MISSION: Provide secure SMTP email transmission with TLS 1.3 encryption,
+//  command inspection, rate limiting, quotas, and comprehensive audit logging.
+//  NOTICE: This module implements RFC 5321 with military-grade security
+//  enhancements, spam filtering, and compliance monitoring.
+//  PROTOCOLS: SMTP (RFC 5321), TLS 1.3, STARTTLS, SMTP AUTH
+//  SECURITY: Transport encryption, sender verification, content filtering
+//  License: MIT (Open Source for Strategic Transparency)
+// ============================================================================
 
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
@@ -14,6 +27,12 @@ use crate::core::audit_manager::{AuditManager, AuditEventType, AuditSeverity};
 use crate::core::mail_storage_manager::MailStorageManager;
 use crate::models::user::User;
 
+/// [SMTP ERROR ENUM] Comprehensive SMTP Protocol Failure Classification
+/// @MISSION Categorize all SMTP server failure modes for proper incident response.
+/// @THREAT Silent protocol failures or information leakage through error messages.
+/// @COUNTERMEASURE Detailed error types with sanitized messages and audit logging.
+/// @INVARIANT All SMTP errors trigger security alerts and are logged.
+/// @AUDIT Error occurrences are tracked for compliance reporting.
 #[derive(Debug)]
 pub enum SmtpError {
     IoError(std::io::Error),
@@ -39,9 +58,19 @@ impl std::fmt::Display for SmtpError {
 
 impl std::error::Error for SmtpError {}
 
+/// [SMTP RESULT TYPE] Secure SMTP Operation Outcome
+/// @MISSION Provide type-safe SMTP operation results with comprehensive error handling.
+/// @THREAT Type confusion or error handling bypass in SMTP operations.
+/// @COUNTERMEASURE Strongly typed results with detailed error enumeration.
+/// @INVARIANT All SMTP operations return this type for consistent error handling.
 pub type SmtpResult<T> = Result<T, SmtpError>;
 
-/// SMTP Session State
+/// [SMTP SESSION STATE ENUM] RFC 5321 Protocol State Machine
+/// @MISSION Track SMTP client session state for command validation and mail processing.
+/// @THREAT Session state confusion or unauthorized command execution.
+/// @COUNTERMEASURE State-based command filtering with authentication requirements.
+/// @INVARIANT Session state determines available commands and permissions.
+/// @AUDIT State transitions logged for security monitoring.
 #[derive(Debug, Clone)]
 pub enum SessionState {
     Initial,
@@ -52,7 +81,12 @@ pub enum SessionState {
     Authenticated(User),
 }
 
-/// SMTP Command
+/// [SMTP COMMAND ENUM] RFC 5321 Command Classification
+/// @MISSION Provide type-safe SMTP command parsing and validation.
+/// @THREAT Command injection or unauthorized command execution.
+/// @COUNTERMEASURE Strict command parsing with state-based validation.
+/// @INVARIANT All commands are validated against session state and permissions.
+/// @AUDIT Command execution logged with parameters and results.
 #[derive(Debug)]
 pub enum SmtpCommand {
     Ehlo(String),

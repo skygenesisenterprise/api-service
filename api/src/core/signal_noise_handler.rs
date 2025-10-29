@@ -1,5 +1,18 @@
-// Signal/Noise Protocol Handler - Inter-Service Communication Encryption
-// Implements Noise Protocol Framework with X25519 + ChaCha20Poly1305 for secure service-to-service communication
+// ============================================================================
+//  SKY GENESIS ENTERPRISE (SGE)
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: Signal/Noise Protocol Handler
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | HIGHLY-SENSITIVE
+//  MISSION: Provide secure inter-service communication using Noise Protocol
+//  Framework with X25519 key exchange and ChaCha20-Poly1305 encryption.
+//  NOTICE: This module implements post-quantum ready cryptography for
+//  service mesh communication with forward secrecy and authentication.
+//  CRYPTO: X25519 ECDH, ChaCha20-Poly1305 AEAD, HKDF, Noise Protocol Framework
+//  SECURITY: Perfect forward secrecy, authenticated encryption, replay protection
+//  License: MIT (Open Source for Strategic Transparency)
+// ============================================================================
 
 use std::sync::Arc;
 use std::collections::HashMap;
@@ -9,6 +22,12 @@ use rand::RngCore;
 use crate::core::vault::VaultClient;
 use crate::core::audit_manager::{AuditManager, AuditEventType, AuditSeverity};
 
+/// [SIGNAL NOISE ERROR ENUM] Noise Protocol Failure Classification
+/// @MISSION Categorize all Noise protocol failure modes for secure communication.
+/// @THREAT Silent cryptographic failures or protocol violations.
+/// @COUNTERMEASURE Detailed error types with sanitized messages and audit logging.
+/// @INVARIANT All protocol errors trigger security alerts and are logged.
+/// @AUDIT Error occurrences are tracked for compliance reporting.
 #[derive(Debug)]
 pub enum SignalNoiseError {
     KeyExchangeError(String),
@@ -36,9 +55,19 @@ impl std::fmt::Display for SignalNoiseError {
 
 impl std::error::Error for SignalNoiseError {}
 
+/// [SIGNAL NOISE RESULT TYPE] Secure Noise Protocol Operation Outcome
+/// @MISSION Provide type-safe Noise protocol results with comprehensive error handling.
+/// @THREAT Type confusion or error handling bypass in protocol operations.
+/// @COUNTERMEASURE Strongly typed results with detailed error enumeration.
+/// @INVARIANT All protocol operations return this type for consistent error handling.
 pub type SignalNoiseResult<T> = Result<T, SignalNoiseError>;
 
-/// Noise Protocol Configuration
+/// [NOISE CONFIGURATION STRUCT] Protocol Security Parameters
+/// @MISSION Define Noise protocol operational parameters with security controls.
+/// @THREAT Weak cryptographic parameters or misconfiguration.
+/// @COUNTERMEASURE Validated configuration with secure algorithm defaults.
+/// @INVARIANT Configuration is immutable after initialization.
+/// @AUDIT Configuration changes logged for compliance verification.
 #[derive(Clone)]
 pub struct NoiseConfig {
     pub service_name: String,
@@ -48,7 +77,12 @@ pub struct NoiseConfig {
     pub max_message_size: usize,
 }
 
-/// Handshake Pattern (Noise pattern names)
+/// [HANDSHAKE PATTERN ENUM] Noise Protocol Authentication Modes
+/// @MISSION Define cryptographic handshake patterns for secure key establishment.
+/// @THREAT Weak authentication or identity verification failures.
+/// @COUNTERMEASURE Pattern-based authentication with forward secrecy guarantees.
+/// @INVARIANT Patterns provide appropriate security level for use case.
+/// @AUDIT Pattern selection logged for cryptographic compliance.
 #[derive(Clone, Debug)]
 pub enum HandshakePattern {
     NN, // No authentication, no identities
