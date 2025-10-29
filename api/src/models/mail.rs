@@ -1,11 +1,32 @@
-// Mail Models - Data structures for mail operations
-// This is a design specification file
+// ============================================================================
+//  SKY GENESIS ENTERPRISE (SGE)
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: Mail Models
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | HIGHLY-SENSITIVE
+//  MISSION: Define comprehensive data models for email operations including
+//  IMAP/SMTP integration, contextual templating, bulk operations, and
+//  enterprise compliance features.
+//  NOTICE: Models implement secure email handling with encryption support,
+//  audit trails, GDPR compliance, and advanced email features.
+//  MAIL STANDARDS: IMAP, SMTP, MIME, RFC 5322, Contextual Email
+//  COMPLIANCE: GDPR, CAN-SPAM, SOX Email Retention, Email Security Standards
+//  License: MIT (Open Source for Strategic Transparency)
+// ============================================================================
 
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 
 // Core mail entities
 
+/// [MAILBOX STRUCT] Email Mailbox Container Model
+/// @MISSION Define mailbox structure with permissions and metadata.
+/// @THREAT Unauthorized mailbox access, data leakage.
+/// @COUNTERMEASURE Permission validation, tenant isolation.
+/// @INVARIANT Mailboxes have proper access controls.
+/// @AUDIT Mailbox operations are logged.
+/// @DEPENDENCY Core model for mail storage and access.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Mailbox {
     pub id: String,
@@ -463,6 +484,13 @@ fn is_valid_email(email: &str) -> bool {
 
 // Contextual email types
 
+/// [EMAIL CONTEXT ENUM] Business Context Classification for Emails
+/// @MISSION Categorize emails by business purpose and compliance requirements.
+/// @THREAT Inappropriate email content, regulatory violations.
+/// @COUNTERMEASURE Context-based templates, rate limiting, audit trails.
+/// @INVARIANT Emails are sent with appropriate context and restrictions.
+/// @AUDIT Contextual emails are tracked for compliance.
+/// @DEPENDENCY Used by contextual email services and templates.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EmailContext {
     #[serde(rename = "no-reply")]

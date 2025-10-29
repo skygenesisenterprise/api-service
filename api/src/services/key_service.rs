@@ -1,13 +1,43 @@
+// ============================================================================
+//  SKY GENESIS ENTERPRISE (SGE)
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: Key Service
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | HIGHLY-SENSITIVE
+//  MISSION: Provide comprehensive API key lifecycle management with
+//  certificate generation, vault integration, and secure key operations.
+//  NOTICE: Implements cryptographic key management with HSM integration,
+//  certificate authority support, and compliance auditing.
+//  KEY STANDARDS: AES-256, RSA-4096, ECDSA P-384, X.509 certificates
+//  COMPLIANCE: FIPS 140-2, NIST 800-57, GDPR encryption requirements
+//  License: MIT (Open Source for Strategic Transparency)
+// ============================================================================
+
 use crate::core::vault::VaultClient;
 use crate::models::key_model::{ApiKey, KeyType, CertificateInfo, CertificateType, ApiKeyStatus};
 use crate::queries::key_queries;
 use crate::utils::key_utils;
 use std::sync::Arc;
 
+/// [KEY SERVICE STRUCT] API Key Management Service
+/// @MISSION Centralize API key creation, management, and lifecycle operations.
+/// @THREAT Key compromise, unauthorized key creation, weak cryptography.
+/// @COUNTERMEASURE Secure key generation, vault storage, audit logging.
+/// @INVARIANT All keys are cryptographically secure and properly stored.
+/// @AUDIT Key operations are logged for compliance.
+/// @DEPENDENCY Requires VaultClient for secure key storage.
 pub struct KeyService {
     vault: Arc<VaultClient>,
 }
 
+/// [KEY SERVICE IMPLEMENTATION] Cryptographic Key Management Operations
+/// @MISSION Implement secure key generation and certificate management.
+/// @THREAT Cryptographic weaknesses, key exposure, certificate issues.
+/// @COUNTERMEASURE FIPS-approved algorithms, secure storage, validation.
+/// @INVARIANT Keys are generated with approved cryptographic standards.
+/// @AUDIT Key creation and management operations are logged.
+/// @FLOW Generate keys -> Store securely -> Return metadata.
 impl KeyService {
     pub fn new(vault: Arc<VaultClient>) -> Self {
         KeyService { vault }

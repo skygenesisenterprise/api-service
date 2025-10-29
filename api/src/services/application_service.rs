@@ -1,9 +1,32 @@
+// ============================================================================
+//  SKY GENESIS ENTERPRISE (SGE)
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: Application Service
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | HIGHLY-SENSITIVE
+//  MISSION: Manage application registry, access control, and token generation
+//  for enterprise applications with secure permission management.
+//  NOTICE: Implements application lifecycle management with OAuth-like
+//  access tokens, permission validation, and audit logging.
+//  APP STANDARDS: OAuth 2.0, JWT tokens, role-based access control
+//  COMPLIANCE: GDPR, SOX application access requirements
+//  License: MIT (Open Source for Strategic Transparency)
+// ============================================================================
+
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::collections::HashMap;
 use crate::core::vault::VaultClient;
 use crate::models::user::User;
 
+/// [APPLICATION MODEL] Enterprise Application Registry Entry
+/// @MISSION Define application metadata and access requirements.
+/// @THREAT Application impersonation, permission escalation.
+/// @COUNTERMEASURE Unique IDs, permission validation, audit logging.
+/// @INVARIANT Applications have unique IDs and defined permissions.
+/// @AUDIT Application changes are logged for compliance.
+/// @DEPENDENCY Used by ApplicationService for access control.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Application {
     pub id: String,
@@ -15,6 +38,13 @@ pub struct Application {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
+/// [APPLICATION TOKEN MODEL] Access Token for Application Authorization
+/// @MISSION Provide temporary access credentials for applications.
+/// @THREAT Token theft, replay attacks, expiration bypass.
+/// @COUNTERMEASURE Cryptographic tokens, expiration, secure storage.
+/// @INVARIANT Tokens are time-limited and permission-scoped.
+/// @AUDIT Token creation and usage are logged.
+/// @DEPENDENCY Stored in Vault for secure validation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApplicationToken {
     pub token: String,
@@ -25,12 +55,26 @@ pub struct ApplicationToken {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
+/// [ACCESS REQUEST MODEL] User Request for Application Access
+/// @MISSION Structure access requests with permission specification.
+/// @THREAT Unauthorized permission requests, privilege escalation.
+/// @COUNTERMEASURE Permission validation, approval workflows.
+/// @INVARIANT Requests specify exact permissions needed.
+/// @AUDIT Access requests are logged and tracked.
+/// @DEPENDENCY Processed by request_application_access method.
 #[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ApplicationAccessRequest {
     pub application_id: String,
     pub requested_permissions: Vec<String>,
 }
 
+/// [ACCESS RESPONSE MODEL] Application Access Grant Response
+/// @MISSION Return access tokens and permissions to authorized users.
+/// @THREAT Token exposure, permission over-granting.
+/// @COUNTERMEASURE Secure token transmission, exact permission grants.
+/// @INVARIANT Response contains only granted permissions.
+/// @AUDIT Access grants are logged with full context.
+/// @DEPENDENCY Returned by request_application_access method.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApplicationAccessResponse {
     pub application: Application,
@@ -40,12 +84,33 @@ pub struct ApplicationAccessResponse {
     pub expires_in: u64,
 }
 
+/// [APPLICATION SERVICE STRUCT] Core Service for Application Management
+/// @MISSION Centralize application registry and access control logic.
+/// @THREAT Unauthorized application access, token compromise.
+/// @COUNTERMEASURE Secure token storage, permission validation.
+/// @INVARIANT All application operations are audited.
+/// @AUDIT Service operations trigger security logging.
+/// @DEPENDENCY Requires VaultClient for secure storage.
 pub struct ApplicationService {
     vault_client: Arc<VaultClient>,
     applications: HashMap<String, Application>,
 }
 
+/// [APPLICATION SERVICE IMPLEMENTATION] Business Logic for Application Operations
+/// @MISSION Implement secure application management and access control.
+/// @THREAT Service abuse, data leakage, unauthorized access.
+/// @COUNTERMEASURE Input validation, secure storage, audit logging.
+/// @INVARIANT All operations validate permissions and log activity.
+/// @AUDIT Service methods are instrumented for monitoring.
+/// @FLOW Validate input -> Process request -> Log result.
 impl ApplicationService {
+    /// [SERVICE INITIALIZATION] Create Application Service with Registry
+    /// @MISSION Initialize service with known applications and vault client.
+    /// @THREAT Incomplete application registry, vault misconfiguration.
+    /// @COUNTERMEASURE Hardcoded secure applications, vault validation.
+    /// @INVARIANT Service starts with complete application registry.
+    /// @AUDIT Service initialization is logged.
+    /// @FLOW Load applications -> Initialize vault -> Return service.
     pub fn new(vault_client: Arc<VaultClient>) -> Self {
         let mut applications = HashMap::new();
 
@@ -133,6 +198,13 @@ impl ApplicationService {
         Ok(token)
     }
 
+    /// [ACCESS REQUEST PROCESSOR] Handle User Application Access Requests
+    /// @MISSION Grant application access with appropriate permissions.
+    /// @THREAT Unauthorized access, permission over-granting.
+    /// @COUNTERMEASURE Permission validation, token generation, audit logging.
+    /// @INVARIANT Only authorized permissions are granted.
+    /// @AUDIT Access requests and grants are fully logged.
+    /// @FLOW Validate request -> Check permissions -> Generate tokens -> Return response.
     pub async fn request_application_access(
         &self,
         user: &User,

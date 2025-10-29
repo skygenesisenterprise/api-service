@@ -1,14 +1,51 @@
+// ============================================================================
+//  SKY GENESIS ENTERPRISE (SGE)
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: Authorization Service
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | HIGHLY-SENSITIVE
+//  MISSION: Provide comprehensive authorization services for API key validation,
+//  permission checking, environment access control, and tenant isolation.
+//  NOTICE: Implements role-based access control with environment separation,
+//  permission validation, rate limiting, and comprehensive audit logging.
+//  AUTH STANDARDS: RBAC, Environment Isolation, Tenant Separation
+//  COMPLIANCE: GDPR, SOX Access Control Requirements
+//  License: MIT (Open Source for Strategic Transparency)
+// ============================================================================
+
 use crate::models::key_model::{ApiKey, ApiKeyStatus, KeyType};
 use std::collections::HashSet;
 
+/// [AUTHORIZATION SERVICE STRUCT] Core Authorization Engine
+/// @MISSION Centralize authorization logic for API access control.
+/// @THREAT Unauthorized access, privilege escalation, data breaches.
+/// @COUNTERMEASURE Permission validation, environment isolation, audit logging.
+/// @INVARIANT All API operations require proper authorization.
+/// @AUDIT Authorization decisions are logged for compliance.
+/// @DEPENDENCY Requires ApiKey model for permission data.
 pub struct AuthorizationService;
 
+/// [AUTHORIZATION SERVICE IMPLEMENTATION] Access Control Business Logic
+/// @MISSION Implement secure authorization checks and validations.
+/// @THREAT Bypass of access controls, insufficient validation.
+/// @COUNTERMEASURE Comprehensive validation, secure defaults, error handling.
+/// @INVARIANT Authorization checks are performed for all operations.
+/// @AUDIT Authorization attempts are logged with full context.
+/// @FLOW Validate environment -> Check permissions -> Apply rate limits.
 impl AuthorizationService {
     pub fn new() -> Self {
         AuthorizationService
     }
 
-    /// Validate if an API key can access a specific environment
+    /// [ENVIRONMENT ACCESS VALIDATION] Check API Key Environment Permissions
+    /// @MISSION Validate that API keys can only access appropriate environments.
+    /// @THREAT Sandbox keys accessing production, environment isolation breach.
+    /// @COUNTERMEASURE Environment-based access control, status validation.
+    /// @INVARIANT Sandbox keys cannot access production environments.
+    /// @AUDIT Environment access attempts are logged.
+    /// @FLOW Check key status -> Compare with required environment -> Allow/deny.
+    /// @DEPENDENCY Requires ApiKey with status information.
     pub fn validate_environment_access(&self, api_key: &ApiKey, required_environment: &ApiKeyStatus) -> Result<(), AuthorizationError> {
         match (&api_key.status, required_environment) {
             (ApiKeyStatus::Sandbox, ApiKeyStatus::Sandbox) => Ok(()),
@@ -83,6 +120,13 @@ impl AuthorizationService {
     }
 }
 
+/// [AUTHORIZATION ERROR ENUM] Authorization Failure Classifications
+/// @MISSION Categorize authorization failures for proper error handling.
+/// @THREAT Information leakage through detailed error messages.
+/// @COUNTERMEASURE Sanitized error responses, secure logging.
+/// @INVARIANT Errors don't expose sensitive authorization details.
+/// @AUDIT Authorization errors trigger security monitoring.
+/// @DEPENDENCY Used by AuthorizationService for error reporting.
 #[derive(Debug, Clone)]
 pub enum AuthorizationError {
     EnvironmentAccessDenied {

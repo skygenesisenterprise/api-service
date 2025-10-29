@@ -1,5 +1,22 @@
-// Utils Rust module
+// ============================================================================
+//  SKY GENESIS ENTERPRISE (SGE)
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: Utilities Module
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | SENSITIVE
+//  MISSION: Organize utility functions for the enterprise API service,
+//  providing cryptographic operations, token management, and common utilities.
+//  NOTICE: Utilities implement secure operations with proper error handling,
+//  logging, and enterprise security standards.
+//  UTILITY STANDARDS: Cryptography, Token Management, Error Handling
+//  COMPLIANCE: Security Best Practices, Cryptographic Standards
+//  License: MIT (Open Source for Strategic Transparency)
+// ============================================================================
 
+/// [GENERAL UTILITIES] Common utility functions
 pub mod util;
+/// [KEY UTILITIES] Cryptographic key and certificate operations
 pub mod key_utils;
+/// [TOKEN UTILITIES] JWT and authentication token management
 pub mod tokens;

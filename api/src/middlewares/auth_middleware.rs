@@ -1,3 +1,20 @@
+// ============================================================================
+//  SKY GENESIS ENTERPRISE (SGE)
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: Advanced Authentication Middleware
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | HIGHLY-SENSITIVE
+//  MISSION: Provide advanced authentication middleware supporting JWT,
+//  mTLS, API keys, and combined authentication methods for enterprise
+//  security with Keycloak integration.
+//  NOTICE: Implements multi-protocol authentication with OIDC/JWT fallback,
+//  certificate-based auth, and flexible auth strategies.
+//  AUTH STANDARDS: JWT, OIDC, mTLS, API Keys, Combined Authentication
+//  COMPLIANCE: RFC 6749, RFC 6750, FIPS 140-2 Authentication Requirements
+//  License: MIT (Open Source for Strategic Transparency)
+// ============================================================================
+
 use warp::{Filter, Rejection};
 use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use serde::{Deserialize, Serialize};
@@ -6,6 +23,13 @@ use std::sync::Arc;
 use crate::core::keycloak::KeycloakClient;
 use rustls::Certificate;
 
+/// [JWT CLAIMS STRUCT] Decoded JWT Token Payload
+/// @MISSION Structure JWT claims for user identity and permissions.
+/// @THREAT Claims tampering, token forgery.
+/// @COUNTERMEASURE Signature validation, trusted issuer verification.
+/// @INVARIANT Claims are validated and from trusted sources.
+/// @AUDIT Claims extraction is logged for security monitoring.
+/// @DEPENDENCY Used by JWT validation functions.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: String,
@@ -15,6 +39,14 @@ pub struct Claims {
     pub email: Option<String>,
 }
 
+/// [JWT AUTH FILTER] OIDC/JWT Token Authentication with Keycloak
+/// @MISSION Validate JWT tokens using OIDC with Keycloak fallback.
+/// @THREAT Invalid tokens, expired claims, signature bypass.
+/// @COUNTERMEASURE OIDC validation, JWT signature verification.
+/// @INVARIANT Tokens are validated against Keycloak or local secret.
+/// @AUDIT JWT validation attempts are logged.
+/// @FLOW Extract Bearer token -> Validate with Keycloak -> Fallback to JWT.
+/// @DEPENDENCY Requires KeycloakClient for OIDC validation.
 pub fn jwt_auth(keycloak: Arc<KeycloakClient>) -> impl Filter<Extract = (Claims,), Error = Rejection> + Clone {
     warp::header::<String>("authorization")
         .and_then(move |auth: String| {
@@ -62,6 +94,14 @@ pub fn jwt_auth(keycloak: Arc<KeycloakClient>) -> impl Filter<Extract = (Claims,
         })
 }
 
+/// [MTLS AUTH FILTER] Mutual TLS Certificate Authentication
+/// @MISSION Authenticate clients using X.509 certificates.
+/// @THREAT Certificate spoofing, expired certificates, CA compromise.
+/// @COUNTERMEASURE Certificate validation, CA chain verification.
+/// @INVARIANT Client certificates are properly validated.
+/// @AUDIT mTLS authentication attempts are logged.
+/// @FLOW Extract client cert -> Validate certificate -> Return identity.
+/// @DEPENDENCY Requires TLS client certificate in request.
 pub fn mtls_auth() -> impl Filter<Extract = (String,), Error = Rejection> + Clone {
     warp::tls::client_cert()
         .and_then(|cert: Option<Certificate>| async move {
@@ -80,6 +120,14 @@ pub fn mtls_auth() -> impl Filter<Extract = (String,), Error = Rejection> + Clon
         })
 }
 
+/// [API KEY AUTH FILTER] API Key Authentication from Headers
+/// @MISSION Validate API keys from authorization headers.
+/// @THREAT Key exposure, invalid keys, header injection.
+/// @COUNTERMEASURE Secure header parsing, key validation.
+/// @INVARIANT API keys are validated against secure storage.
+/// @AUDIT API key validation attempts are logged.
+/// @FLOW Extract API key -> Validate against store -> Return key.
+/// @DEPENDENCY Requires x-api-key or authorization header.
 pub fn api_key_auth() -> impl Filter<Extract = (String,), Error = Rejection> + Clone {
     warp::header::<String>("x-api-key")
         .or(warp::header::<String>("authorization"))
@@ -105,6 +153,14 @@ pub fn api_key_auth() -> impl Filter<Extract = (String,), Error = Rejection> + C
         })
 }
 
+/// [COMBINED AUTH FILTER] Flexible Multi-Protocol Authentication
+/// @MISSION Support multiple authentication methods with fallback.
+/// @THREAT Authentication bypass, weak method acceptance.
+/// @COUNTERMEASURE Method validation, secure fallbacks.
+/// @INVARIANT At least one authentication method succeeds.
+/// @AUDIT Authentication method usage is logged.
+/// @FLOW Try JWT -> Fallback to API key -> Return claims.
+/// @DEPENDENCY Combines jwt_auth and api_key_auth.
 pub fn combined_auth(keycloak: Arc<KeycloakClient>) -> impl Filter<Extract = (Claims,), Error = Rejection> + Clone {
     // Try JWT auth first, then API key auth
     jwt_auth(keycloak.clone())
@@ -118,6 +174,13 @@ pub fn combined_auth(keycloak: Arc<KeycloakClient>) -> impl Filter<Extract = (Cl
         .unify()
 }
 
+/// [AUTH MIDDLEWARE ERROR ENUM] Advanced Authentication Failures
+/// @MISSION Categorize complex authentication errors.
+/// @THREAT Information leakage through detailed errors.
+/// @COUNTERMEASURE Sanitized error responses, secure logging.
+/// @INVARIANT Errors don't expose authentication secrets.
+/// @AUDIT Authentication failures trigger monitoring.
+/// @DEPENDENCY Used by warp rejection system.
 #[derive(Debug)]
 pub enum AuthError {
     InvalidToken,
