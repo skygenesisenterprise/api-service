@@ -3,6 +3,11 @@
 pub mod core;
 pub mod vault;
 pub mod keycloak;
+pub mod fido2;
+pub mod vpn;
+pub mod grpc;
+pub mod webdav;
+pub mod opentelemetry;
 pub mod crypto;
 pub mod transport_security;
 pub mod encryption_manager;

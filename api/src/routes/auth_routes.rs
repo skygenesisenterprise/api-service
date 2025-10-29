@@ -7,12 +7,16 @@ use crate::middlewares::auth_guard::auth_guard;
 use crate::services::session_service::SessionService;
 use crate::services::application_service::ApplicationAccessRequest;
 use crate::services::two_factor_service::{TwoFactorSetupRequest, TwoFactorVerificationRequest};
+use crate::core::keycloak::KeycloakClient;
+use crate::core::fido2::{Fido2Manager, Fido2RegistrationRequest, Fido2AuthenticationRequest};
 
 pub fn auth_routes(
     auth_service: Arc<AuthService>,
     session_service: Arc<SessionService>,
     application_service: Arc<ApplicationService>,
     two_factor_service: Arc<TwoFactorService>,
+    keycloak_client: Arc<KeycloakClient>,
+    fido2_manager: Arc<Fido2Manager>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let login = warp::path!("auth" / "login")
         .and(warp::post())
@@ -138,5 +142,128 @@ pub fn auth_routes(
             auth_controller::remove_two_factor_method(as_, claims.sub, method_id).await
         });
 
-    login.or(session_login).or(register).or(recover).or(me).or(logout).or(logout_all).or(sessions).or(applications).or(application_access).or(two_factor_setup).or(two_factor_verify).or(two_factor_methods).or(two_factor_remove)
+    // OIDC routes
+    let oidc_login = warp::path!("auth" / "oidc" / "login")
+        .and(warp::get())
+        .and(warp::query::<std::collections::HashMap<String, String>>())
+        .and(warp::any().map(move || keycloak_client.clone()))
+        .and_then(|query: std::collections::HashMap<String, String>, kc: Arc<KeycloakClient>| async move {
+            let redirect_uri = query.get("redirect_uri").unwrap_or(&"http://localhost:3000/callback".to_string()).clone();
+            let state = query.get("state").unwrap_or(&"".to_string()).clone();
+            match kc.get_authorization_url(&redirect_uri, &state).await {
+                Ok(url) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"authorization_url": url})),
+                    warp::http::StatusCode::OK
+                )),
+                Err(e) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"error": e.to_string()})),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR
+                )),
+            }
+        });
+
+    let oidc_callback = warp::path!("auth" / "oidc" / "callback")
+        .and(warp::get())
+        .and(warp::query::<std::collections::HashMap<String, String>>())
+        .and(warp::any().map(move || keycloak_client.clone()))
+        .and_then(|query: std::collections::HashMap<String, String>, kc: Arc<KeycloakClient>| async move {
+            let code = query.get("code").ok_or("No code provided")?;
+            let state = query.get("state").unwrap_or(&"".to_string()).clone();
+            let redirect_uri = "http://localhost:3000/callback"; // Should be configurable
+
+            match kc.exchange_code_for_token(code, redirect_uri).await {
+                Ok(token_response) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({
+                        "access_token": token_response.access_token,
+                        "refresh_token": token_response.refresh_token,
+                        "expires_in": token_response.expires_in,
+                        "state": state
+                    })),
+                    warp::http::StatusCode::OK
+                )),
+                Err(e) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"error": e.to_string()})),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR
+                )),
+            }
+        });
+
+    // FIDO2 routes
+    let fido2_register_start = warp::path!("auth" / "fido2" / "register" / "start")
+        .and(warp::post())
+        .and(warp::body::json::<Fido2RegistrationRequest>())
+        .and(warp::any().map(move || fido2_manager.clone()))
+        .and_then(|request, fm| async move {
+            match fm.start_registration(request).await {
+                Ok(response) => Ok(warp::reply::with_status(
+                    warp::reply::json(&response),
+                    warp::http::StatusCode::OK
+                )),
+                Err(e) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"error": e.to_string()})),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR
+                )),
+            }
+        });
+
+    let fido2_register_finish = warp::path!("auth" / "fido2" / "register" / "finish")
+        .and(warp::post())
+        .and(warp::body::json::<serde_json::Value>())
+        .and(warp::any().map(move || fido2_manager.clone()))
+        .and_then(|body: serde_json::Value, fm| async move {
+            let user_id = body["user_id"].as_str().ok_or("No user_id")?;
+            let challenge = body["challenge"].as_str().ok_or("No challenge")?;
+            let response = body["response"].as_str().ok_or("No response")?;
+
+            match fm.finish_registration(user_id, challenge, response).await {
+                Ok(_) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"status": "success"})),
+                    warp::http::StatusCode::OK
+                )),
+                Err(e) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"error": e.to_string()})),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR
+                )),
+            }
+        });
+
+    let fido2_auth_start = warp::path!("auth" / "fido2" / "auth" / "start")
+        .and(warp::post())
+        .and(warp::body::json::<Fido2AuthenticationRequest>())
+        .and(warp::any().map(move || fido2_manager.clone()))
+        .and_then(|request, fm| async move {
+            match fm.start_authentication(&request.username).await {
+                Ok(response) => Ok(warp::reply::with_status(
+                    warp::reply::json(&response),
+                    warp::http::StatusCode::OK
+                )),
+                Err(e) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"error": e.to_string()})),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR
+                )),
+            }
+        });
+
+    let fido2_auth_finish = warp::path!("auth" / "fido2" / "auth" / "finish")
+        .and(warp::post())
+        .and(warp::body::json::<serde_json::Value>())
+        .and(warp::any().map(move || fido2_manager.clone()))
+        .and_then(|body: serde_json::Value, fm| async move {
+            let username = body["username"].as_str().ok_or("No username")?;
+            let challenge = body["challenge"].as_str().ok_or("No challenge")?;
+            let response = body["response"].as_str().ok_or("No response")?;
+
+            match fm.finish_authentication(username, challenge, response).await {
+                Ok(_) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"status": "authenticated"})),
+                    warp::http::StatusCode::OK
+                )),
+                Err(e) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"error": e.to_string()})),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR
+                )),
+            }
+        });
+
+    login.or(session_login).or(register).or(recover).or(me).or(logout).or(logout_all).or(sessions).or(applications).or(application_access).or(two_factor_setup).or(two_factor_verify).or(two_factor_methods).or(two_factor_remove).or(oidc_login).or(oidc_callback).or(fido2_register_start).or(fido2_register_finish).or(fido2_auth_start).or(fido2_auth_finish)
 }

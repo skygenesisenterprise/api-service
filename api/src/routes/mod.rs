@@ -5,6 +5,10 @@ pub mod auth_routes;
 pub mod websocket_routes;
 pub mod security_routes;
 pub mod snmp_routes;
+pub mod vpn_routes;
+pub mod grpc_routes;
+pub mod webdav_routes;
+pub mod opentelemetry_routes;
 
 use warp::Filter;
 use std::sync::Arc;
@@ -20,6 +24,13 @@ use crate::core::snmp_agent::SnmpAgent;
 use crate::core::snmp_trap_listener::SnmpTrapListener;
 use crate::core::audit_manager::AuditManager;
 use crate::core::vault::VaultClient;
+use crate::core::keycloak::KeycloakClient;
+use crate::core::fido2::Fido2Manager;
+use crate::core::vpn::{VpnManager, TailscaleManager};
+use crate::core::grpc::GrpcClient;
+use crate::core::webdav::{WebDavHandler, CalDavHandler, CardDavHandler};
+use crate::core::opentelemetry::Metrics;
+use tokio::sync::Mutex;
 
 pub fn routes(
     vault_manager: Arc<VaultManager>,
@@ -33,15 +44,28 @@ pub fn routes(
     snmp_agent: Arc<SnmpAgent>,
     trap_listener: Arc<SnmpTrapListener>,
     audit_manager: Arc<AuditManager>,
+    keycloak_client: Arc<KeycloakClient>,
+    fido2_manager: Arc<Fido2Manager>,
+    vpn_manager: Arc<VpnManager>,
+    tailscale_manager: Arc<TailscaleManager>,
+    grpc_client: Arc<Mutex<GrpcClient>>,
+    webdav_handler: Arc<WebDavHandler>,
+    caldav_handler: Arc<CalDavHandler>,
+    carddav_handler: Arc<CardDavHandler>,
+    metrics: Arc<Metrics>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let hello = warp::path!("hello")
         .map(|| "Hello, World!");
 
     let key_routes = crate::routes::key_routes::key_routes(key_service);
-    let auth_routes = crate::routes::auth_routes::auth_routes(auth_service, session_service, application_service, two_factor_service);
-    let websocket_routes = crate::routes::websocket_routes::websocket_routes(ws_server);
+    let auth_routes = crate::routes::auth_routes::auth_routes(auth_service, session_service, application_service, two_factor_service, keycloak_client, fido2_manager);
+    let websocket_routes = crate::routes::websocket_routes::websocket_routes(ws_server, keycloak_client);
     let security_routes = crate::routes::security_routes::security_routes();
     let snmp_routes = crate::routes::snmp_routes::snmp_routes(snmp_manager, snmp_agent, trap_listener, audit_manager);
+    let vpn_routes = crate::routes::vpn_routes::vpn_routes(vpn_manager, tailscale_manager);
+    let grpc_routes = crate::routes::grpc_routes::grpc_routes(grpc_client);
+    let webdav_routes = crate::routes::webdav_routes::webdav_routes(webdav_handler, caldav_handler, carddav_handler);
+    let opentelemetry_routes = crate::routes::opentelemetry_routes::opentelemetry_routes(metrics);
 
     // OpenAPI JSON endpoint
     let openapi_json = warp::path!("api-docs" / "openapi.json")
@@ -88,5 +112,5 @@ pub fn routes(
             "#)
         });
 
-    hello.or(key_routes).or(auth_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(openapi_json).or(swagger_ui)
+    hello.or(key_routes).or(auth_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(openapi_json).or(swagger_ui)
 }

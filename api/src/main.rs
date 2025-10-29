@@ -51,6 +51,43 @@ async fn main() {
 
     let keycloak_client = Arc::new(crate::core::keycloak::KeycloakClient::new(vault_client.clone()).await.unwrap());
 
+    // Initialize FIDO2 manager
+    let rp_id = std::env::var("FIDO2_RP_ID").unwrap_or("localhost".to_string());
+    let rp_origin = std::env::var("FIDO2_RP_ORIGIN").unwrap_or("http://localhost:8080".to_string());
+    let fido2_manager = Arc::new(crate::core::fido2::Fido2Manager::new(&rp_id, &rp_origin).unwrap());
+
+    // Initialize VPN managers
+    let vpn_interface = std::env::var("VPN_INTERFACE").unwrap_or("wg0".to_string());
+    let vpn_private_key = vault_client.get_secret("vpn/private_key").await.unwrap_or("".to_string());
+    let vpn_config = crate::core::vpn::VpnConfig {
+        interface: vpn_interface.clone(),
+        private_key: vpn_private_key,
+        listen_port: 51820,
+        address: "10.128.0.1/24".to_string(),
+        peers: std::collections::HashMap::new(),
+    };
+    let vpn_manager = Arc::new(crate::core::vpn::VpnManager::new(&vpn_interface, vpn_config));
+
+    let tailscale_auth_key = vault_client.get_secret("tailscale/auth_key").await.unwrap_or("".to_string());
+    let tailscale_manager = Arc::new(crate::core::vpn::TailscaleManager::new(tailscale_auth_key));
+
+    // Initialize gRPC client
+    let mut grpc_client = crate::core::grpc::GrpcClient::new();
+    // Connect to services (addresses would come from config)
+    let _ = grpc_client.connect_mail_service("http://localhost:50051").await;
+    let _ = grpc_client.connect_search_service("http://localhost:50052").await;
+    let grpc_client = Arc::new(Mutex::new(grpc_client));
+
+    // Initialize WebDAV handlers
+    let webdav_root = std::path::PathBuf::from("./dav_storage");
+    let webdav_handler = Arc::new(crate::core::webdav::WebDavHandler::new(webdav_root));
+    let caldav_handler = Arc::new(crate::core::webdav::CalDavHandler::new(Arc::clone(&webdav_handler)));
+    let carddav_handler = Arc::new(crate::core::webdav::CardDavHandler::new(Arc::clone(&webdav_handler)));
+
+    // Initialize OpenTelemetry
+    let _otel_components = crate::core::opentelemetry::init_opentelemetry("sky-genesis-api", "1.0.0").await.unwrap();
+    let metrics = Arc::new(crate::core::opentelemetry::Metrics::new().unwrap());
+
     // Initialize session service
     let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| {
         let defaults = load_defaults_from_env_example();
@@ -122,6 +159,15 @@ async fn main() {
         snmp_agent,
         trap_listener,
         audit_manager,
+        keycloak_client,
+        fido2_manager,
+        vpn_manager,
+        tailscale_manager,
+        grpc_client,
+        webdav_handler,
+        caldav_handler,
+        carddav_handler,
+        metrics,
     );
 
     // Get port from environment variable or default to 8080

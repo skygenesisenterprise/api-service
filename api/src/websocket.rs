@@ -7,17 +7,45 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PresenceStatus {
+    Online,
+    Away,
+    Busy,
+    Offline,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatMessage {
+    pub from: String,
+    pub to: String,
+    pub message: String,
+    pub timestamp: i64,
+    pub message_type: String, // "chat", "groupchat", "muc"
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WebSocketMessage {
     // Client messages
     Subscribe { channel: String },
     Unsubscribe { channel: String },
     Ping,
 
+    // Presence messages
+    PresenceUpdate { user_id: String, status: PresenceStatus, status_message: Option<String> },
+    PresenceProbe { user_id: String },
+
+    // Chat messages
+    ChatMessage(ChatMessage),
+    Typing { from: String, to: String, typing: bool },
+
     // Server messages
     Notification { title: String, message: String, level: String },
     Update { channel: String, data: serde_json::Value },
     Broadcast { channel: String, data: serde_json::Value },
     Error { message: String },
+
+    // Presence responses
+    PresenceStatus { user_id: String, status: PresenceStatus, status_message: Option<String>, timestamp: i64 },
 
     // Pong response
     Pong,
@@ -35,6 +63,7 @@ pub struct Client {
 pub struct WebSocketServer {
     clients: Arc<RwLock<HashMap<Uuid, Client>>>,
     channels: Arc<RwLock<HashMap<String, Vec<Uuid>>>>,
+    presence: Arc<RwLock<HashMap<String, (PresenceStatus, Option<String>, i64)>>>, // user_id -> (status, message, timestamp)
 }
 
 impl WebSocketServer {
@@ -42,6 +71,7 @@ impl WebSocketServer {
         WebSocketServer {
             clients: Arc::new(RwLock::new(HashMap::new())),
             channels: Arc::new(RwLock::new(HashMap::new())),
+            presence: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -131,6 +161,79 @@ impl WebSocketServer {
     pub async fn get_channel_count(&self) -> usize {
         self.channels.read().await.len()
     }
+
+    // Presence management methods
+    pub async fn update_presence(&self, user_id: &str, status: PresenceStatus, status_message: Option<String>) {
+        let timestamp = chrono::Utc::now().timestamp();
+        let mut presence = self.presence.write().await;
+        presence.insert(user_id.to_string(), (status.clone(), status_message.clone(), timestamp));
+
+        // Broadcast presence update to user's contacts/channels
+        let presence_msg = WebSocketMessage::PresenceStatus {
+            user_id: user_id.to_string(),
+            status,
+            status_message,
+            timestamp,
+        };
+
+        // Broadcast to presence channel
+        self.broadcast_to_channel(&format!("presence:{}", user_id), presence_msg.clone()).await;
+
+        // Also broadcast to general presence channel for status monitoring
+        self.broadcast_to_channel("presence:all", presence_msg).await;
+    }
+
+    pub async fn get_presence(&self, user_id: &str) -> Option<(PresenceStatus, Option<String>, i64)> {
+        let presence = self.presence.read().await;
+        presence.get(user_id).cloned()
+    }
+
+    pub async fn get_all_presence(&self) -> HashMap<String, (PresenceStatus, Option<String>, i64)> {
+        let presence = self.presence.read().await;
+        presence.clone()
+    }
+
+    pub async fn remove_presence(&self, user_id: &str) {
+        let mut presence = self.presence.write().await;
+        presence.remove(user_id);
+
+        // Broadcast offline status
+        let offline_msg = WebSocketMessage::PresenceStatus {
+            user_id: user_id.to_string(),
+            status: PresenceStatus::Offline,
+            status_message: None,
+            timestamp: chrono::Utc::now().timestamp(),
+        };
+
+        self.broadcast_to_channel(&format!("presence:{}", user_id), offline_msg.clone()).await;
+        self.broadcast_to_channel("presence:all", offline_msg).await;
+    }
+
+    // Chat functionality
+    pub async fn send_chat_message(&self, message: ChatMessage) {
+        let chat_msg = WebSocketMessage::ChatMessage(message.clone());
+
+        // Send to recipient
+        if message.message_type == "chat" {
+            self.broadcast_to_channel(&format!("chat:{}", message.to), chat_msg.clone()).await;
+        } else if message.message_type == "groupchat" {
+            self.broadcast_to_channel(&format!("group:{}", message.to), chat_msg.clone()).await;
+        }
+
+        // Also send to sender's channel for consistency
+        self.broadcast_to_channel(&format!("chat:{}", message.from), chat_msg).await;
+    }
+
+    pub async fn send_typing_indicator(&self, from: &str, to: &str, typing: bool) {
+        let typing_msg = WebSocketMessage::Typing {
+            from: from.to_string(),
+            to: to.to_string(),
+            typing,
+        };
+
+        self.broadcast_to_channel(&format!("chat:{}", to), typing_msg.clone()).await;
+        self.broadcast_to_channel(&format!("chat:{}", from), typing_msg).await;
+    }
 }
 
 pub async fn handle_websocket_connection(
@@ -150,7 +253,12 @@ pub async fn handle_websocket_connection(
         sender: tx,
     };
 
-    server.add_client(client).await;
+    server.add_client(client.clone()).await;
+
+    // Set initial presence if user_id is provided
+    if let Some(ref user_id) = user_id {
+        server.update_presence(user_id, PresenceStatus::Online, None).await;
+    }
 
     // Send welcome message
     let welcome_msg = WebSocketMessage::Notification {
@@ -189,6 +297,9 @@ pub async fn handle_websocket_connection(
     }
 
     // Clean up when connection closes
+    if let Some(ref user_id) = user_id {
+        server.remove_presence(user_id).await;
+    }
     server.remove_client(&client_id).await;
 }
 
@@ -214,6 +325,26 @@ async fn handle_websocket_message(server: &Arc<WebSocketServer>, client_id: &Uui
         }
         WebSocketMessage::Ping => {
             server.send_to_client(client_id, WebSocketMessage::Pong).await;
+        }
+        WebSocketMessage::PresenceUpdate { user_id, status, status_message } => {
+            server.update_presence(&user_id, status, status_message).await;
+        }
+        WebSocketMessage::PresenceProbe { user_id } => {
+            if let Some((status, message, timestamp)) = server.get_presence(&user_id).await {
+                let presence_msg = WebSocketMessage::PresenceStatus {
+                    user_id,
+                    status,
+                    status_message: message,
+                    timestamp,
+                };
+                server.send_to_client(client_id, presence_msg).await;
+            }
+        }
+        WebSocketMessage::ChatMessage(chat_msg) => {
+            server.send_chat_message(chat_msg).await;
+        }
+        WebSocketMessage::Typing { from, to, typing } => {
+            server.send_typing_indicator(&from, &to, typing).await;
         }
         _ => {
             // Ignore other message types from client

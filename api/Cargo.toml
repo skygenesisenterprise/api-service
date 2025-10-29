@@ -55,6 +55,44 @@ snmp = "0.2"
 snmp-parser = "0.9"
 thiserror = "1.0"
 
+# Protocol Integrations
+# WebSocket/XMPP
+tokio-tungstenite = "0.20"
+xmpp = "0.5"
+
+# gRPC/QUIC
+tonic = "0.10"
+prost = "0.12"
+quinn = "0.10"
+h3 = "0.0.2"
+
+# WebDAV/CalDAV/CardDAV
+webdav-handler = "0.4"
+icalendar = "0.16"
+vcard = "0.5"
+
+# OAuth2/OIDC + FIDO2
+openidconnect = "3.0"
+webauthn-rs = "0.4"
+webauthn-authenticator-rs = "0.4"
+
+# OpenTelemetry
+opentelemetry = "0.21"
+opentelemetry-otlp = { version = "0.14", features = ["grpc-sys"] }
+opentelemetry-prometheus = "0.14"
+
+# IPSec/WireGuard/Tailscale
+wireguard-control = "0.1"
+boringtun = "0.6"
+
+# Additional utilities
+async-trait = "0.1"
+tower = "0.4"
+tower-http = "0.4"
+
 [[bin]]
 name = "api"
 path = "src/main.rs"
+
+[build-dependencies]
+tonic-build = "0.10"

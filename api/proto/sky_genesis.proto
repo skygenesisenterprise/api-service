@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+package sky_genesis;
+
+option java_multiple_files = true;
+option java_package = "com.skygenesis.api";
+option java_outer_classname = "SkyGenesisProto";
+
+// Common messages
+message Email {
+  string id = 1;
+  string from = 2;
+  repeated string to = 3;
+  string subject = 4;
+  string body = 5;
+  int64 timestamp = 6;
+  repeated Attachment attachments = 7;
+}
+
+message Attachment {
+  string filename = 1;
+  bytes data = 2;
+  string content_type = 3;
+}
+
+// Mail Service
+service MailService {
+  rpc SendEmail (SendEmailRequest) returns (SendEmailResponse);
+  rpc GetEmail (GetEmailRequest) returns (GetEmailResponse);
+  rpc ListEmails (ListEmailsRequest) returns (ListEmailsResponse);
+  rpc DeleteEmail (DeleteEmailRequest) returns (DeleteEmailResponse);
+}
+
+message SendEmailRequest {
+  Email email = 1;
+}
+
+message SendEmailResponse {
+  string message_id = 1;
+  string status = 2;
+  int64 timestamp = 3;
+}
+
+message GetEmailRequest {
+  string email_id = 1;
+}
+
+message GetEmailResponse {
+  Email email = 1;
+}
+
+message ListEmailsRequest {
+  string user_id = 1;
+  string folder = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message ListEmailsResponse {
+  repeated Email emails = 1;
+  int32 total_count = 2;
+}
+
+message DeleteEmailRequest {
+  string email_id = 1;
+}
+
+message DeleteEmailResponse {
+  bool success = 1;
+}
+
+// Search Service
+service SearchService {
+  rpc Search (SearchRequest) returns (SearchResponse);
+  rpc IndexDocument (IndexDocumentRequest) returns (IndexDocumentResponse);
+  rpc DeleteDocument (DeleteDocumentRequest) returns (DeleteDocumentResponse);
+}
+
+message SearchRequest {
+  string query = 1;
+  repeated string filters = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message SearchResponse {
+  repeated SearchResult results = 1;
+  int32 total_count = 2;
+  int32 query_time_ms = 3;
+}
+
+message SearchResult {
+  string id = 1;
+  string title = 2;
+  string content = 3;
+  string url = 4;
+  double score = 5;
+}
+
+message IndexDocumentRequest {
+  Document document = 1;
+}
+
+message IndexDocumentResponse {
+  string document_id = 1;
+  string status = 2;
+  int64 timestamp = 3;
+}
+
+message Document {
+  string id = 1;
+  string title = 2;
+  string content = 3;
+  string url = 4;
+  map<string, string> metadata = 5;
+}
+
+message DeleteDocumentRequest {
+  string document_id = 1;
+}
+
+message DeleteDocumentResponse {
+  bool success = 1;
+}

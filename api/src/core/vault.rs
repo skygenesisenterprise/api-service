@@ -456,4 +456,95 @@ impl VaultClient {
 
         Ok(())
     }
+
+    /// Auto-rotate certificates before expiration
+    pub async fn auto_rotate_certificates(&self, pki_mount: &str, role_name: &str, common_names: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+        for common_name in common_names {
+            // Check if certificate is close to expiration (30 days)
+            let cert_info = self.get_certificate_info(pki_mount, &common_name).await?;
+            if let Some(expires_at) = cert_info["expires_at"].as_str() {
+                let expiry_date = chrono::DateTime::parse_from_rfc3339(expires_at)?;
+                let now = chrono::Utc::now();
+                let days_until_expiry = (expiry_date - now).num_days();
+
+                if days_until_expiry <= 30 {
+                    // Issue new certificate
+                    let new_cert = self.issue_certificate(pki_mount, role_name, &common_name, None).await?;
+                    // Store new certificate
+                    let cert_data = serde_json::json!({
+                        "certificate": new_cert["data"]["certificate"],
+                        "private_key": new_cert["data"]["private_key"],
+                        "serial_number": new_cert["data"]["serial_number"]
+                    });
+                    self.set_secret(&format!("pki/certs/{}", common_name), cert_data).await?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Get certificate information
+    pub async fn get_certificate_info(&self, pki_mount: &str, serial_number: &str) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        self.ensure_token().await?;
+        let url = format!("{}/v1/{}/cert/{}", self.base_url, pki_mount, serial_number);
+        let token = self.token.lock().await.clone();
+
+        let response = self.client
+            .get(&url)
+            .header("X-Vault-Token", token)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to get certificate info: {}", response.status()).into());
+        }
+
+        let result: serde_json::Value = response.json().await?;
+        Ok(result)
+    }
+
+    /// Auto-rotate encryption keys based on usage or time
+    pub async fn auto_rotate_keys(&self, key_names: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+        for key_name in key_names {
+            let key_info = self.get_transit_key_info(&key_name).await?;
+            let latest_version = key_info["data"]["latest_version"].as_u64().unwrap_or(1);
+
+            // Rotate if key is older than 90 days or has been used more than 1M times
+            let created_time = key_info["data"]["keys"][latest_version.to_string()]["creation_time"]
+                .as_str()
+                .unwrap_or("");
+
+            if !created_time.is_empty() {
+                let creation_date = chrono::DateTime::parse_from_rfc3339(created_time)?;
+                let now = chrono::Utc::now();
+                let days_since_creation = (now - creation_date).num_days();
+
+                if days_since_creation > 90 {
+                    self.rotate_transit_key(&key_name).await?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Schedule automatic rotation (to be called by a background task)
+    pub async fn schedule_auto_rotation(&self) -> Result<(), Box<dyn std::error::Error>> {
+        // Certificate rotation for common services
+        let common_names = vec![
+            "api.skygenesisenterprise.com".to_string(),
+            "mail.skygenesisenterprise.com".to_string(),
+            "vault.skygenesisenterprise.com".to_string(),
+        ];
+        self.auto_rotate_certificates("pki", "server", common_names).await?;
+
+        // Key rotation for encryption keys
+        let key_names = vec![
+            "mail_storage_key".to_string(),
+            "api_hmac_key".to_string(),
+            "pgp_key_encryption".to_string(),
+        ];
+        self.auto_rotate_keys(key_names).await?;
+
+        Ok(())
+    }
 }
