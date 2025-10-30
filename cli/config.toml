@@ -1,0 +1,13 @@
+[auth]
+keycloak_url = "https://keycloak.example.com"
+client_id = "cli-client"
+client_secret = "secret"
+redirect_url = "http://localhost:8080/callback"
+
+[vault]
+address = "https://vault.example.com"
+token = "vault-token"
+
+[api]
+base_url = "http://localhost:8080"
+api_key = "api-key"
