@@ -88,7 +88,7 @@ opentelemetry-prometheus = "0.14"
 # Additional utilities
 async-trait = "0.1"
 tower = "0.4"
-tower-http = "0.4"
+tower-http = "0.6"
 
 # Search indexing
 tantivy = "0.21"
