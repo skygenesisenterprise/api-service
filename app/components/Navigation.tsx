@@ -10,7 +10,7 @@ export default function Navigation() {
 
   const handleLogout = () => {
     logout();
-    router.push('/login');
+    router.push('/auth/login');
   };
 
   if (!isAuthenticated) {
