@@ -52,7 +52,7 @@ utoipa-swagger-ui = "6.0"
 
 # SNMP Integration
 snmp = "0.2"
-snmp-parser = "0.9"
+snmp-parser = "0.11"
 thiserror = "1.0"
 
 # Protocol Integrations
