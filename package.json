@@ -33,7 +33,7 @@
     "@chromatic-com/storybook": "^1.9.0",
     "@eslint/eslintrc": "^3.3.1",
     "@storybook/addon-essentials": "^8.6.14",
-    "@storybook/addon-onboarding": "^1.0.11",
+    "@storybook/addon-onboarding": "^8.6.14",
     "@storybook/experimental-addon-test": "^8.6.14",
     "@storybook/react-vite": "^8.6.14",
     "@tailwindcss/postcss": "^4.1.16",
