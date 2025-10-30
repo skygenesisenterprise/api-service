@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       axios:
-        specifier: ^1.13.0
+        specifier: ^1.13.1
         version: 1.13.1
       bcryptjs:
         specifier: ^3.0.2
@@ -30,26 +30,26 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
       swagger-ui-react:
-        specifier: ^5.17.14
+        specifier: ^5.30.0
         version: 5.30.0(@types/react@19.2.2)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
     devDependencies:
       '@chromatic-com/storybook':
-        specifier: ^1.0.0
-        version: 1.9.0(react@19.1.0)
+        specifier: ^3.2.7
+        version: 3.2.7(react@19.1.0)(storybook@8.6.14)
       '@eslint/eslintrc':
         specifier: ^3.3.1
         version: 3.3.1
       '@storybook/addon-essentials':
-        specifier: ^8.0.0
+        specifier: ^8.6.14
         version: 8.6.14(@types/react@19.2.2)(storybook@8.6.14)
       '@storybook/addon-onboarding':
-        specifier: ^1.0.0
+        specifier: ^1.0.11
         version: 1.0.11(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@storybook/experimental-addon-test':
         specifier: ^8.6.14
         version: 8.6.14(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(storybook@8.6.14)
       '@storybook/react-vite':
-        specifier: ^8.0.0
+        specifier: ^8.6.14
         version: 8.6.14(@storybook/test@8.6.14(storybook@8.6.14))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(rollup@4.52.5)(storybook@8.6.14)(typescript@5.9.3)(vite@6.4.1(@types/node@24.7.0)(jiti@2.6.1)(lightningcss@1.30.2))
       '@tailwindcss/postcss':
         specifier: ^4.1.16
@@ -85,7 +85,7 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       '@types/swagger-ui-react':
-        specifier: ^4.18.3
+        specifier: ^4.19.0
         version: 4.19.0
       '@types/winston':
         specifier: ^2.4.4
@@ -97,7 +97,7 @@ importers:
         specifier: 16.0.0
         version: 16.0.0(@typescript-eslint/parser@8.46.2(eslint@9.38.0(jiti@2.6.1))(typescript@5.9.3))(eslint@9.38.0(jiti@2.6.1))(typescript@5.9.3)
       storybook:
-        specifier: ^8.0.0
+        specifier: ^8.6.14
         version: 8.6.14
       tailwindcss:
         specifier: ^4.1.16
@@ -197,9 +197,11 @@ packages:
     resolution: {integrity: sha512-qQ5m48eI/MFLQ5PxQj4PFaprjyCTLI37ElWMmNs0K8Lk3dVeOdNpB3ks8jc7yM5CDmVC73eMVk/trk3fgmrUpA==}
     engines: {node: '>=6.9.0'}
 
-  '@chromatic-com/storybook@1.9.0':
-    resolution: {integrity: sha512-vYQ+TcfktEE3GHnLZXHCzXF/sN9dw+KivH8a5cmPyd9YtQs7fZtHrEgsIjWpYycXiweKMo1Lm1RZsjxk8DH3rA==}
+  '@chromatic-com/storybook@3.2.7':
+    resolution: {integrity: sha512-fCGhk4cd3VA8RNg55MZL5CScdHqljsQcL9g6Ss7YuobHpSo9yytEWNdgMd5QxAHSPBlLGFHjnSmliM3G/BeBqw==}
     engines: {node: '>=16.0.0', yarn: '>=1.22.18'}
+    peerDependencies:
+      storybook: ^8.2.0 || ^8.3.0-0 || ^8.4.0-0 || ^8.5.0-0 || ^8.6.0-0
 
   '@colors/colors@1.6.0':
     resolution: {integrity: sha512-Ir+AOibqzrIsL6ajt3Rz3LskB7OiMVHqltZmspbW/TJuTVuyOMirVqAkjfY6JISiLHgyNqicAC8AyHHGzNd/dA==}
@@ -4501,12 +4503,13 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
 
-  '@chromatic-com/storybook@1.9.0(react@19.1.0)':
+  '@chromatic-com/storybook@3.2.7(react@19.1.0)(storybook@8.6.14)':
     dependencies:
       chromatic: 11.29.0
       filesize: 10.1.6
       jsonfile: 6.2.0
       react-confetti: 6.4.0(react@19.1.0)
+      storybook: 8.6.14
       strip-ansi: 7.1.2
     transitivePeerDependencies:
       - '@chromatic-com/cypress'
