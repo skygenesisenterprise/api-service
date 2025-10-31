@@ -3,6 +3,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { usePathname } from "next/navigation";
+import { SessionProvider } from "next-auth/react";
 import "./styles/globals.css";
 import { AuthProvider } from "./context/AuthContext";
 import { SidebarProvider, useSidebar } from "./context/SidebarContext";
@@ -49,14 +50,16 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>
-          <SidebarProvider>
-            <Navbar />
-            <MainContent>
-              {children}
-            </MainContent>
-          </SidebarProvider>
-        </AuthProvider>
+        <SessionProvider>
+          <AuthProvider>
+            <SidebarProvider>
+              <Navbar />
+              <MainContent>
+                {children}
+              </MainContent>
+            </SidebarProvider>
+          </AuthProvider>
+        </SessionProvider>
       </body>
     </html>
   );

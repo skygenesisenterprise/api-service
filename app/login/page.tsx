@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
@@ -14,6 +14,11 @@ export default function AuthForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+
+  // Set page title
+  useEffect(() => {
+    document.title = "Sky Genesis Enterprise API Login"
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

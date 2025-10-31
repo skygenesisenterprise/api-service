@@ -142,13 +142,81 @@ pub fn auth_routes(
             auth_controller::remove_two_factor_method(as_, claims.sub, method_id).await
         });
 
+    // Login page redirect to Keycloak
+    let login_page = warp::path!("auth" / "login" / "page")
+        .and(warp::get())
+        .and(warp::query::<std::collections::HashMap<String, String>>())
+        .and(warp::any().map(move || keycloak_client.clone()))
+        .and_then(|query: std::collections::HashMap<String, String>, kc: Arc<KeycloakClient>| async move {
+            let redirect_uri = query.get("redirect_uri").unwrap_or(&"http://localhost:8080/auth/oidc/callback".to_string()).clone();
+            let state = query.get("state").unwrap_or(&"".to_string()).clone();
+            match kc.get_authorization_url(&redirect_uri, &state).await {
+                Ok(url) => Ok(warp::reply::with_status(
+                    warp::reply::with_header(
+                        warp::reply::html("Redirecting to login..."),
+                        "Location",
+                        url
+                    ),
+                    warp::http::StatusCode::FOUND
+                )),
+                Err(e) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"error": e.to_string()})),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR
+                )),
+            }
+        });
+
+    // Serve Keycloak login HTML directly
+    let login_html = warp::path!("auth" / "login" / "html")
+        .and(warp::get())
+        .and(warp::any().map(move || keycloak_client.clone()))
+        .and_then(|kc: Arc<KeycloakClient>| async move {
+            // Read the login.ftl content and serve as HTML (simplified)
+            match std::fs::read_to_string("keycloak-theme/login/login.ftl") {
+                Ok(content) => {
+                    // Basic replacement of variables
+                    let html = content
+                        .replace("${url.loginAction}", &format!("{}/realms/{}/protocol/openid-connect/auth", kc.base_url, kc.realm))
+                        .replace("${realm.name}", "Sky Genesis Enterprise")
+                        .replace("${url.resourcesPath}", "/auth/login/resources");
+
+                    Ok(warp::reply::with_header(
+                        warp::reply::html(html),
+                        "Content-Type",
+                        "text/html"
+                    ))
+                },
+                Err(_) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"error": "Login template not found"})),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR
+                )),
+            }
+        });
+
+    // Serve CSS resources
+    let login_css = warp::path!("auth" / "login" / "resources" / "css" / "login.css")
+        .and(warp::get())
+        .and_then(|| async {
+            match std::fs::read_to_string("keycloak-theme/login/resources/css/login.css") {
+                Ok(content) => Ok(warp::reply::with_header(
+                    content,
+                    "Content-Type",
+                    "text/css"
+                )),
+                Err(_) => Ok(warp::reply::with_status(
+                    "CSS not found",
+                    warp::http::StatusCode::NOT_FOUND
+                )),
+            }
+        });
+
     // OIDC routes
     let oidc_login = warp::path!("auth" / "oidc" / "login")
         .and(warp::get())
         .and(warp::query::<std::collections::HashMap<String, String>>())
         .and(warp::any().map(move || keycloak_client.clone()))
         .and_then(|query: std::collections::HashMap<String, String>, kc: Arc<KeycloakClient>| async move {
-            let redirect_uri = query.get("redirect_uri").unwrap_or(&"http://localhost:3000/callback".to_string()).clone();
+            let redirect_uri = query.get("redirect_uri").unwrap_or(&"http://localhost:8080/auth/oidc/callback".to_string()).clone();
             let state = query.get("state").unwrap_or(&"".to_string()).clone();
             match kc.get_authorization_url(&redirect_uri, &state).await {
                 Ok(url) => Ok(warp::reply::with_status(
@@ -169,18 +237,34 @@ pub fn auth_routes(
         .and_then(|query: std::collections::HashMap<String, String>, kc: Arc<KeycloakClient>| async move {
             let code = query.get("code").ok_or("No code provided")?;
             let state = query.get("state").unwrap_or(&"".to_string()).clone();
-            let redirect_uri = "http://localhost:3000/callback"; // Should be configurable
+            let redirect_uri = "http://localhost:8080/auth/oidc/callback"; // API callback URI
 
             match kc.exchange_code_for_token(code, redirect_uri).await {
-                Ok(token_response) => Ok(warp::reply::with_status(
-                    warp::reply::json(&serde_json::json!({
-                        "access_token": token_response.access_token,
-                        "refresh_token": token_response.refresh_token,
-                        "expires_in": token_response.expires_in,
-                        "state": state
-                    })),
-                    warp::http::StatusCode::OK
-                )),
+                Ok(token_response) => {
+                    // If state contains a redirect URL, redirect there with tokens
+                    if !state.is_empty() {
+                        let redirect_url = format!("{}?access_token={}&refresh_token={}&expires_in={}",
+                            state, token_response.access_token, token_response.refresh_token, token_response.expires_in);
+                        Ok(warp::reply::with_status(
+                            warp::reply::with_header(
+                                warp::reply::html("Authentication successful, redirecting..."),
+                                "Location",
+                                redirect_url
+                            ),
+                            warp::http::StatusCode::FOUND
+                        ))
+                    } else {
+                        Ok(warp::reply::with_status(
+                            warp::reply::json(&serde_json::json!({
+                                "access_token": token_response.access_token,
+                                "refresh_token": token_response.refresh_token,
+                                "expires_in": token_response.expires_in,
+                                "state": state
+                            })),
+                            warp::http::StatusCode::OK
+                        ))
+                    }
+                },
                 Err(e) => Ok(warp::reply::with_status(
                     warp::reply::json(&serde_json::json!({"error": e.to_string()})),
                     warp::http::StatusCode::INTERNAL_SERVER_ERROR
@@ -265,5 +349,5 @@ pub fn auth_routes(
             }
         });
 
-    login.or(session_login).or(register).or(recover).or(me).or(logout).or(logout_all).or(sessions).or(applications).or(application_access).or(two_factor_setup).or(two_factor_verify).or(two_factor_methods).or(two_factor_remove).or(oidc_login).or(oidc_callback).or(fido2_register_start).or(fido2_register_finish).or(fido2_auth_start).or(fido2_auth_finish)
+    login.or(session_login).or(register).or(recover).or(me).or(logout).or(logout_all).or(sessions).or(applications).or(application_access).or(two_factor_setup).or(two_factor_verify).or(two_factor_methods).or(two_factor_remove).or(login_page).or(login_html).or(login_css).or(oidc_login).or(oidc_callback).or(fido2_register_start).or(fido2_register_finish).or(fido2_auth_start).or(fido2_auth_finish)
 }
