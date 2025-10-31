@@ -1,5 +1,5 @@
 # ================================
-# Sky Genesis API - Production Build
+# Sky Genesis CLI - Production Build
 # ================================
 
 # ------------------------------
@@ -13,6 +13,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     libssl-dev \
     ca-certificates \
     build-essential \
+    openssh-server \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -23,7 +24,7 @@ RUN useradd --create-home --shell /bin/bash builduser
 WORKDIR /build
 
 # Copy dependency files for better caching
-COPY api/Cargo.toml api/Cargo.lock ./
+COPY cli/Cargo.toml cli/Cargo.lock ./
 
 # Create dummy src to cache dependencies
 RUN mkdir src && echo "fn main() {}" > src/main.rs
@@ -34,10 +35,10 @@ RUN chown -R builduser:builduser /build
 USER builduser
 
 # Build dependencies only
-RUN cargo build --release --locked && rm -rf src target/release/deps/api*
+RUN cargo build --release --locked && rm -rf src target/release/deps/cli*
 
 # Copy source code
-COPY api/src ./src
+COPY cli/src ./src
 
 # Build optimized release binary
 RUN cargo build --release --locked
@@ -51,16 +52,16 @@ FROM debian:12-slim AS runtime
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     ca-certificates \
     libssl3 \
-    curl \
     openssh-server \
+    curl \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Create non-root user for API with minimal privileges
-RUN groupadd -r -g 1000 apiuser && \
-    useradd -r -u 1000 -g apiuser -m -d /home/apiuser -s /bin/bash apiuser && \
-    mkdir -p /home/apiuser/.ssh && \
-    chown -R apiuser:apiuser /home/apiuser
+# Create non-root user for CLI with SSH access
+RUN groupadd -r -g 1000 cliuser && \
+    useradd -r -u 1000 -g cliuser -m -d /home/cliuser -s /bin/bash cliuser && \
+    mkdir -p /home/cliuser/.ssh && \
+    chown -R cliuser:cliuser /home/cliuser
 
 # Configure SSH with security hardening
 RUN mkdir -p /var/run/sshd && \
@@ -73,12 +74,12 @@ RUN mkdir -p /var/run/sshd && \
     sed -i 's/#StrictModes yes/StrictModes yes/' /etc/ssh/sshd_config
 
 # Copy binary from builder with correct ownership
-COPY --from=builder --chown=apiuser:apiuser /build/target/release/api /usr/local/bin/api
+COPY --from=builder --chown=cliuser:cliuser /build/target/release/cli /usr/local/bin/cli
 
 # Ensure binary has correct permissions
-RUN chmod 755 /usr/local/bin/api
+RUN chmod 755 /usr/local/bin/cli
 
-# Create secure startup script
+# Create secure startup script for SSH server
 RUN echo '#!/bin/bash\n\
 set -e\n\
 \n\
@@ -94,42 +95,27 @@ fi\n\
 chmod 600 /etc/ssh/ssh_host_*_key\n\
 chmod 644 /etc/ssh/ssh_host_*.pub\n\
 \n\
-# Start SSH daemon in background\n\
-/usr/sbin/sshd -D &\n\
-SSH_PID=$!\n\
-\n\
-# Function to cleanup on exit\n\
-cleanup() {\n\
-    kill $SSH_PID 2>/dev/null || true\n\
-    exit 0\n\
-}\n\
-\n\
-# Trap signals for graceful shutdown\n\
-trap cleanup SIGTERM SIGINT\n\
-\n\
-# Start API server\n\
-exec /usr/local/bin/api\n\
-' > /usr/local/bin/start.sh
+# Start SSH daemon in foreground\n\
+exec /usr/sbin/sshd -D\n\
+' > /usr/local/bin/start-ssh.sh
 
-RUN chmod 755 /usr/local/bin/start.sh && \
-    chown apiuser:apiuser /usr/local/bin/start.sh
+RUN chmod 755 /usr/local/bin/start-ssh.sh && \
+    chown cliuser:cliuser /usr/local/bin/start-ssh.sh
 
 # Switch to non-root user
-USER apiuser
+USER cliuser
 
-# Expose ports
-EXPOSE 8080 2222
+# Expose SSH port
+EXPOSE 22
 
-# Health check with improved configuration
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f --max-time 10 http://localhost:8080/api/v1/health || exit 1
+    CMD /usr/local/bin/cli --version || exit 1
 
 # Default environment with security settings
 ENV RUST_LOG=info \
-    APP_ENV=production \
-    SSH_PORT=2222 \
     RUST_BACKTRACE=0 \
     RUST_LOG_STYLE=never
 
-# Start application with SSH
-CMD ["/usr/local/bin/start.sh"]
+# Start SSH server
+CMD ["/usr/local/bin/start-ssh.sh"]

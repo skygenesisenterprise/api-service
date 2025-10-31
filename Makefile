@@ -56,6 +56,27 @@ lint: ## Run linting
 docker-build: ## Build all Docker images
 	$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) build
 
+.PHONY: docker-build-release
+docker-build-release: ## Build Docker images for release with proper tagging
+	@echo "Building release Docker images..."
+	@VERSION=$$(./infrastructure/scripts/extract-version.sh) && \
+	echo "Building with version: $$VERSION" && \
+	docker build -f infrastructure/docker/Dockerfile.api -t skygenesisenterprise/api-service:$$VERSION -t skygenesisenterprise/api-service:latest . && \
+	docker build -f infrastructure/docker/Dockerfile.frontend -t skygenesisenterprise/api-client:$$VERSION -t skygenesisenterprise/api-client:latest . && \
+	docker build -f infrastructure/docker/Dockerfile.cli -t skygenesisenterprise/api-cli:$$VERSION -t skygenesisenterprise/api-cli:latest .
+
+.PHONY: docker-push-release
+docker-push-release: ## Push release Docker images to registry
+	@echo "Pushing release Docker images..."
+	@VERSION=$$(./infrastructure/scripts/extract-version.sh) && \
+	echo "Pushing with version: $$VERSION" && \
+	docker push skygenesisenterprise/api-service:$$VERSION && \
+	docker push skygenesisenterprise/api-service:latest && \
+	docker push skygenesisenterprise/api-client:$$VERSION && \
+	docker push skygenesisenterprise/api-client:latest && \
+	docker push skygenesisenterprise/api-cli:$$VERSION && \
+	docker push skygenesisenterprise/api-cli:latest
+
 .PHONY: docker-up
 docker-up: ## Start all services with Docker Compose
 	$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) up -d
@@ -158,11 +179,14 @@ help-dev: ## Show development-related commands
 .PHONY: help-docker
 help-docker: ## Show Docker-related commands
 	@echo "Docker commands:"
-	@echo "  make docker-up       - Start all services"
-	@echo "  make docker-down     - Stop all services"
-	@echo "  make docker-dev      - Run development environment"
-	@echo "  make docker-logs     - Show container logs"
-	@echo "  make docker-clean    - Clean containers and volumes"
+	@echo "  make docker-build           - Build all services with docker-compose"
+	@echo "  make docker-build-release   - Build release images with proper tagging"
+	@echo "  make docker-push-release    - Push release images to registry"
+	@echo "  make docker-up              - Start all services"
+	@echo "  make docker-down            - Stop all services"
+	@echo "  make docker-dev             - Run development environment"
+	@echo "  make docker-logs            - Show container logs"
+	@echo "  make docker-clean           - Clean containers and volumes"
 
 .PHONY: help-api
 help-api: ## Show API-specific commands
