@@ -236,6 +236,15 @@ FIDO2_RP_ORIGIN=https://api.skygenesisenterprise.com
 - **AbortError**: User cancelled operation
 - **SecurityError**: Insecure context (requires HTTPS)
 
+## SSO Service Integration
+
+For a complete SSO implementation that serves login pages under the API domain, see the [SSO Service Documentation](sso.md). The SSO service provides:
+
+- Unified login experience under `sso.skygenesisenterprise.com`
+- Application-controlled redirection logic
+- Token proxying and validation
+- State management for CSRF protection
+
 ## Compliance
 
 - **OIDC Certified**: Compliant with OIDC Core specifications

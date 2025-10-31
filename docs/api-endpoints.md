@@ -114,6 +114,55 @@ X-Signature: MEUCIQDO...base64_signature
   }
   ```
 
+### SSO Endpoints
+
+#### SSO Login Page
+- **GET** `/sso/login`
+- **Query Parameters**:
+  - `redirect_uri`: Application callback URL
+  - `state`: CSRF protection parameter
+  - `client_id`: Application identifier
+- **Description**: Serves the SSO login page under the API domain
+- **Response**: HTML login page
+
+#### SSO Authentication
+- **POST** `/sso/auth`
+- **Content-Type**: `application/x-www-form-urlencoded`
+- **Form Fields**:
+  - `username`: User email
+  - `password`: User password
+  - `redirect_uri`: Application callback URL
+  - `state`: State parameter
+  - `client_id`: Application identifier
+- **Description**: Handles authentication and redirects to application
+- **Response**: Redirect to application's redirect_uri with tokens
+
+#### SSO Resources
+- **GET** `/sso/resources/css/login.css`
+- **Description**: Serves CSS resources for the login page
+- **Response**: CSS stylesheet
+
+#### SSO Callback
+- **GET** `/sso/callback`
+- **Query Parameters**:
+  - `access_token`: JWT access token
+  - `refresh_token`: JWT refresh token
+  - `expires_in`: Token expiration time
+  - `state`: State parameter
+  - `client_id`: Application identifier
+- **Description**: Application endpoint to receive authentication tokens
+- **Response**:
+  ```json
+  {
+    "access_token": "jwt_token",
+    "refresh_token": "refresh_token",
+    "expires_in": 3600,
+    "state": "state_value",
+    "client_id": "app_id",
+    "message": "SSO authentication successful"
+  }
+  ```
+
 ### Key Management Endpoints
 
 #### Create Standard API Key

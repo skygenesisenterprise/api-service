@@ -64,7 +64,12 @@
           </div>
         </#if>
 
-        <form id="login-form" action="${url.loginAction}" method="post" class="space-y-4">
+        <form id="login-form" action="/sso/auth" method="post" class="space-y-4">
+          <!-- Hidden fields for SSO state management -->
+          <input type="hidden" name="redirect_uri" value="">
+          <input type="hidden" name="state" value="">
+          <input type="hidden" name="client_id" value="">
+
           <div id="email-step" class="space-y-2">
             <label for="username" class="text-sm font-medium text-black block">
               Email
@@ -180,6 +185,18 @@
   const passwordInput = document.getElementById('password');
   const form = document.getElementById('login-form');
 
+  // Get URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const redirectUri = urlParams.get('redirect_uri') || '';
+  const state = urlParams.get('state') || '';
+  const clientId = urlParams.get('client_id') || '';
+  const error = urlParams.get('error');
+
+  // Set hidden field values
+  document.querySelector('input[name="redirect_uri"]').value = redirectUri;
+  document.querySelector('input[name="state"]').value = state;
+  document.querySelector('input[name="client_id"]').value = clientId;
+
   let currentStep = 'email';
 
   function updateUI() {
@@ -189,7 +206,7 @@
       socialSection.classList.remove('hidden');
       submitBtn.textContent = 'Continue';
       submitBtn.disabled = !usernameInput.value;
-      loginDescription.textContent = 'Login or signup below';
+      loginDescription.textContent = error ? `Error: ${error}. Login or signup below` : 'Login or signup below';
     } else {
       emailStep.classList.add('hidden');
       passwordStep.classList.remove('hidden');
