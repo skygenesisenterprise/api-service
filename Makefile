@@ -63,7 +63,8 @@ docker-build-release: ## Build Docker images for release with proper tagging
 	echo "Building with version: $$VERSION" && \
 	docker build -f infrastructure/docker/Dockerfile.api -t skygenesisenterprise/api-service:$$VERSION -t skygenesisenterprise/api-service:latest . && \
 	docker build -f infrastructure/docker/Dockerfile.frontend -t skygenesisenterprise/api-client:$$VERSION -t skygenesisenterprise/api-client:latest . && \
-	docker build -f infrastructure/docker/Dockerfile.cli -t skygenesisenterprise/api-cli:$$VERSION -t skygenesisenterprise/api-cli:latest .
+	docker build -f infrastructure/docker/Dockerfile.cli -t skygenesisenterprise/api-cli:$$VERSION -t skygenesisenterprise/api-cli:latest . && \
+	docker build -f infrastructure/docker/Dockerfile.all-in-one -t skygenesisenterprise/api:$$VERSION -t skygenesisenterprise/api:latest .
 
 .PHONY: docker-push-release
 docker-push-release: ## Push release Docker images to registry
@@ -75,7 +76,9 @@ docker-push-release: ## Push release Docker images to registry
 	docker push skygenesisenterprise/api-client:$$VERSION && \
 	docker push skygenesisenterprise/api-client:latest && \
 	docker push skygenesisenterprise/api-cli:$$VERSION && \
-	docker push skygenesisenterprise/api-cli:latest
+	docker push skygenesisenterprise/api-cli:latest && \
+	docker push skygenesisenterprise/api:$$VERSION && \
+	docker push skygenesisenterprise/api:latest
 
 .PHONY: docker-up
 docker-up: ## Start all services with Docker Compose
@@ -180,7 +183,7 @@ help-dev: ## Show development-related commands
 help-docker: ## Show Docker-related commands
 	@echo "Docker commands:"
 	@echo "  make docker-build           - Build all services with docker-compose"
-	@echo "  make docker-build-release   - Build release images with proper tagging"
+	@echo "  make docker-build-release   - Build release images with proper tagging (api-service, api-client, api-cli, api)"
 	@echo "  make docker-push-release    - Push release images to registry"
 	@echo "  make docker-up              - Start all services"
 	@echo "  make docker-down            - Stop all services"

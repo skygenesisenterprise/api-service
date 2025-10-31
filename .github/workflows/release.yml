@@ -217,6 +217,24 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
+    # Build and push All-in-One image
+    - name: Build and push All-in-One image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./infrastructure/docker/Dockerfile.all-in-one
+        push: true
+        tags: |
+          skygenesisenterprise/api:latest
+          skygenesisenterprise/api:${{ steps.extract-version.outputs.version }}
+        labels: |
+          org.opencontainers.image.title=Sky Genesis API All-in-One
+          org.opencontainers.image.description=Complete Sky Genesis stack with API, frontend, and CLI in single container
+          org.opencontainers.image.version=${{ steps.extract-version.outputs.version }}
+        platforms: linux/amd64,linux/arm64
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
     # Security scanning
     - name: Install Trivy
       uses: aquasecurity/trivy-action@master
@@ -235,6 +253,10 @@ jobs:
       run: |
         trivy image --exit-code 1 --no-progress --format sarif --output cli-scan.sarif skygenesisenterprise/api-cli:${{ steps.extract-version.outputs.version }}
 
+    - name: Scan All-in-One image for vulnerabilities
+      run: |
+        trivy image --exit-code 1 --no-progress --format sarif --output all-in-one-scan.sarif skygenesisenterprise/api:${{ steps.extract-version.outputs.version }}
+
     # Upload security scan results
     - name: Upload security scan results
       uses: github/codeql-action/upload-sarif@v3
@@ -244,6 +266,7 @@ jobs:
           api-scan.sarif
           frontend-scan.sarif
           cli-scan.sarif
+          all-in-one-scan.sarif
 
     # Sign images
     - name: Install cosign
@@ -254,6 +277,7 @@ jobs:
         cosign sign skygenesisenterprise/api-service:${{ steps.extract-version.outputs.version }}
         cosign sign skygenesisenterprise/api-client:${{ steps.extract-version.outputs.version }}
         cosign sign skygenesisenterprise/api-cli:${{ steps.extract-version.outputs.version }}
+        cosign sign skygenesisenterprise/api:${{ steps.extract-version.outputs.version }}
       env:
         COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
 
@@ -265,5 +289,6 @@ jobs:
           skygenesisenterprise/api-service:${{ steps.extract-version.outputs.version }}
           skygenesisenterprise/api-client:${{ steps.extract-version.outputs.version }}
           skygenesisenterprise/api-cli:${{ steps.extract-version.outputs.version }}
+          skygenesisenterprise/api:${{ steps.extract-version.outputs.version }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -8,6 +8,7 @@ This document explains how to use Docker for developing, building, and deploying
 - [Prerequisites](#prerequisites)
 - [Development Setup](#development-setup)
 - [Production Setup](#production-setup)
+- [CI/CD with GitHub Actions](#cicd-with-github-actions)
 - [Common Commands](#common-commands)
 - [Security](#security)
 - [Monitoring and Logging](#monitoring-and-logging)
@@ -128,15 +129,76 @@ docker-compose exec api bash
 
 ### Building Images
 
-To build production images:
+To build production images manually:
 
 ```bash
-# Build API
-docker build -f infrastructure/docker/Dockerfile.api -t skygenesisenterprise/api:latest .
+# Build all images with automated versioning
+make docker-build-release
 
-# Build frontend
-docker build -f infrastructure/docker/Dockerfile.frontend -t sky-genesis/frontend:latest .
+# Or build individually:
+# API backend with SSH server
+docker build -f infrastructure/docker/Dockerfile.api -t skygenesisenterprise/api-service:latest .
+
+# Next.js frontend
+docker build -f infrastructure/docker/Dockerfile.frontend -t skygenesisenterprise/api-client:latest .
+
+# CLI tool with SSH server
+docker build -f infrastructure/docker/Dockerfile.cli -t skygenesisenterprise/api-cli:latest .
+
+# All-in-One complete stack
+docker build -f infrastructure/docker/Dockerfile.all-in-one -t skygenesisenterprise/api:latest .
 ```
+
+For automated builds, see the [CI/CD with GitHub Actions](#cicd-with-github-actions) section.
+
+### All-in-One Image
+
+The `skygenesisenterprise/api` image provides a complete, production-ready deployment of the entire Sky Genesis stack in a single container:
+
+- **API Backend** (Rust) on port 8080
+- **Frontend** (Next.js) served via nginx on port 80
+- **CLI with SSH Server** on port 2222
+- **Process Management** via Supervisor
+- **Reverse Proxy** with nginx for optimal performance
+
+#### Usage
+
+```bash
+# Run the complete stack
+docker run -d -p 80:80 -p 8080:8080 -p 2222:2222 skygenesisenterprise/api:latest
+
+# Access points:
+# - Frontend: http://localhost
+# - API: http://localhost/api/v1/
+# - Health check: http://localhost/health
+# - SSH CLI: ssh cliuser@localhost -p 2222 (with key-based auth)
+```
+
+#### Environment Variables
+
+```bash
+# Database (if using external)
+DATABASE_URL=postgresql://user:password@host:5432/api_service
+
+# Redis (if using external)
+REDIS_URL=redis://host:6379
+
+# Authentication
+JWT_SECRET=your_jwt_secret_key
+
+# Session configuration
+SESSION_COOKIE_DOMAIN=yourdomain.com
+```
+
+#### Multi-Service Architecture
+
+The All-in-One image uses Supervisor to manage three services:
+
+1. **nginx** - Reverse proxy and static file serving
+2. **api** - Rust API backend
+3. **cli-ssh** - SSH server for CLI access
+
+All services are configured for production with proper logging, health checks, and security hardening.
 
 ### Environment Variables
 
@@ -316,6 +378,148 @@ This file includes:
 - Resource limits
 - Restart policies
 
+## CI/CD with GitHub Actions
+
+The project uses GitHub Actions for automated Docker image building and publishing. This ensures consistent, secure, and reproducible builds across all environments.
+
+### Automated Build Process
+
+When a release is published on GitHub, the CI/CD pipeline automatically:
+
+1. **Extracts version** from package files (`package.json`, `api/Cargo.toml`, `cli/Cargo.toml`)
+2. **Builds multi-platform images** (AMD64 and ARM64) for four components:
+   - `skygenesisenterprise/api-service:vx.x.x` - Rust API backend with SSH server
+   - `skygenesisenterprise/api-client:vx.x.x` - Next.js frontend application
+   - `skygenesisenterprise/api-cli:vx.x.x` - CLI tool with SSH server
+   - `skygenesisenterprise/api:vx.x.x` - **All-in-One** complete stack (API + Frontend + CLI)
+3. **Runs security scans** using Trivy to detect vulnerabilities
+4. **Signs images** with Cosign for supply chain security
+5. **Generates SBOM** (Software Bill of Materials) for compliance
+6. **Publishes to Docker Hub** under the `skygenesisenterprise` organization
+
+### Version Tagging Strategy
+
+The pipeline uses semantic versioning (`vx.x.x` format) extracted from source code:
+
+```bash
+# Version extraction script
+./infrastructure/scripts/extract-version.sh
+# Output: v1.2.3
+```
+
+This ensures that:
+- All components share the same version number
+- Docker tags follow semantic versioning conventions
+- Releases are traceable and reproducible
+
+### GitHub Actions Workflow
+
+The release workflow (`.github/workflows/release.yml`) includes several jobs:
+
+#### Release Job
+- **Trigger**: GitHub release publication or manual dispatch
+- **Build artifacts**: API binary, frontend build, source code archives
+- **Security**: GPG signing, SBOM generation, build provenance attestation
+
+#### Publish Job
+- **Dependencies**: Requires successful release job completion
+- **Docker builds**: Multi-platform builds with GitHub Actions cache
+- **Security scanning**: Trivy vulnerability scans with SARIF upload
+- **Image signing**: Cosign signature generation
+- **SLSA provenance**: Cryptographic build attestation
+
+### Required Secrets
+
+Configure these secrets in your GitHub repository:
+
+```bash
+DOCKER_USERNAME     # Docker Hub username
+DOCKER_PASSWORD     # Docker Hub password/access token
+GPG_PRIVATE_KEY     # GPG private key for artifact signing
+GPG_PASSPHRASE      # GPG key passphrase
+COSIGN_PASSWORD     # Cosign password for image signing
+```
+
+### Manual Build Commands
+
+For local testing or manual builds, use the provided Makefile commands:
+
+```bash
+# Build all release images with proper tagging
+make docker-build-release
+
+# Push images to Docker Hub
+make docker-push-release
+
+# Example output:
+# Building with version: v1.2.3
+# Successfully tagged skygenesisenterprise/api-service:v1.2.3
+# Successfully tagged skygenesisenterprise/api-service:latest
+```
+
+### Image Security Features
+
+All published images include:
+
+- **Multi-stage builds** for minimal attack surface
+- **Non-root users** for runtime security
+- **Security hardening** (no unnecessary packages, proper permissions)
+- **Vulnerability scanning** with automated failure on high-severity issues
+- **Digital signatures** for supply chain verification
+- **SBOM generation** for dependency tracking and compliance
+
+### Build Cache Optimization
+
+The pipeline uses GitHub Actions cache to speed up builds:
+
+- **Rust dependencies**: Cached between builds
+- **Node.js modules**: Cached between builds
+- **Docker layers**: Cached for faster rebuilds
+
+### Monitoring and Alerts
+
+- **Security scan results** uploaded to GitHub Security tab
+- **Build failures** trigger notifications
+- **Vulnerability reports** available in repository security insights
+
+### Troubleshooting CI/CD
+
+#### Build Failures
+```bash
+# Check GitHub Actions logs
+# Navigate to Actions tab → Select workflow → View job logs
+
+# Common issues:
+# - Version mismatch between components
+# - Missing Docker Hub credentials
+# - Security scan failures (high-severity vulnerabilities)
+```
+
+#### Image Publishing Issues
+```bash
+# Verify Docker Hub permissions
+docker login
+
+# Check image exists locally
+docker images | grep skygenesisenterprise
+
+# Manual push test
+docker push skygenesisenterprise/api-service:v1.2.3
+```
+
+#### Security Scan Failures
+- Review Trivy scan results in GitHub Security tab
+- Address high-severity vulnerabilities
+- Update base images or dependencies as needed
+
+### Best Practices
+
+1. **Test locally** before pushing changes that affect Docker builds
+2. **Monitor security scans** regularly for new vulnerabilities
+3. **Keep secrets updated** and rotate them periodically
+4. **Use semantic versioning** consistently across all components
+5. **Review build provenance** for supply chain security
+
 ## Common Commands
 
 ### Container Management
@@ -374,15 +578,27 @@ docker exec sky-genesis-postgres pg_isready -U postgres -d api_service
 
 ### Security Scanning
 
+Automated security scanning is performed during CI/CD builds using Trivy. For manual scans:
+
 ```bash
-# Scan image for vulnerabilities
+# Scan individual images for vulnerabilities
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+  aquasecurity/trivy image skygenesisenterprise/api-service:latest
+
+# Scan All-in-One image
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
   aquasecurity/trivy image skygenesisenterprise/api:latest
 
 # Scan for secrets
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
   zricethezav/gitleaks:latest docker --image skygenesisenterprise/api:latest
+
+# Generate SBOM for All-in-One
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+  aquasecurity/trivy image --format cyclonedx skygenesisenterprise/api:latest > sbom.json
 ```
+
+Security scan results are automatically uploaded to GitHub Security tab during automated builds for all images.
 
 ### Secure NGINX Configuration
 
