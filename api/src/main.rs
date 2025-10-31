@@ -28,10 +28,10 @@ mod queries;
 mod routes;
 mod services;
 mod tests;
-mod utils;
 mod search;
 mod openapi;
 mod websocket;
+mod ssh;
 
 /// [CONFIGURATION LAYER] Environment Variable Loader
 /// @MISSION Load default configuration values from secure template.
@@ -137,11 +137,36 @@ async fn main() {
     let vault_token = std::env::var("VAULT_TOKEN").unwrap_or_default();
     let vault_manager = Arc::new(crate::services::vault_manager::VaultManager::new("dummy".to_string(), vault_token));
 
-    /// [COMMUNICATION LAYER] Real-time WebSocket Server
-    /// @MISSION Enable secure real-time messaging with XMPP features.
-    /// @THREAT Message interception or injection.
-    /// @COUNTERMEASURE Use TLS 1.3 and validate all message payloads.
-    let ws_server = Arc::new(crate::websocket::WebSocketServer::new());
+     /// [COMMUNICATION LAYER] Real-time WebSocket Server
+     /// @MISSION Enable secure real-time messaging with XMPP features.
+     /// @THREAT Message interception or injection.
+     /// @COUNTERMEASURE Use TLS 1.3 and validate all message payloads.
+     let ws_server = Arc::new(crate::websocket::WebSocketServer::new());
+
+     /// [SSH LAYER] Secure Shell Server
+     /// @MISSION Provide native SSH protocol support for secure remote access.
+     /// @THREAT Unauthorized remote access or command execution.
+     /// @COUNTERMEASURE Integrate with existing auth and audit all SSH operations.
+     let ssh_config = crate::ssh::SshConfig {
+         host: std::env::var("SSH_HOST").unwrap_or_else(|_| "127.0.0.1".to_string()),
+         port: std::env::var("SSH_PORT")
+             .unwrap_or_else(|_| "22".to_string())
+             .parse::<u16>()
+             .expect("SSH_PORT must be a valid port number"),
+         max_connections: std::env::var("SSH_MAX_CONNECTIONS")
+             .unwrap_or_else(|_| "100".to_string())
+             .parse::<usize>()
+             .expect("SSH_MAX_CONNECTIONS must be a valid number"),
+         idle_timeout: 300, // 5 minutes
+         auth_timeout: 60,  // 1 minute
+     };
+     let ssh_server = Arc::new(crate::ssh::SshServer::new(
+         ssh_config,
+         auth_service.clone(),
+         key_service.clone(),
+         vault_client.clone(),
+         audit_manager.clone(),
+     ).await.unwrap());
 
     /// [MONITORING LAYER] SNMP Management and Audit
     /// @MISSION Provide network monitoring and security auditing.
@@ -166,21 +191,32 @@ async fn main() {
         }
     });
 
-    /// [THREAT DETECTION] SNMP Trap Listener
-    /// @MISSION Capture and analyze network security events.
-    /// @THREAT Silent network compromises.
-    /// @COUNTERMEASURE Process all SNMP traps with correlation analysis.
-    let trap_listener_clone = Arc::clone(&trap_listener);
-    tokio::spawn(async move {
-        let mut listener = Arc::try_unwrap(trap_listener_clone).unwrap();
-        if let Err(e) = listener.start().await {
-            eprintln!("Failed to start SNMP trap listener: {}", e);
-            return;
-        }
-        if let Err(e) = listener.listen().await {
-            eprintln!("SNMP trap listener error: {}", e);
-        }
-    });
+     /// [THREAT DETECTION] SNMP Trap Listener
+     /// @MISSION Capture and analyze network security events.
+     /// @THREAT Silent network compromises.
+     /// @COUNTERMEASURE Process all SNMP traps with correlation analysis.
+     let trap_listener_clone = Arc::clone(&trap_listener);
+     tokio::spawn(async move {
+         let mut listener = Arc::try_unwrap(trap_listener_clone).unwrap();
+         if let Err(e) = listener.start().await {
+             eprintln!("Failed to start SNMP trap listener: {}", e);
+             return;
+         }
+         if let Err(e) = listener.listen().await {
+             eprintln!("SNMP trap listener error: {}", e);
+         }
+     });
+
+     /// [SSH SERVER] Start SSH Protocol Server
+     /// @MISSION Enable native SSH protocol support for secure remote access.
+     /// @THREAT Unauthorized SSH access or protocol abuse.
+     /// @COUNTERMEASURE Implement secure authentication and audit all connections.
+     let ssh_server_clone = Arc::clone(&ssh_server);
+     tokio::spawn(async move {
+         if let Err(e) = ssh_server_clone.start().await {
+             eprintln!("Failed to start SSH server: {}", e);
+         }
+     });
 
     /// [FIDO2 LAYER] Hardware Authentication Manager
     /// @MISSION Provide FIDO2/WebAuthn authentication capabilities.
@@ -233,32 +269,33 @@ async fn main() {
     let _otel_components = crate::core::opentelemetry::init_opentelemetry("sky-genesis-api", "1.0.0").await.unwrap();
     let metrics = Arc::new(crate::core::opentelemetry::Metrics::new().unwrap());
 
-    /// [API GATEWAY] Route Aggregation and Security Enforcement
-    /// @MISSION Expose all service endpoints with unified security controls.
-    /// @THREAT API abuse or unauthorized access.
-    /// @COUNTERMEASURE Implement rate limiting, input validation, and audit logging.
-    let routes = routes::routes(
-        vault_manager,
-        key_service,
-        auth_service,
-        session_service,
-        application_service,
-        two_factor_service,
-        ws_server,
-        snmp_manager,
-        snmp_agent,
-        trap_listener,
-        audit_manager,
-        keycloak_client,
-        fido2_manager,
-        vpn_manager,
-        tailscale_manager,
-        grpc_client,
-        webdav_handler,
-        caldav_handler,
-        carddav_handler,
-        metrics,
-    );
+     /// [API GATEWAY] Route Aggregation and Security Enforcement
+     /// @MISSION Expose all service endpoints with unified security controls.
+     /// @THREAT API abuse or unauthorized access.
+     /// @COUNTERMEASURE Implement rate limiting, input validation, and audit logging.
+     let routes = routes::routes(
+         vault_manager,
+         key_service,
+         auth_service,
+         session_service,
+         application_service,
+         two_factor_service,
+         ws_server,
+         snmp_manager,
+         snmp_agent,
+         trap_listener,
+         audit_manager,
+         keycloak_client,
+         fido2_manager,
+         vpn_manager,
+         tailscale_manager,
+         grpc_client,
+         webdav_handler,
+         caldav_handler,
+         carddav_handler,
+         metrics,
+         ssh_server,
+     );
 
     /// [NETWORK PERIMETER] Service Binding Configuration
     /// @MISSION Establish secure network listening post.

@@ -55,16 +55,20 @@ snmp = "0.2"
 snmp-parser = "0.9"
 thiserror = "1.0"
 
-# Protocol Integrations
-# WebSocket/XMPP
-tokio-tungstenite = "0.20"
-xmpp = "0.5"
+ # Protocol Integrations
+ # WebSocket/XMPP
+ tokio-tungstenite = "0.20"
+ xmpp = "0.5"
 
-# gRPC/QUIC
-tonic = "0.10"
-prost = "0.12"
-quinn = "0.10"
-h3 = "0.0.2"
+# SSH
+russh = "0.40"
+russh-keys = "0.40"
+
+ # gRPC/QUIC
+ tonic = "0.10"
+ prost = "0.12"
+ quinn = "0.10"
+ h3 = "0.0.2"
 
 # WebDAV/CalDAV/CardDAV
 webdav-handler = "0.2"

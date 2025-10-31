@@ -10,6 +10,7 @@ pub mod grpc_routes;
 pub mod webdav_routes;
 pub mod opentelemetry_routes;
 pub mod search_routes;
+pub mod ssh_routes;
 
 use warp::Filter;
 use std::sync::Arc;
@@ -31,6 +32,7 @@ use crate::core::vpn::{VpnManager, TailscaleManager};
 use crate::core::grpc::GrpcClient;
 use crate::core::webdav::{WebDavHandler, CalDavHandler, CardDavHandler};
 use crate::core::opentelemetry::Metrics;
+use crate::ssh::SshServer;
 use tokio::sync::Mutex;
 
 pub fn routes(
@@ -54,6 +56,7 @@ pub fn routes(
     caldav_handler: Arc<CalDavHandler>,
     carddav_handler: Arc<CardDavHandler>,
     metrics: Arc<Metrics>,
+    ssh_server: Arc<SshServer>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let hello = warp::path!("hello")
         .map(|| "Hello, World!");
@@ -68,7 +71,7 @@ pub fn routes(
     let webdav_routes = crate::routes::webdav_routes::webdav_routes(webdav_handler, caldav_handler, carddav_handler);
     let opentelemetry_routes = crate::routes::opentelemetry_routes::opentelemetry_routes(metrics);
     let search_routes = crate::routes::search_routes::search_routes(auth_service.clone(), vault_client.clone(), metrics.clone());
-    let search_routes = crate::routes::search_routes::search_routes(auth_service.clone(), vault_client.clone(), metrics.clone());
+    let ssh_routes = crate::routes::ssh_routes::ssh_routes(ssh_server, audit_manager.clone());
 
     // OpenAPI JSON endpoint
     let openapi_json = warp::path!("api-docs" / "openapi.json")
@@ -115,5 +118,5 @@ pub fn routes(
             "#)
         });
 
-    hello.or(key_routes).or(auth_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(search_routes).or(openapi_json).or(swagger_ui)
+    hello.or(key_routes).or(auth_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(search_routes).or(ssh_routes).or(openapi_json).or(swagger_ui)
 }
