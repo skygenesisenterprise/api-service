@@ -1221,8 +1221,14 @@ dependencies = [
  "diesel_derives",
  "downcast-rs 2.0.2",
  "itoa",
+ "libsqlite3-sys",
+ "mysqlclient-sys",
+ "percent-encoding 2.3.2",
  "pq-sys",
  "r2d2",
+ "sqlite-wasm-rs",
+ "time 0.3.44",
+ "url",
 ]
 
 [[package]]
@@ -2647,6 +2653,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "libsqlite3-sys"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf4e226dcd58b4be396f7bd3c20da8fdee2911400705297ba7d2d7cc2c30f716"
+dependencies = [
+ "pkg-config",
+ "vcpkg",
+]
+
+[[package]]
 name = "libssh2-sys"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2916,6 +2932,17 @@ name = "murmurhash32"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2195bf6aa996a481483b29d62a7663eed3fe39600c460e323f8ff41e90bdd89b"
+
+[[package]]
+name = "mysqlclient-sys"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86a34a2bdec189f1060343ba712983e14cad7e87515cfd9ac4653e207535b6b1"
+dependencies = [
+ "pkg-config",
+ "semver",
+ "vcpkg",
+]
 
 [[package]]
 name = "native-tls"
@@ -5389,6 +5416,21 @@ checksum = "d91ed6c858b01f942cd56b37a94b3e0a1798290327d1236e4d9cf4eaca44d29d"
 dependencies = [
  "base64ct",
  "der",
+]
+
+[[package]]
+name = "sqlite-wasm-rs"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54e4348c16a3d2e2a45437eff67efc5462b60443de76f61b5d0ed9111c626d9d"
+dependencies = [
+ "js-sys",
+ "once_cell",
+ "thiserror 2.0.17",
+ "tokio",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

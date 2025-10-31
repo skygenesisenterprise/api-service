@@ -20,3 +20,5 @@ pub mod key_model;
 pub mod user;
 /// [MAIL MODEL MODULE] Email and messaging data structures
 pub mod mail;
+/// [DATABASE MODEL MODULE] Database connection and management models
+pub mod data_model;

@@ -32,6 +32,7 @@ mod search;
 mod openapi;
 mod websocket;
 mod ssh;
+mod data;
 
 /// [CONFIGURATION LAYER] Environment Variable Loader
 /// @MISSION Load default configuration values from secure template.
@@ -128,11 +129,17 @@ async fn main() {
         two_factor_service.clone(),
     ));
 
-    /// [CRYPTO LAYER] Key Management Service
-    /// @MISSION Manage cryptographic keys with auto-rotation.
-    /// @THREAT Key compromise or weak key generation.
-    /// @COUNTERMEASURE Use FIPS-compliant algorithms and regular rotation.
-    let key_service = Arc::new(crate::services::key_service::KeyService::new(vault_client.clone()));
+     /// [CRYPTO LAYER] Key Management Service
+     /// @MISSION Manage cryptographic keys with auto-rotation.
+     /// @THREAT Key compromise or weak key generation.
+     /// @COUNTERMEASURE Use FIPS-compliant algorithms and regular rotation.
+     let key_service = Arc::new(crate::services::key_service::KeyService::new(vault_client.clone()));
+
+     /// [DATABASE LAYER] Multi-Database Connection Management
+     /// @MISSION Provide secure access to multiple database types.
+     /// @THREAT Unauthorized database access or credential exposure.
+     /// @COUNTERMEASURE Encrypted credentials in Vault and access control.
+     let data_service = Arc::new(crate::services::data_service::DataService::new(vault_client.clone()));
 
     let vault_token = std::env::var("VAULT_TOKEN").unwrap_or_default();
     let vault_manager = Arc::new(crate::services::vault_manager::VaultManager::new("dummy".to_string(), vault_token));
@@ -274,29 +281,30 @@ async fn main() {
      /// @MISSION Expose all service endpoints with unified security controls.
      /// @THREAT API abuse or unauthorized access.
      /// @COUNTERMEASURE Implement rate limiting, input validation, and audit logging.
-     let routes = routes::routes(
-         vault_manager,
-         key_service,
-         auth_service,
-         session_service,
-         application_service,
-         two_factor_service,
-         ws_server,
-         snmp_manager,
-         snmp_agent,
-         trap_listener,
-         audit_manager,
-         keycloak_client,
-         fido2_manager,
-         vpn_manager,
-         tailscale_manager,
-         grpc_client,
-         webdav_handler,
-         caldav_handler,
-         carddav_handler,
-         metrics,
-         ssh_server,
-     );
+      let routes = routes::routes(
+          vault_manager,
+          key_service,
+          auth_service,
+          session_service,
+          application_service,
+          two_factor_service,
+          data_service,
+          ws_server,
+          snmp_manager,
+          snmp_agent,
+          trap_listener,
+          audit_manager,
+          keycloak_client,
+          fido2_manager,
+          vpn_manager,
+          tailscale_manager,
+          grpc_client,
+          webdav_handler,
+          caldav_handler,
+          carddav_handler,
+          metrics,
+          ssh_server,
+      );
 
     /// [NETWORK PERIMETER] Service Binding Configuration
     /// @MISSION Establish secure network listening post.
@@ -335,6 +343,7 @@ async fn main() {
         session_service,
         application_service,
         two_factor_service,
+        data_service,
         ws_server,
         snmp_manager,
         snmp_agent,
@@ -349,6 +358,7 @@ async fn main() {
         caldav_handler,
         carddav_handler,
         metrics,
+        ssh_server,
     );
 
     // Get port from environment variable or default to 8080

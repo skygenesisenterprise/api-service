@@ -21,5 +21,5 @@ pub mod controller;
 pub mod auth_controller;
 /// [KEY CONTROLLER MODULE] API key and certificate lifecycle management
 pub mod key_controller;
-pub mod key_controller;
-pub mod auth_controller;
+/// [DATA CONTROLLER MODULE] Database connection and query management
+pub mod data_controller;

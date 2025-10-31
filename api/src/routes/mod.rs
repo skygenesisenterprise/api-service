@@ -11,6 +11,7 @@ pub mod webdav_routes;
 pub mod opentelemetry_routes;
 pub mod search_routes;
 pub mod ssh_routes;
+pub mod data_routes;
 
 use warp::Filter;
 use std::sync::Arc;
@@ -20,6 +21,7 @@ use crate::services::auth_service::AuthService;
 use crate::services::session_service::SessionService;
 use crate::services::application_service::ApplicationService;
 use crate::services::two_factor_service::TwoFactorService;
+use crate::services::data_service::DataService;
 use crate::websocket::WebSocketServer;
 use crate::core::snmp_manager::SnmpManager;
 use crate::core::snmp_agent::SnmpAgent;
@@ -42,6 +44,7 @@ pub fn routes(
     session_service: Arc<SessionService>,
     application_service: Arc<ApplicationService>,
     two_factor_service: Arc<TwoFactorService>,
+    data_service: Arc<DataService>,
     ws_server: Arc<WebSocketServer>,
     snmp_manager: Arc<SnmpManager>,
     snmp_agent: Arc<SnmpAgent>,
@@ -63,6 +66,7 @@ pub fn routes(
 
     let key_routes = crate::routes::key_routes::key_routes(key_service);
     let auth_routes = crate::routes::auth_routes::auth_routes(auth_service, session_service, application_service, two_factor_service, keycloak_client, fido2_manager);
+    let data_routes = crate::routes::data_routes::data_routes(data_service);
     let websocket_routes = crate::routes::websocket_routes::websocket_routes(ws_server, keycloak_client);
     let security_routes = crate::routes::security_routes::security_routes();
     let snmp_routes = crate::routes::snmp_routes::snmp_routes(snmp_manager, snmp_agent, trap_listener, audit_manager);
@@ -118,5 +122,5 @@ pub fn routes(
             "#)
         });
 
-    hello.or(key_routes).or(auth_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(search_routes).or(ssh_routes).or(openapi_json).or(swagger_ui)
+    hello.or(key_routes).or(auth_routes).or(data_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(search_routes).or(ssh_routes).or(openapi_json).or(swagger_ui)
 }
