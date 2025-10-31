@@ -386,7 +386,7 @@ The project uses GitHub Actions for automated Docker image building and publishi
 
 When a release is published on GitHub, the CI/CD pipeline automatically:
 
-1. **Extracts version** from package files (`package.json`, `api/Cargo.toml`, `cli/Cargo.toml`)
+1. **Extracts version** from the release tag (e.g., `v1.2.6-api` → `1.2.6`) or falls back to package files
 2. **Builds multi-platform images** (AMD64 and ARM64) for four components:
    - `skygenesisenterprise/api-service:vx.x.x` - Rust API backend with SSH server
    - `skygenesisenterprise/api-client:vx.x.x` - Next.js frontend application
@@ -397,14 +397,49 @@ When a release is published on GitHub, the CI/CD pipeline automatically:
 5. **Generates SBOM** (Software Bill of Materials) for compliance
 6. **Publishes to Docker Hub** under the `skygenesisenterprise` organization
 
+#### Release Tag Format
+
+Use semantic versioning with optional component suffixes:
+
+```bash
+# Examples:
+git tag v1.2.6
+git tag v1.2.6-api      # API component
+git tag v1.2.6-frontend # Frontend component
+git tag v1.2.6-cli      # CLI component
+git tag v1.2.6-all      # All-in-one stack
+
+# Then create the release:
+gh release create v1.2.6 --generate-notes
+```
+
 ### Version Tagging Strategy
 
-The pipeline uses semantic versioning (`vx.x.x` format) extracted from source code:
+The pipeline supports two versioning strategies:
+
+#### **Automatic Versioning (Default)**
+Extracts version from source code files (`package.json`, `api/Cargo.toml`, `cli/Cargo.toml`):
 
 ```bash
 # Version extraction script
 ./infrastructure/scripts/extract-version.sh
 # Output: v1.2.3
+```
+
+#### **Tag-Based Versioning (Recommended for Releases)**
+Uses GitHub release tags for precise version control. Supports component-specific tags:
+
+```bash
+# Examples of supported tag formats:
+v1.2.6        # → skygenesisenterprise/api-service:v1.2.6
+v1.2.6-api    # → skygenesisenterprise/api-service:v1.2.6
+v1.2.6-web # → skygenesisenterprise/api-client:v1.2.6
+v1.2.6-cli    # → skygenesisenterprise/api-cli:v1.2.6
+v1.2.6-all    # → skygenesisenterprise/api:v1.2.6
+
+# Tag version extraction script
+./infrastructure/scripts/extract-tag-version.sh v1.2.6-api
+# Output: 1.2.6
 ```
 
 This ensures that:
@@ -445,17 +480,33 @@ COSIGN_PASSWORD     # Cosign password for image signing
 For local testing or manual builds, use the provided Makefile commands:
 
 ```bash
-# Build all release images with proper tagging
+# Build all release images with automated versioning
 make docker-build-release
 
-# Push images to Docker Hub
+# Build images for a specific tag
+make docker-build-tag TAG=v1.2.6-api
+
+# Push images to Docker Hub (auto-versioning)
 make docker-push-release
 
+# Push images for a specific tag
+make docker-push-tag TAG=v1.2.6-api
+
 # Example output:
-# Building with version: v1.2.3
-# Successfully tagged skygenesisenterprise/api-service:v1.2.3
+# Building with tag: v1.2.6-api (version: 1.2.6)
+# Successfully tagged skygenesisenterprise/api-service:v1.2.6
 # Successfully tagged skygenesisenterprise/api-service:latest
 ```
+
+#### Tag Format Examples
+
+| Release Tag | Docker Image | Description |
+|-------------|--------------|-------------|
+| `v1.2.6` | `skygenesisenterprise/api-service:v1.2.6` | All components |
+| `v1.2.6-api` | `skygenesisenterprise/api-service:v1.2.6` | API service only |
+| `v1.2.6-web` | `skygenesisenterprise/api-client:v1.2.6` | Frontend only |
+| `v1.2.6-cli` | `skygenesisenterprise/api-cli:v1.2.6` | CLI only |
+| `v1.2.6-all` | `skygenesisenterprise/api:v1.2.6` | All-in-one stack |
 
 ### Image Security Features
 
@@ -519,6 +570,29 @@ docker push skygenesisenterprise/api-service:v1.2.3
 3. **Keep secrets updated** and rotate them periodically
 4. **Use semantic versioning** consistently across all components
 5. **Review build provenance** for supply chain security
+6. **Use tag-based versioning** for releases to ensure precise version control
+7. **Follow tag naming conventions** (e.g., `v1.2.6-api`, `v1.2.6-frontend`) for component-specific releases
+
+### Release Workflow Example
+
+```bash
+# 1. Create and push a tag
+git tag v1.2.6-api
+git push origin v1.2.6-api
+
+# 2. Create a GitHub release (triggers CI/CD automatically)
+gh release create v1.2.6-api --generate-notes --title "API Service v1.2.6"
+
+# 3. CI/CD will automatically:
+#    - Extract version "1.2.6" from tag "v1.2.6-api"
+#    - Build skygenesisenterprise/api-service:v1.2.6
+#    - Run security scans and sign images
+#    - Push to Docker Hub
+
+# 4. Alternative: Manual build and push
+make docker-build-tag TAG=v1.2.6-api
+make docker-push-tag TAG=v1.2.6-api
+```
 
 ## Common Commands
 

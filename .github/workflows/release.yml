@@ -148,12 +148,15 @@ jobs:
         cargo publish
       continue-on-error: true
 
-    # Extract version for Docker tagging
-    - name: Extract version
+    # Extract version from release tag
+    - name: Extract version from tag
       id: extract-version
       run: |
-        VERSION=$(./infrastructure/scripts/extract-version.sh)
+        # Extract version from tag (e.g., "v1.2.6-api" -> "1.2.6")
+        TAG="${{ github.ref_name }}"
+        VERSION=$(echo "$TAG" | sed 's/^v\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/')
         echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Tag: $TAG"
         echo "Version extracted: $VERSION"
 
     # Publish Docker images
