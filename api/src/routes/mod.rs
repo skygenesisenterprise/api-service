@@ -9,6 +9,7 @@ pub mod vpn_routes;
 pub mod grpc_routes;
 pub mod webdav_routes;
 pub mod opentelemetry_routes;
+pub mod monitoring_routes;
 pub mod search_routes;
 pub mod ssh_routes;
 pub mod data_routes;
@@ -59,6 +60,7 @@ pub fn routes(
     caldav_handler: Arc<CalDavHandler>,
     carddav_handler: Arc<CardDavHandler>,
     metrics: Arc<Metrics>,
+    monitoring_service: Arc<crate::services::monitoring_service::MonitoringService>,
     ssh_server: Arc<SshServer>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let hello = warp::path!("hello")
@@ -73,7 +75,8 @@ pub fn routes(
     let vpn_routes = crate::routes::vpn_routes::vpn_routes(vpn_manager, tailscale_manager);
     let grpc_routes = crate::routes::grpc_routes::grpc_routes(grpc_client);
     let webdav_routes = crate::routes::webdav_routes::webdav_routes(webdav_handler, caldav_handler, carddav_handler);
-    let opentelemetry_routes = crate::routes::opentelemetry_routes::opentelemetry_routes(metrics);
+    let opentelemetry_routes = crate::routes::opentelemetry_routes::opentelemetry_routes(metrics, monitoring_service.clone());
+    let monitoring_routes = crate::routes::monitoring_routes::monitoring_routes(monitoring_service);
     let search_routes = crate::routes::search_routes::search_routes(auth_service.clone(), vault_client.clone(), metrics.clone());
     let ssh_routes = crate::routes::ssh_routes::ssh_routes(ssh_server, audit_manager.clone());
 
@@ -122,5 +125,5 @@ pub fn routes(
             "#)
         });
 
-    hello.or(key_routes).or(auth_routes).or(data_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(search_routes).or(ssh_routes).or(openapi_json).or(swagger_ui)
+    hello.or(key_routes).or(auth_routes).or(data_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(monitoring_routes).or(search_routes).or(ssh_routes).or(openapi_json).or(swagger_ui)
 }

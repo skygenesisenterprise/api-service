@@ -277,25 +277,38 @@ async fn main() {
     let _otel_components = crate::core::opentelemetry::init_opentelemetry("sky-genesis-api", "1.0.0").await.unwrap();
     let metrics = Arc::new(crate::core::opentelemetry::Metrics::new().unwrap());
 
+    /// [MONITORING SERVICE] System Health and Status Monitoring
+    /// @MISSION Provide comprehensive monitoring capabilities for Grafana.
+    /// @THREAT Undetected system issues affecting availability.
+    /// @COUNTERMEASURE Automated health checks and metric collection.
+    /// @DEPENDENCY Vault and metrics services for monitoring data.
+    /// @PERFORMANCE Monitoring service initialized with system start time.
+    /// @AUDIT Monitoring operations logged for system observability.
+    let monitoring_service = Arc::new(crate::services::monitoring_service::MonitoringService::new(
+        vault_client.clone(),
+        metrics.clone(),
+    ));
+
      /// [API GATEWAY] Route Aggregation and Security Enforcement
      /// @MISSION Expose all service endpoints with unified security controls.
      /// @THREAT API abuse or unauthorized access.
      /// @COUNTERMEASURE Implement rate limiting, input validation, and audit logging.
-      let routes = routes::routes(
-          vault_manager,
-          key_service,
-          auth_service,
-          session_service,
-          application_service,
-          two_factor_service,
-          data_service,
-          ws_server,
-          snmp_manager,
-          snmp_agent,
-          trap_listener,
-          audit_manager,
-          keycloak_client,
-          fido2_manager,
+       let routes = routes::routes(
+           vault_manager,
+           key_service,
+           auth_service,
+           session_service,
+           application_service,
+           two_factor_service,
+           data_service,
+           ws_server,
+           snmp_manager,
+           snmp_agent,
+           trap_listener,
+           audit_manager,
+           keycloak_client,
+           fido2_manager,
+           monitoring_service,
           vpn_manager,
           tailscale_manager,
           grpc_client,

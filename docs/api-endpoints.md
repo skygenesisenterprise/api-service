@@ -772,3 +772,62 @@ API endpoints implement rate limiting to prevent abuse. Rate limits vary by endp
   "fingerprint": "string" // SHA256 fingerprint for verification
 }
 ```
+
+## Monitoring Endpoints
+
+### System Health Check
+- **GET** `/api/v1/health`
+- **Description**: Lightweight health check for load balancers and monitoring systems
+- **Response**:
+  ```json
+  {
+    "status": "healthy",
+    "timestamp": "2024-01-01T12:00:00Z",
+    "version": "1.0.0",
+    "uptime_seconds": 3600
+  }
+  ```
+
+### Detailed System Status
+- **GET** `/api/v1/status`
+- **Description**: Comprehensive system status with component health and metrics
+- **Response**:
+  ```json
+  {
+    "service": "Sky Genesis Enterprise API",
+    "version": "1.0.0",
+    "status": "healthy",
+    "uptime_seconds": 3600,
+    "timestamp": "2024-01-01T12:00:00Z",
+    "health": {
+      "overall_status": "healthy",
+      "components": [...],
+      "metrics": {...}
+    },
+    "configuration": {...},
+    "endpoints": {...},
+    "prometheus_metrics": "..."
+  }
+  ```
+
+### Prometheus Metrics Export
+- **GET** `/api/v1/metrics/prometheus`
+- **Description**: Metrics in Prometheus format for Grafana integration
+- **Response**: Plain text in Prometheus exposition format
+
+### Component Health Check
+- **GET** `/api/v1/health/{component}`
+- **Description**: Health status of a specific system component
+- **Path Parameters**:
+  - `component`: Component name (vault, database, authentication, websocket)
+- **Response**: Component health details
+
+### Readiness Probe
+- **GET** `/api/v1/ready`
+- **Description**: Kubernetes readiness probe endpoint
+- **Response**: HTTP 200 if ready, 503 if not ready
+
+### Liveness Probe
+- **GET** `/api/v1/alive`
+- **Description**: Kubernetes liveness probe endpoint
+- **Response**: Always HTTP 200 (basic liveness check)
