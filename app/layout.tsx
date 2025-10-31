@@ -2,6 +2,7 @@
 
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { usePathname } from "next/navigation";
 import "./styles/globals.css";
 import { AuthProvider } from "./context/AuthContext";
 import { SidebarProvider, useSidebar } from "./context/SidebarContext";
@@ -22,11 +23,15 @@ const geistMono = Geist_Mono({
 
 function MainContent({ children }: { children: React.ReactNode }) {
   const { isCollapsed } = useSidebar();
+  const pathname = usePathname();
+
+  // Don't apply sidebar margin on auth pages
+  const isAuthPage = pathname.startsWith('/auth') || pathname === '/login';
 
   return (
     <main
       className={`min-h-screen bg-gray-50 transition-all duration-300 ${
-        isCollapsed ? 'md:ml-16' : 'md:ml-64'
+        isAuthPage ? '' : (isCollapsed ? 'md:ml-16' : 'md:ml-64')
       }`}
     >
       {children}

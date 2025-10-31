@@ -3,13 +3,13 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Button } from "../../components/ui/button"
-import { Input } from "../../components/ui/input"
-import { Label } from "../../components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../components/ui/card"
-import { Separator } from "../../components/ui/separator"
+import { Button } from "../components/ui/button"
+import { Input } from "../components/ui/input"
+import { Label } from "../components/ui/label"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card"
+import { Separator } from "../components/ui/separator"
 
-export function AuthForm() {
+export default function AuthForm() {
   const [step, setStep] = useState<"email" | "password">("email")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -42,7 +42,25 @@ export function AuthForm() {
   }
 
   return (
-    <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm border-gray-200 shadow-2xl">
+    <div className="min-h-screen relative overflow-hidden bg-black">
+      {/* Animated background pattern */}
+      <div className="absolute inset-0 opacity-10">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
+            backgroundSize: "40px 40px",
+          }}
+        />
+      </div>
+
+      {/* Animated gradient orbs */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse delay-1000" />
+
+      {/* Main content */}
+      <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
+        <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm border-gray-200 shadow-2xl">
       <CardHeader className="space-y-4 text-center pb-8">
         {/* Logo */}
         <div className="flex justify-center">
@@ -212,6 +230,8 @@ export function AuthForm() {
         <button className="hover:text-black transition-colors">Terms of Service</button>
         <button className="hover:text-black transition-colors">Privacy Policy</button>
       </CardFooter>
-    </Card>
+        </Card>
+      </div>
+    </div>
   )
 }

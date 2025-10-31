@@ -108,7 +108,6 @@ export default function Navbar() {
   // Debug logs
   console.log('Navbar component mounted');
   console.log('Navbar render - isAuthenticated:', isAuthenticated);
-  console.log('Navbar render - token exists:', !!localStorage.getItem('sge_token'));
 
   const handleLogout = () => {
     logout();
@@ -148,8 +147,8 @@ export default function Navbar() {
     setOpenDropdowns(activeDropdowns);
   }, [pathname]);
 
-  if (!isAuthenticated || pathname !== '/dashboard') {
-    console.log('Navbar not rendering - user not authenticated or not on dashboard');
+  if (!isAuthenticated || pathname.startsWith('/auth') || pathname === '/login') {
+    console.log('Navbar not rendering - user not authenticated or on auth page');
     return null;
   }
 
