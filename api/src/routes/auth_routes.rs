@@ -278,8 +278,119 @@ pub fn auth_routes(
             }
         });
 
+    // API SSO endpoint - serves login page for frontend
+    let api_sso = warp::path!("sso")
+        .and(warp::get())
+        .and(warp::query::<std::collections::HashMap<String, String>>())
+        .and(warp::any().map(move || keycloak_client.clone()))
+        .and_then(|query: std::collections::HashMap<String, String>, kc: Arc<KeycloakClient>| async move {
+            let redirect_uri = query.get("redirect_uri").unwrap_or(&"http://localhost:8080/sso/callback".to_string()).clone();
+            let state = query.get("state").unwrap_or(&"".to_string()).clone();
+            let client_id = query.get("client_id").unwrap_or(&kc.client_id.clone()).clone();
+
+            // Read the login.ftl content and serve as HTML with API endpoints
+            match std::fs::read_to_string("keycloak-theme/login/login.ftl") {
+                Ok(content) => {
+                    // Replace Keycloak variables with API endpoints
+                    let html = content
+                        .replace("${url.loginAction}", "/api/v1/sso/auth")
+                        .replace("${realm.name}", "Sky Genesis Enterprise SSO")
+                        .replace("${url.resourcesPath}", "/api/v1/sso/resources")
+                        .replace("http://localhost:8080/auth/oidc/callback", &redirect_uri)
+                        .replace("http://localhost:3000/callback", &redirect_uri);
+
+                    // Add hidden fields for state management
+                    let state_field = if !state.is_empty() {
+                        format!("<input type=\"hidden\" name=\"state\" value=\"{}\">", state)
+                    } else {
+                        "".to_string()
+                    };
+
+                    let client_field = format!("<input type=\"hidden\" name=\"client_id\" value=\"{}\">", client_id);
+
+                    // Insert hidden fields before the submit button
+                    let html = html.replace(
+                        "<button",
+                        &format!("{}\n{}", state_field, client_field)
+                    );
+
+                    Ok(warp::reply::with_header(
+                        warp::reply::html(html),
+                        "Content-Type",
+                        "text/html"
+                    ))
+                },
+                Err(_) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"error": "SSO login template not found"})),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR
+                )),
+            }
+        });
+
+    // SSO Authentication endpoint - proxies to Keycloak
+    let api_sso_auth = warp::path!("sso" / "auth")
+        .and(warp::post())
+        .and(warp::body::form::<std::collections::HashMap<String, String>>())
+        .and(warp::any().map(move || keycloak_client.clone()))
+        .and_then(|form: std::collections::HashMap<String, String>, kc: Arc<KeycloakClient>| async move {
+            let username = form.get("username").ok_or("No username")?;
+            let password = form.get("password").ok_or("No password")?;
+            let state = form.get("state").unwrap_or(&"".to_string()).clone();
+            let client_id = form.get("client_id").unwrap_or(&kc.client_id).clone();
+
+            // Authenticate with Keycloak
+            match kc.login(username, password).await {
+                Ok(tokens) => {
+                    // Create redirect URL with tokens
+                    let redirect_uri = form.get("redirect_uri").unwrap_or(&"http://localhost:8080/api/v1/sso/callback".to_string());
+                    let redirect_url = format!(
+                        "{}?access_token={}&refresh_token={}&expires_in={}&state={}&client_id={}",
+                        redirect_uri, tokens.access_token, tokens.refresh_token, tokens.expires_in, state, client_id
+                    );
+
+                    Ok(warp::reply::with_status(
+                        warp::reply::with_header(
+                            warp::reply::html("Authentication successful, redirecting..."),
+                            "Location",
+                            redirect_url
+                        ),
+                        warp::http::StatusCode::FOUND
+                    ))
+                },
+                Err(e) => {
+                    // Redirect back to login with error
+                    let error_url = format!("/api/v1/sso?error={}&state={}&client_id={}", urlencoding::encode(&e.to_string()), state, client_id);
+                    Ok(warp::reply::with_status(
+                        warp::reply::with_header(
+                            warp::reply::html("Authentication failed, redirecting..."),
+                            "Location",
+                            error_url
+                        ),
+                        warp::http::StatusCode::FOUND
+                    ))
+                }
+            }
+        });
+
+    // SSO Resources endpoint
+    let api_sso_resources = warp::path!("sso" / "resources" / "css" / "login.css")
+        .and(warp::get())
+        .and_then(|| async {
+            match std::fs::read_to_string("keycloak-theme/login/resources/css/login.css") {
+                Ok(content) => Ok(warp::reply::with_header(
+                    content,
+                    "Content-Type",
+                    "text/css"
+                )),
+                Err(_) => Ok(warp::reply::with_status(
+                    "CSS not found",
+                    warp::http::StatusCode::NOT_FOUND
+                )),
+            }
+        });
+
     // SSO Callback endpoint for applications
-    let sso_callback = warp::path!("sso" / "callback")
+    let api_sso_callback = warp::path!("sso" / "callback")
         .and(warp::get())
         .and(warp::query::<std::collections::HashMap<String, String>>())
         .and_then(|query: std::collections::HashMap<String, String>| async move {
@@ -458,5 +569,5 @@ pub fn auth_routes(
             }
         });
 
-    login.or(session_login).or(register).or(recover).or(me).or(logout).or(logout_all).or(sessions).or(applications).or(application_access).or(two_factor_setup).or(two_factor_verify).or(two_factor_methods).or(two_factor_remove).or(login_page).or(login_html).or(login_css).or(oidc_login).or(oidc_callback).or(sso_login).or(sso_auth).or(sso_resources).or(sso_callback).or(fido2_register_start).or(fido2_register_finish).or(fido2_auth_start).or(fido2_auth_finish)
+    login.or(session_login).or(register).or(recover).or(me).or(logout).or(logout_all).or(sessions).or(applications).or(application_access).or(two_factor_setup).or(two_factor_verify).or(two_factor_methods).or(two_factor_remove).or(login_page).or(login_html).or(login_css).or(oidc_login).or(oidc_callback).or(api_sso).or(api_sso_auth).or(api_sso_resources).or(api_sso_callback).or(sso_login).or(sso_auth).or(sso_resources).or(sso_callback).or(fido2_register_start).or(fido2_register_finish).or(fido2_auth_start).or(fido2_auth_finish)
 }

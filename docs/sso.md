@@ -17,9 +17,168 @@ The Sky Genesis Enterprise API provides a comprehensive SSO service that allows 
          └─ Handle user session ─┘
 ```
 
+## Backend Implementation (Rust)
+
+The SSO service is implemented in the Rust backend using the Warp web framework. The backend handles authentication requests, proxies to Keycloak, and serves login pages under the API domain.
+
+### SSO Request Flow
+
+1. **Frontend initiates SSO**: Application redirects user to `/sso/login` with parameters
+2. **Backend serves login page**: Rust backend reads Keycloak theme template and serves HTML
+3. **User submits credentials**: Form POST to `/sso/auth` endpoint
+4. **Backend authenticates with Keycloak**: Proxies authentication request to Keycloak server
+5. **Backend redirects with tokens**: Redirects user back to application with JWT tokens
+
+### Key Components
+
+#### Keycloak Client Integration
+```rust
+// Keycloak client handles OAuth2/OIDC communication
+let keycloak_client = Arc::new(KeycloakClient::new(
+    keycloak_url,
+    realm,
+    client_id,
+    client_secret
+).await?);
+
+// Login method authenticates user and returns tokens
+let tokens = keycloak_client.login(username, password).await?;
+```
+
+#### Template Processing
+```rust
+// Read Keycloak theme template
+let content = std::fs::read_to_string("keycloak-theme/login/login.ftl")?;
+
+// Replace template variables with API endpoints
+let html = content
+    .replace("${url.loginAction}", "/sso/auth")
+    .replace("${realm.name}", "Sky Genesis Enterprise SSO")
+    .replace("${url.resourcesPath}", "/sso/resources");
+```
+
+#### State Management
+```rust
+// Add hidden form fields for state and client_id
+let state_field = format!("<input type=\"hidden\" name=\"state\" value=\"{}\">", state);
+let client_field = format!("<input type=\"hidden\" name=\"client_id\" value=\"{}\">", client_id);
+```
+
+### Configuration Requirements
+
+#### Environment Variables
+```bash
+KEYCLOAK_URL=https://keycloak.skygenesisenterprise.com
+KEYCLOAK_REALM=skygenesisenterprise
+KEYCLOAK_CLIENT_ID=sso-client
+KEYCLOAK_CLIENT_SECRET=your_client_secret
+```
+
+#### Theme Files
+- `keycloak-theme/login/login.ftl`: Login page template
+- `keycloak-theme/login/resources/css/login.css`: Login page styles
+
+#### Route Registration
+```rust
+// Register API SSO routes in Warp router (under /api/v1)
+let api_sso_routes = api_sso.or(api_sso_auth).or(api_sso_resources).or(api_sso_callback);
+
+// Legacy SSO routes (direct access under /sso)
+let legacy_sso_routes = sso_login.or(sso_auth).or(sso_resources).or(sso_callback);
+
+// Combine all routes
+let routes = api_sso_routes.or(legacy_sso_routes);
+```
+
 ## SSO Endpoints
 
-### 1. SSO Login Page (`/sso/login`)
+### 1. API SSO Login Page (`/api/v1/sso`)
+
+**Primary endpoint for frontend applications to initiate SSO authentication.**
+
+**Endpoint:** `GET /api/v1/sso`
+
+**Query Parameters:**
+- `redirect_uri` (optional): Where to redirect after successful authentication
+- `state` (optional): State parameter for CSRF protection and application context
+- `client_id` (optional): Application identifier
+
+**Example Request:**
+```bash
+GET /api/v1/sso?redirect_uri=https://myapp.com/callback&state=xyz123&client_id=myapp
+```
+
+**Response:** HTML page with login form
+
+**Usage in Frontend:**
+```javascript
+// Redirect user to SSO login page
+function initiateSSOLogin() {
+  const redirectUri = encodeURIComponent('https://myapp.com/callback');
+  const state = generateRandomState(); // Generate CSRF protection
+  const clientId = 'myapp';
+
+  const ssoUrl = `https://api.skygenesisenterprise.com/api/v1/sso?redirect_uri=${redirectUri}&state=${state}&client_id=${clientId}`;
+
+  window.location.href = ssoUrl;
+}
+```
+
+### 2. API SSO Authentication (`/api/v1/sso/auth`)
+
+**Handles form submission and proxies authentication to Keycloak.**
+
+**Endpoint:** `POST /api/v1/sso/auth`
+
+**Content-Type:** `application/x-www-form-urlencoded`
+
+**Form Fields:**
+- `username`: User's email address
+- `password`: User's password
+- `redirect_uri`: Application callback URL
+- `state`: State parameter
+- `client_id`: Application identifier
+
+**Response:** Redirect to application's `redirect_uri` with tokens
+
+### 3. API SSO Resources (`/api/v1/sso/resources/css/login.css`)
+
+**Serves CSS resources for the login page.**
+
+**Endpoint:** `GET /api/v1/sso/resources/css/login.css`
+
+**Response:** CSS stylesheet
+
+### 4. API SSO Callback (`/api/v1/sso/callback`)
+
+**Application endpoint to receive authentication tokens.**
+
+**Endpoint:** `GET /api/v1/sso/callback`
+
+**Query Parameters:**
+- `access_token`: JWT access token
+- `refresh_token`: JWT refresh token
+- `expires_in`: Token expiration time in seconds
+- `state`: State parameter (if provided)
+- `client_id`: Application identifier
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIs...",
+  "refresh_token": "refresh_token_here",
+  "expires_in": 3600,
+  "state": "xyz123",
+  "client_id": "myapp",
+  "message": "SSO authentication successful"
+}
+```
+
+### 5. Legacy SSO Endpoints (Direct Access)
+
+The following endpoints are also available for direct access (without `/api/v1` prefix):
+
+#### SSO Login Page (`/sso/login`)
 
 Serves the authentication page under the API domain.
 
@@ -91,16 +250,48 @@ Application endpoint to receive authentication tokens.
 
 ### For Applications
 
-#### 1. Redirect to SSO Login
+#### 1. Backend Request Setup
+
+Before redirecting users to SSO, ensure your backend is properly configured:
+
+**Required Backend Routes:**
+- `GET /api/v1/sso` - Serves the login page (primary endpoint)
+- `POST /api/v1/sso/auth` - Handles authentication form submission
+- `GET /api/v1/sso/resources/css/login.css` - Serves CSS resources
+- `GET /api/v1/sso/callback` - Receives authentication tokens
+- `GET /sso/login` - Legacy direct access endpoint
+
+**Backend Configuration:**
+```rust
+// Ensure Keycloak client is initialized
+let keycloak_client = KeycloakClient::new(
+    env::var("KEYCLOAK_URL")?,
+    env::var("KEYCLOAK_REALM")?,
+    env::var("KEYCLOAK_CLIENT_ID")?,
+    env::var("KEYCLOAK_CLIENT_SECRET")?
+).await?;
+```
+
+**CORS Configuration:**
+```rust
+// Allow frontend domains to access SSO endpoints
+let cors = warp::cors()
+    .allow_origins(vec!["https://yourapp.com", "http://localhost:3000"])
+    .allow_methods(vec!["GET", "POST"])
+    .allow_headers(vec!["content-type", "authorization"]);
+```
+
+#### 2. Redirect to SSO Login
 
 ```javascript
 // Redirect user to SSO login page
 function initiateSSOLogin() {
-  const redirectUri = encodeURIComponent('https://myapp.com/sso/callback');
+  const redirectUri = encodeURIComponent('https://myapp.com/api/v1/sso/callback');
   const state = generateRandomState(); // Generate CSRF protection
   const clientId = 'myapp';
 
-  const ssoUrl = `https://sso.skygenesisenterprise.com/sso/login?redirect_uri=${redirectUri}&state=${state}&client_id=${clientId}`;
+  // Use the API SSO endpoint
+  const ssoUrl = `https://api.skygenesisenterprise.com/api/v1/sso?redirect_uri=${redirectUri}&state=${state}&client_id=${clientId}`;
 
   window.location.href = ssoUrl;
 }
@@ -455,8 +646,8 @@ function App() {
     const state = Math.random().toString(36).substring(7);
     sessionStorage.setItem('sso_state', state);
 
-    const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
-    window.location.href = `https://sso.skygenesisenterprise.com/sso/login?redirect_uri=${redirectUri}&state=${state}&client_id=myreactapp`;
+    const redirectUri = encodeURIComponent(window.location.origin + '/api/v1/sso/callback');
+    window.location.href = `https://api.skygenesisenterprise.com/api/v1/sso?redirect_uri=${redirectUri}&state=${state}&client_id=myreactapp`;
   };
 
   const logout = () => {
@@ -547,6 +738,35 @@ export default {
 2. **State Mismatch**: Check state parameter handling
 3. **Token Expiration**: Implement proper token refresh
 4. **Redirect Loops**: Validate redirect URIs properly
+
+### Backend-Specific Issues
+
+1. **Template Not Found**: Ensure `keycloak-theme/login/login.ftl` exists and is readable
+   ```bash
+   # Check if theme files exist
+   ls -la keycloak-theme/login/
+   ```
+
+2. **Keycloak Connection Failed**: Verify Keycloak URL and credentials
+   ```rust
+   // Test Keycloak connection
+   match keycloak_client.login("test@example.com", "testpass").await {
+       Ok(_) => println!("Keycloak connection successful"),
+       Err(e) => println!("Keycloak error: {}", e)
+   }
+   ```
+
+3. **Invalid Redirect URI**: Ensure redirect URIs are properly URL-encoded
+   ```rust
+   // Proper URL encoding for redirect URIs
+   let redirect_uri = urlencoding::encode("https://myapp.com/callback");
+   ```
+
+4. **State Parameter Missing**: Always include state parameter for CSRF protection
+   ```rust
+   // Generate secure random state
+   let state = uuid::Uuid::new_v4().to_string();
+   ```
 
 ### Debug Mode
 
