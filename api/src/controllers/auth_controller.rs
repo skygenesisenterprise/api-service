@@ -18,7 +18,7 @@ use warp::Reply;
 use crate::services::auth_service::{AuthService, LoginRequest};
 use crate::models::user::User;
 use crate::services::application_service::ApplicationAccessRequest;
-use crate::services::two_factor_service::{TwoFactorSetupRequest, TwoFactorVerificationRequest};
+use crate::services::two_factor_service::{TwoFactorSetupRequest, TwoFactorVerificationRequest, TwoFactorChallengeValidationRequest};
 use std::sync::Arc;
 use warp::http::StatusCode;
 
@@ -317,6 +317,26 @@ pub async fn remove_two_factor_method(
         warp::reply::json(&serde_json::json!({"message": "Two-factor method removed"})),
         StatusCode::OK,
     ))
+}
+
+/// [2FA CHALLENGE VALIDATION HANDLER] Validate 2FA Codes During SSO Authentication
+/// @MISSION Complete SSO authentication with 2FA validation.
+/// @THREAT Unauthorized access, 2FA bypass, replay attacks.
+/// @COUNTERMEASURE Challenge validation, time-limited codes, secure cleanup.
+/// @INVARIANT 2FA challenges are validated and cleaned up.
+/// @AUDIT 2FA validation attempts are logged.
+/// @FLOW Validates challenge -> Verifies code -> Returns success/failure.
+/// @DEPENDENCY Requires AuthService for 2FA validation.
+pub async fn validate_2fa_challenge(
+    auth_service: Arc<AuthService>,
+    request: TwoFactorChallengeValidationRequest,
+) -> Result<impl Reply, warp::Rejection> {
+    let success = auth_service.validate_2fa_challenge(request).await
+        .map_err(|_| warp::reject::custom(crate::middlewares::auth::AuthError::VaultError))?;
+    Ok(warp::reply::json(&serde_json::json!({
+        "success": success,
+        "message": if success { "2FA validation successful" } else { "Invalid 2FA code" }
+    })))
 }
 
 /// [APPLICATION ACCESS REQUEST HANDLER] Request Access to Restricted Applications

@@ -21,7 +21,7 @@ use crate::models::user::User;
 use crate::utils::tokens;
 use crate::services::session_service::{SessionService, Session};
 use crate::services::application_service::{ApplicationService, ApplicationAccessRequest, ApplicationAccessResponse};
-use crate::services::two_factor_service::{TwoFactorService, TwoFactorVerificationRequest, TwoFactorVerificationResponse};
+use crate::services::two_factor_service::{TwoFactorService, TwoFactorVerificationRequest, TwoFactorVerificationResponse, TwoFactorChallengeValidationRequest};
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
@@ -314,5 +314,13 @@ impl AuthService {
 
     pub async fn is_two_factor_required_for_application(&self, application_id: &str) -> Result<bool, Box<dyn std::error::Error>> {
         self.two_factor_service.is_two_factor_required_for_application(application_id).await
+    }
+
+    pub async fn create_2fa_challenge(&self, user_id: &str) -> Result<crate::services::two_factor_service::TwoFactorChallengeResponse, Box<dyn std::error::Error>> {
+        self.two_factor_service.create_2fa_challenge(user_id).await
+    }
+
+    pub async fn validate_2fa_challenge(&self, request: TwoFactorChallengeValidationRequest) -> Result<bool, Box<dyn std::error::Error>> {
+        self.two_factor_service.validate_2fa_challenge(request).await
     }
 }

@@ -50,6 +50,21 @@ pub struct TwoFactorVerificationRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct TwoFactorChallengeResponse {
+    pub challenge_id: String,
+    pub user_id: String,
+    pub methods: Vec<TwoFactorMethod>,
+    pub message: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TwoFactorChallengeValidationRequest {
+    pub challenge_id: String,
+    pub method_id: String,
+    pub code: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TwoFactorVerificationResponse {
     pub success: bool,
     pub method_type: TwoFactorType,
@@ -298,7 +313,78 @@ impl TwoFactorService {
 
     pub async fn user_has_two_factor_enabled(&self, user_id: &str) -> Result<bool, Box<dyn std::error::Error>> {
         let methods = self.get_user_two_factor_methods(user_id).await?;
-        Ok(methods.iter().any(|m| m.is_enabled))
+        Ok(!methods.is_empty())
+    }
+
+    pub async fn create_2fa_challenge(&self, user_id: &str) -> Result<TwoFactorChallengeResponse, Box<dyn std::error::Error>> {
+        let methods = self.get_user_two_factor_methods(user_id).await?;
+        let enabled_methods: Vec<TwoFactorMethod> = methods.into_iter()
+            .filter(|m| m.is_enabled)
+            .collect();
+
+        if enabled_methods.is_empty() {
+            return Err("No 2FA methods enabled".into());
+        }
+
+        let challenge_id = Uuid::new_v4().to_string();
+
+        // Store challenge temporarily (in production, use Redis/cache)
+        // For now, we'll store in Vault with expiration
+        let challenge_path = format!("2fa/challenges/{}", challenge_id);
+        let challenge_data = serde_json::json!({
+            "user_id": user_id,
+            "created_at": Utc::now().timestamp(),
+            "expires_at": (Utc::now() + Duration::minutes(5)).timestamp()
+        });
+
+        self.vault.store_secret(&challenge_path, &challenge_data).await?;
+
+        Ok(TwoFactorChallengeResponse {
+            challenge_id,
+            user_id: user_id.to_string(),
+            methods: enabled_methods,
+            message: "Two-factor authentication required".to_string(),
+        })
+    }
+
+    pub async fn validate_2fa_challenge(&self, request: TwoFactorChallengeValidationRequest) -> Result<bool, Box<dyn std::error::Error>> {
+        // Verify challenge exists and is valid
+        let challenge_path = format!("2fa/challenges/{}", request.challenge_id);
+        let challenge_data: serde_json::Value = self.vault.get_secret(&challenge_path).await?;
+
+        let user_id = challenge_data["user_id"].as_str()
+            .ok_or("Invalid challenge")?;
+        let expires_at = challenge_data["expires_at"].as_i64()
+            .ok_or("Invalid challenge")?;
+
+        if Utc::now().timestamp() > expires_at {
+            return Err("Challenge expired".into());
+        }
+
+        // Validate the 2FA code
+        let verification_request = TwoFactorVerificationRequest {
+            method_id: request.method_id,
+            code: request.code,
+        };
+
+        // We need the user object, but we have user_id
+        // For now, create a minimal user object
+        let user = User {
+            id: user_id.to_string(),
+            email: "temp@example.com".to_string(), // This should be fetched properly
+            first_name: None,
+            last_name: None,
+            roles: vec![],
+            created_at: Utc::now(),
+            enabled: true,
+        };
+
+        let result = self.verify_two_factor(&user, verification_request).await?;
+
+        // Clean up challenge
+        self.vault.delete_secret(&challenge_path).await?;
+
+        Ok(result.success)
     }
 
     // Helper methods

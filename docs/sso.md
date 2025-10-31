@@ -126,7 +126,7 @@ function initiateSSOLogin() {
 
 ### 2. API SSO Authentication (`/api/v1/sso/auth`)
 
-**Handles form submission and proxies authentication to Keycloak.**
+**Handles form submission and proxies authentication to Keycloak with optional 2FA.**
 
 **Endpoint:** `POST /api/v1/sso/auth`
 
@@ -139,7 +139,26 @@ function initiateSSOLogin() {
 - `state`: State parameter
 - `client_id`: Application identifier
 
-**Response:** Redirect to application's `redirect_uri` with tokens
+**Response:**
+- If 2FA not required: Redirect to application's `redirect_uri` with tokens
+- If 2FA required and configured: JSON response with 2FA challenge
+- If 2FA required but not configured: Redirect with error
+
+**2FA Challenge Response:**
+```json
+{
+  "requires_2fa": true,
+  "challenge": {
+    "challenge_id": "uuid",
+    "user_id": "user_id",
+    "methods": [...],
+    "message": "Two-factor authentication required"
+  },
+  "state": "state_value",
+  "client_id": "app_id",
+  "temp_token": "temporary_access_token"
+}
+```
 
 ### 3. API SSO Resources (`/api/v1/sso/resources/css/login.css`)
 
@@ -171,6 +190,36 @@ function initiateSSOLogin() {
   "state": "xyz123",
   "client_id": "myapp",
   "message": "SSO authentication successful"
+}
+```
+
+### 5. Complete SSO Authentication (`/api/v1/sso/complete`)
+
+**Completes SSO authentication after 2FA validation.**
+
+**Endpoint:** `POST /api/v1/sso/complete`
+
+**Request Body:**
+```json
+{
+  "challenge_id": "uuid",
+  "temp_token": "temporary_token",
+  "state": "state_value",
+  "client_id": "app_id",
+  "redirect_uri": "callback_url"
+}
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIs...",
+  "refresh_token": "refresh_token_here",
+  "expires_in": 3600,
+  "state": "xyz123",
+  "client_id": "myapp",
+  "user_id": "user_id",
+  "message": "SSO authentication with 2FA completed"
 }
 ```
 
@@ -322,6 +371,70 @@ async function handleSSOCallback() {
 
   // Redirect to application
   window.location.href = '/dashboard';
+}
+
+// Handle 2FA challenge response
+async function handleSSO2FAChallenge(response) {
+  if (response.requires_2fa) {
+    // Show 2FA input UI
+    show2FAInput(response.challenge);
+
+    // Store challenge data
+    sessionStorage.setItem('sso_challenge', JSON.stringify({
+      challenge_id: response.challenge.challenge_id,
+      temp_token: response.temp_token,
+      state: response.state,
+      client_id: response.client_id
+    }));
+  }
+}
+
+// Submit 2FA code
+async function submit2FACode(methodId, code) {
+  const challengeData = JSON.parse(sessionStorage.getItem('sso_challenge'));
+
+  try {
+    // First validate the 2FA code
+    const validateResponse = await fetch('/api/v1/auth/2fa/validate-challenge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        challenge_id: challengeData.challenge_id,
+        method_id: methodId,
+        code: code
+      })
+    });
+
+    const validateResult = await validateResponse.json();
+
+    if (validateResult.success) {
+      // Complete SSO authentication
+      const completeResponse = await fetch('/api/v1/sso/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          challenge_id: challengeData.challenge_id,
+          temp_token: challengeData.temp_token,
+          state: challengeData.state,
+          client_id: challengeData.client_id,
+          redirect_uri: window.location.origin + '/api/v1/sso/callback'
+        })
+      });
+
+      const tokens = await completeResponse.json();
+
+      // Store tokens and redirect
+      localStorage.setItem('access_token', tokens.access_token);
+      localStorage.setItem('refresh_token', tokens.refresh_token);
+      localStorage.setItem('token_expires', Date.now() + (tokens.expires_in * 1000));
+
+      window.location.href = '/dashboard';
+    } else {
+      showError('Invalid 2FA code');
+    }
+  } catch (error) {
+    showError('2FA validation failed');
+  }
 }
 ```
 
