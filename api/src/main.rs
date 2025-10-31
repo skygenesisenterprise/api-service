@@ -148,13 +148,14 @@ async fn main() {
      /// @THREAT Unauthorized remote access or command execution.
      /// @COUNTERMEASURE Integrate with existing auth and audit all SSH operations.
      let ssh_config = crate::ssh::SshConfig {
-         host: std::env::var("SSH_HOST").unwrap_or_else(|_| "127.0.0.1".to_string()),
+         host: std::env::var("SSH_HOST").unwrap_or_else(|_| "0.0.0.0".to_string()),
          port: std::env::var("SSH_PORT")
-             .unwrap_or_else(|_| "22".to_string())
+             .unwrap_or_else(|_| "2222".to_string())
              .parse::<u16>()
              .expect("SSH_PORT must be a valid port number"),
+         domain: std::env::var("SSH_DOMAIN").unwrap_or_else(|_| "skygenesisenterprise.com".to_string()),
          max_connections: std::env::var("SSH_MAX_CONNECTIONS")
-             .unwrap_or_else(|_| "100".to_string())
+             .unwrap_or_else(|_| "50".to_string())
              .parse::<usize>()
              .expect("SSH_MAX_CONNECTIONS must be a valid number"),
          idle_timeout: 300, // 5 minutes
