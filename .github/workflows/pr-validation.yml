@@ -3,7 +3,7 @@ name: PR Validation
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    branches: [ main, develop ]
+    branches: [ master, develop ]
 
 permissions:
   contents: read
@@ -43,7 +43,7 @@ jobs:
     - name: Check PR size
       uses: codacy/git-version@2.7.1
       with:
-        release-branch: main
+        release-branch: master
         dev-branch: develop
 
     - name: Check for merge conflicts

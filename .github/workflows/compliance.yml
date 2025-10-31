@@ -2,7 +2,7 @@ name: Compliance
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   schedule:
     - cron: '0 9 1 * *'  # Monthly
   workflow_dispatch:

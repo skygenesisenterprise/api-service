@@ -116,7 +116,7 @@ jobs:
     - name: Check branch protection
       run: |
         # Verify branch protection rules
-        protection=$(gh api repos/${{ github.repository }}/branches/main/protection)
+        protection=$(gh api repos/${{ github.repository }}/branches/master/protection)
         echo "$protection" | jq '.required_status_checks, .restrictions, .required_pull_request_reviews' > branch-protection.json
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
