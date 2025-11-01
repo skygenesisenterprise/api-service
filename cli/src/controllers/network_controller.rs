@@ -41,7 +41,8 @@ pub enum NetworkCommands {
 /// @MISSION Process network-related CLI commands via SSH API.
 /// @THREAT Unauthorized network configuration changes.
 /// @COUNTERMEASURE Validate permissions and audit all operations.
-pub async fn handle_network(args: NetworkArgs, client: &SshApiClient) -> Result<()> {
+pub async fn handle_network(args: NetworkArgs, state: &crate::core::AppState) -> Result<()> {
+    let client = &state.client;
     match args.command {
         NetworkCommands::Status => {
             let status = client.get_network_status()?;

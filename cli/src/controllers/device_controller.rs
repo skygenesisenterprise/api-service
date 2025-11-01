@@ -229,7 +229,8 @@ struct DeviceMetric {
 /// @MISSION Process device-related CLI commands via REST API.
 /// @THREAT Unauthorized device operations.
 /// @COUNTERMEASURE Validate permissions and audit all operations.
-pub async fn handle_device(args: DeviceArgs, client: &SshApiClient) -> Result<()> {
+pub async fn handle_device(args: DeviceArgs, state: &crate::core::AppState) -> Result<()> {
+    let client = &state.client;
     match args.command {
         DeviceCommands::List { status, device_type, page, per_page } => {
             list_devices(client, status, device_type, page, per_page).await
@@ -451,7 +452,7 @@ async fn create_device(
     credentials_ref: Option<String>,
     tags: Option<String>,
 ) -> Result<()> {
-    let tags_vec = tags.map(|t| t.split(',').map(|s| s.trim().to_string()).collect()).unwrap_or_default();
+    let tags_vec: Vec<String> = tags.map(|t| t.split(',').map(|s| s.trim().to_string()).collect()).unwrap_or_default();
 
     let payload = serde_json::json!({
         "name": name,
@@ -500,7 +501,7 @@ async fn update_device(
     credentials_ref: Option<String>,
     tags: Option<String>,
 ) -> Result<()> {
-    let tags_vec = tags.map(|t| t.split(',').map(|s| s.trim().to_string()).collect());
+    let tags_vec: Option<Vec<String>> = tags.map(|t| t.split(',').map(|s| s.trim().to_string()).collect());
 
     let payload = serde_json::json!({
         "name": name,

@@ -227,14 +227,21 @@ impl SshApiClient {
     /// [HTTP GET] Perform HTTP GET request
     /// @MISSION Enable REST API calls for device management
     pub async fn get(&self, path: &str) -> Result<String> {
-        // For now, use a simple HTTP client. In production, this should use the same
-        // authentication and security as the SSH-based calls
-        let client = reqwest::Client::new();
-        let url = format!("http://{}:8080{}", self.host, path); // Assuming API runs on port 8080
+        self.get_with_auth(path, "").await
+    }
 
-        let response = client
-            .get(&url)
-            .header("Authorization", "Bearer dummy-token") // TODO: Use proper auth
+    /// [HTTP GET WITH AUTH] Perform authenticated HTTP GET request
+    pub async fn get_with_auth(&self, path: &str, token: &str) -> Result<String> {
+        let client = reqwest::Client::new();
+        let url = format!("http://{}:8080{}", self.host, path);
+
+        let mut request = client.get(&url);
+
+        if !token.is_empty() {
+            request = request.header("Authorization", format!("Bearer {}", token));
+        }
+
+        let response = request
             .send()
             .await
             .map_err(|e| anyhow!("HTTP GET failed: {}", e))?;
@@ -251,14 +258,24 @@ impl SshApiClient {
 
     /// [HTTP POST] Perform HTTP POST request
     pub async fn post(&self, path: &str, body: &str) -> Result<String> {
+        self.post_with_auth(path, body, "").await
+    }
+
+    /// [HTTP POST WITH AUTH] Perform authenticated HTTP POST request
+    pub async fn post_with_auth(&self, path: &str, body: &str, token: &str) -> Result<String> {
         let client = reqwest::Client::new();
         let url = format!("http://{}:8080{}", self.host, path);
 
-        let response = client
+        let mut request = client
             .post(&url)
-            .header("Authorization", "Bearer dummy-token") // TODO: Use proper auth
             .header("Content-Type", "application/json")
-            .body(body.to_string())
+            .body(body.to_string());
+
+        if !token.is_empty() {
+            request = request.header("Authorization", format!("Bearer {}", token));
+        }
+
+        let response = request
             .send()
             .await
             .map_err(|e| anyhow!("HTTP POST failed: {}", e))?;
@@ -275,14 +292,24 @@ impl SshApiClient {
 
     /// [HTTP PUT] Perform HTTP PUT request
     pub async fn put(&self, path: &str, body: &str) -> Result<String> {
+        self.put_with_auth(path, body, "").await
+    }
+
+    /// [HTTP PUT WITH AUTH] Perform authenticated HTTP PUT request
+    pub async fn put_with_auth(&self, path: &str, body: &str, token: &str) -> Result<String> {
         let client = reqwest::Client::new();
         let url = format!("http://{}:8080{}", self.host, path);
 
-        let response = client
+        let mut request = client
             .put(&url)
-            .header("Authorization", "Bearer dummy-token") // TODO: Use proper auth
             .header("Content-Type", "application/json")
-            .body(body.to_string())
+            .body(body.to_string());
+
+        if !token.is_empty() {
+            request = request.header("Authorization", format!("Bearer {}", token));
+        }
+
+        let response = request
             .send()
             .await
             .map_err(|e| anyhow!("HTTP PUT failed: {}", e))?;
@@ -299,12 +326,21 @@ impl SshApiClient {
 
     /// [HTTP DELETE] Perform HTTP DELETE request
     pub async fn delete(&self, path: &str) -> Result<String> {
+        self.delete_with_auth(path, "").await
+    }
+
+    /// [HTTP DELETE WITH AUTH] Perform authenticated HTTP DELETE request
+    pub async fn delete_with_auth(&self, path: &str, token: &str) -> Result<String> {
         let client = reqwest::Client::new();
         let url = format!("http://{}:8080{}", self.host, path);
 
-        let response = client
-            .delete(&url)
-            .header("Authorization", "Bearer dummy-token") // TODO: Use proper auth
+        let mut request = client.delete(&url);
+
+        if !token.is_empty() {
+            request = request.header("Authorization", format!("Bearer {}", token));
+        }
+
+        let response = request
             .send()
             .await
             .map_err(|e| anyhow!("HTTP DELETE failed: {}", e))?;

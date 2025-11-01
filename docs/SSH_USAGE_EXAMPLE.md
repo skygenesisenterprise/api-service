@@ -126,7 +126,7 @@ admin@sge:/$
 List managed devices with optional filtering.
 
 ```bash
-devices list                    # List all devices
+devices list                   # List all devices
 devices list online            # List only online devices
 devices list router            # List only routers
 ```

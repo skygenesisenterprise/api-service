@@ -893,12 +893,17 @@ name = "cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.21.7",
+ "chrono",
  "clap 4.5.51",
+ "dirs",
+ "lazy_static",
  "openidconnect",
  "opentelemetry 0.20.0",
  "opentelemetry-otlp 0.13.0",
  "ratatui",
  "reqwest 0.11.27",
+ "ring 0.17.14",
  "serde",
  "serde_json",
  "ssh2",
@@ -909,6 +914,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
+ "uuid 1.18.1",
  "vaultrs",
 ]
 

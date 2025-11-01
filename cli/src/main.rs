@@ -1,7 +1,10 @@
 mod config;
 mod core;
 mod controllers;
+mod queries;
+mod routes;
 mod services;
+mod utils;
 
 use clap::{Parser, Subcommand};
 use tracing::{info, Level};
@@ -17,6 +20,16 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Authentication commands
+    Auth(controllers::AuthArgs),
+    /// User management commands
+    User(controllers::UserArgs),
+    /// API key management commands
+    Keys(controllers::KeyArgs),
+    /// Security and cryptography commands
+    Security(controllers::SecurityArgs),
+    /// Organization management commands
+    Org(controllers::OrgArgs),
     /// Network management commands
     Network(controllers::NetworkArgs),
     /// VPN management commands
@@ -44,6 +57,11 @@ async fn main() -> anyhow::Result<()> {
     let state = core::AppState::new(config).await?;
 
     match cli.command {
+        Commands::Auth(args) => controllers::handle_auth(args, &state).await,
+        Commands::User(args) => controllers::handle_user(args, &state).await,
+        Commands::Keys(args) => controllers::handle_keys(args, &state).await,
+        Commands::Security(args) => controllers::handle_security(args, &state).await,
+        Commands::Org(args) => controllers::handle_org(args, &state).await,
         Commands::Network(args) => controllers::handle_network(args, &state).await,
         Commands::Vpn(args) => controllers::handle_vpn(args, &state).await,
         Commands::Mail(args) => controllers::handle_mail(args, &state).await,
