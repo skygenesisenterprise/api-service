@@ -198,7 +198,12 @@ spec:
 
 ## Monitoring Best Practices
 
-### 1. Endpoint Selection
+### 1. End
+        let call = VoipCall {
+            id: call_id.clone(),
+            caller_id: caller_id.to_string(),
+            participants,
+            call_type,point Selection
 - Use `/api/v1/health` for basic health checks
 - Use `/api/v1/metrics/prometheus` for detailed metrics
 - Use `/api/v1/status` for operational dashboards
