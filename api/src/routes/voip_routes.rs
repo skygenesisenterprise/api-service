@@ -132,6 +132,69 @@ pub fn voip_routes(
             voip_controller::join_room(vs, user_id, room_id).await
         });
 
+    // Extension management routes
+    let assign_extension = voip_base.clone()
+        .and(warp::path("extensions"))
+        .and(warp::path::end())
+        .and(warp::post())
+        .and(warp::body::json())
+        .and_then(|user_id: String, vs: Arc<VoipService>, req| async move {
+            voip_controller::assign_user_extension(vs, user_id, req).await
+        });
+
+    let get_extension = voip_base.clone()
+        .and(warp::path("extensions"))
+        .and(warp::path::end())
+        .and(warp::get())
+        .and_then(|user_id: String, vs: Arc<VoipService>| async move {
+            voip_controller::get_user_extension(vs, user_id).await
+        });
+
+    // Device management routes
+    let register_device = voip_base.clone()
+        .and(warp::path("devices"))
+        .and(warp::path::end())
+        .and(warp::post())
+        .and(warp::body::json())
+        .and_then(|user_id: String, vs: Arc<VoipService>, req| async move {
+            voip_controller::register_device(vs, user_id, req).await
+        });
+
+    let get_devices = voip_base.clone()
+        .and(warp::path("devices"))
+        .and(warp::path::end())
+        .and(warp::get())
+        .and_then(|user_id: String, vs: Arc<VoipService>| async move {
+            voip_controller::get_user_devices(vs, user_id).await
+        });
+
+    let update_device_presence = voip_base.clone()
+        .and(warp::path("devices" / String / "presence"))
+        .and(warp::path::end())
+        .and(warp::put())
+        .and(warp::body::json())
+        .and_then(|device_id: String, user_id: String, vs: Arc<VoipService>, is_online: bool| async move {
+            voip_controller::update_device_presence(vs, user_id, device_id, is_online).await
+        });
+
+    // Presence management routes
+    let update_presence = voip_base.clone()
+        .and(warp::path("presence"))
+        .and(warp::path::end())
+        .and(warp::put())
+        .and(warp::body::json())
+        .and_then(|user_id: String, vs: Arc<VoipService>, req| async move {
+            voip_controller::update_presence_status(vs, user_id, req).await
+        });
+
+    let get_presence = voip_base.clone()
+        .and(warp::path("presence"))
+        .and(warp::path::end())
+        .and(warp::get())
+        .and_then(|user_id: String, vs: Arc<VoipService>| async move {
+            voip_controller::get_presence_status(vs, user_id).await
+        });
+
     // Combine all routes
     calls
         .or(list_calls)
@@ -144,4 +207,11 @@ pub fn voip_routes(
         .or(list_rooms)
         .or(get_room)
         .or(join_room)
+        .or(assign_extension)
+        .or(get_extension)
+        .or(register_device)
+        .or(get_devices)
+        .or(update_device_presence)
+        .or(update_presence)
+        .or(get_presence)
 }

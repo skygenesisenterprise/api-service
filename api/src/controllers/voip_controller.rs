@@ -16,7 +16,7 @@
 // ============================================================================
 
 use warp::Reply;
-use crate::services::voip_service::{VoipService, VoipCall, VoipRoom, SignalingMessage, CallType, RoomSettings};
+use crate::services::voip_service::{VoipService, VoipCall, VoipRoom, SignalingMessage, CallType, RoomSettings, UserExtension, DeviceRegistration, PresenceStatus, EndpointType, PresenceState};
 use crate::core::asterisk_client::{AsteriskClient, AriChannel, AriBridge, AriEndpoint};
 use std::sync::Arc;
 use warp::http::StatusCode;
@@ -43,6 +43,29 @@ pub struct SignalingRequest {
     pub to_user: String,
     pub message_type: String,
     pub payload: serde_json::Value,
+}
+
+/// [ASSIGN EXTENSION REQUEST] Assign Extension to User
+#[derive(Deserialize, utoipa::ToSchema)]
+pub struct AssignExtensionRequest {
+    pub extension: String,
+    pub display_name: Option<String>,
+}
+
+/// [REGISTER DEVICE REQUEST] Register VoIP Device
+#[derive(Deserialize, utoipa::ToSchema)]
+pub struct RegisterDeviceRequest {
+    pub device_name: String,
+    pub endpoint_type: String,
+    pub endpoint_uri: String,
+}
+
+/// [UPDATE PRESENCE REQUEST] Update User Presence
+#[derive(Deserialize, utoipa::ToSchema)]
+pub struct UpdatePresenceRequest {
+    pub status: String,
+    pub status_message: Option<String>,
+    pub current_device: Option<String>,
 }
 
 /// [ERROR RESPONSE] Standard Error Response
@@ -671,6 +694,254 @@ pub async fn asterisk_health_check(
             };
             let response = warp::reply::json(&error_response);
             Ok(warp::reply::with_status(response, StatusCode::INTERNAL_SERVER_ERROR))
+        }
+    }
+}
+
+/// [ASSIGN USER EXTENSION] Assign extension number to user
+/// @MISSION Create user extension mapping for roaming access.
+/// @THREAT Extension conflicts, unauthorized assignment.
+/// @COUNTERMEASURE Validation and uniqueness checks.
+/// @AUDIT Extension assignments are logged.
+#[utoipa::path(
+    post,
+    path = "/api/v1/voip/extensions",
+    request_body = AssignExtensionRequest,
+    responses(
+        (status = 201, description = "Extension assigned successfully", body = UserExtension),
+        (status = 400, description = "Invalid request", body = ErrorResponse),
+        (status = 409, description = "Extension already assigned", body = ErrorResponse)
+    )
+)]
+pub async fn assign_user_extension(
+    voip_service: Arc<VoipService>,
+    user_id: String,
+    req: AssignExtensionRequest,
+) -> Result<impl Reply, warp::Rejection> {
+    match voip_service.assign_user_extension(&user_id, &req.extension, req.display_name).await {
+        Ok(extension) => {
+            let response = warp::reply::json(&extension);
+            Ok(warp::reply::with_status(response, StatusCode::CREATED))
+        }
+        Err(err) => {
+            let status = if err.contains("already assigned") {
+                StatusCode::CONFLICT
+            } else {
+                StatusCode::BAD_REQUEST
+            };
+            let error_response = ErrorResponse {
+                error: "Extension assignment failed".to_string(),
+                message: err,
+            };
+            let response = warp::reply::json(&error_response);
+            Ok(warp::reply::with_status(response, status))
+        }
+    }
+}
+
+/// [GET USER EXTENSION] Retrieve user's extension information
+/// @MISSION Get current extension assignment for user.
+#[utoipa::path(
+    get,
+    path = "/api/v1/voip/extensions",
+    responses(
+        (status = 200, description = "Extension retrieved", body = UserExtension),
+        (status = 404, description = "No extension assigned", body = ErrorResponse)
+    )
+)]
+pub async fn get_user_extension(
+    voip_service: Arc<VoipService>,
+    user_id: String,
+) -> Result<impl Reply, warp::Rejection> {
+    match voip_service.get_user_extension(&user_id).await {
+        Some(extension) => {
+            let response = warp::reply::json(&extension);
+            Ok(warp::reply::with_status(response, StatusCode::OK))
+        }
+        None => {
+            let error_response = ErrorResponse {
+                error: "No extension assigned".to_string(),
+                message: "User has no assigned extension".to_string(),
+            };
+            let response = warp::reply::json(&error_response);
+            Ok(warp::reply::with_status(response, StatusCode::NOT_FOUND))
+        }
+    }
+}
+
+/// [REGISTER DEVICE] Register a new VoIP device for user
+/// @MISSION Allow users to register multiple VoIP endpoints.
+/// @THREAT Device spoofing, unauthorized registration.
+/// @COUNTERMEASURE User validation and device verification.
+#[utoipa::path(
+    post,
+    path = "/api/v1/voip/devices",
+    request_body = RegisterDeviceRequest,
+    responses(
+        (status = 201, description = "Device registered successfully", body = DeviceRegistration),
+        (status = 400, description = "Invalid request", body = ErrorResponse),
+        (status = 409, description = "Device name already exists", body = ErrorResponse)
+    )
+)]
+pub async fn register_device(
+    voip_service: Arc<VoipService>,
+    user_id: String,
+    req: RegisterDeviceRequest,
+) -> Result<impl Reply, warp::Rejection> {
+    let endpoint_type = match req.endpoint_type.as_str() {
+        "sip" => EndpointType::Sip,
+        "webrtc" => EndpointType::Webrtc,
+        "mobile" => EndpointType::Mobile,
+        "desktop" => EndpointType::Desktop,
+        _ => {
+            let error_response = ErrorResponse {
+                error: "Invalid endpoint type".to_string(),
+                message: "Supported types: sip, webrtc, mobile, desktop".to_string(),
+            };
+            let response = warp::reply::json(&error_response);
+            return Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST));
+        }
+    };
+
+    match voip_service.register_device(&user_id, &req.device_name, endpoint_type, &req.endpoint_uri).await {
+        Ok(device) => {
+            let response = warp::reply::json(&device);
+            Ok(warp::reply::with_status(response, StatusCode::CREATED))
+        }
+        Err(err) => {
+            let status = if err.contains("already exists") {
+                StatusCode::CONFLICT
+            } else {
+                StatusCode::BAD_REQUEST
+            };
+            let error_response = ErrorResponse {
+                error: "Device registration failed".to_string(),
+                message: err,
+            };
+            let response = warp::reply::json(&error_response);
+            Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST))
+        }
+    }
+}
+
+/// [GET USER DEVICES] List all registered devices for user
+/// @MISSION Retrieve user's VoIP device registrations.
+#[utoipa::path(
+    get,
+    path = "/api/v1/voip/devices",
+    responses(
+        (status = 200, description = "Devices retrieved", body = Vec<DeviceRegistration>)
+    )
+)]
+pub async fn get_user_devices(
+    voip_service: Arc<VoipService>,
+    user_id: String,
+) -> Result<impl Reply, warp::Rejection> {
+    let devices = voip_service.get_user_devices(&user_id).await;
+    let response = warp::reply::json(&devices);
+    Ok(warp::reply::with_status(response, StatusCode::OK))
+}
+
+/// [UPDATE DEVICE PRESENCE] Update device online status
+/// @MISSION Track device connectivity for call routing.
+#[utoipa::path(
+    put,
+    path = "/api/v1/voip/devices/{device_id}/presence",
+    responses(
+        (status = 200, description = "Presence updated"),
+        (status = 404, description = "Device not found", body = ErrorResponse)
+    )
+)]
+pub async fn update_device_presence(
+    voip_service: Arc<VoipService>,
+    user_id: String,
+    device_id: String,
+    is_online: bool,
+) -> Result<impl Reply, warp::Rejection> {
+    match voip_service.update_device_presence(&user_id, &device_id, is_online).await {
+        Ok(()) => Ok(warp::reply::with_status("Presence updated", StatusCode::OK)),
+        Err(err) => {
+            let error_response = ErrorResponse {
+                error: "Presence update failed".to_string(),
+                message: err,
+            };
+            let response = warp::reply::json(&error_response);
+            Ok(warp::reply::with_status(response, StatusCode::NOT_FOUND))
+        }
+    }
+}
+
+/// [UPDATE PRESENCE STATUS] Set user presence status
+/// @MISSION Update user's availability for presence information.
+#[utoipa::path(
+    put,
+    path = "/api/v1/voip/presence",
+    request_body = UpdatePresenceRequest,
+    responses(
+        (status = 200, description = "Presence updated"),
+        (status = 400, description = "Invalid status", body = ErrorResponse)
+    )
+)]
+pub async fn update_presence_status(
+    voip_service: Arc<VoipService>,
+    user_id: String,
+    req: UpdatePresenceRequest,
+) -> Result<impl Reply, warp::Rejection> {
+    let status = match req.status.as_str() {
+        "online" => PresenceState::Online,
+        "away" => PresenceState::Away,
+        "busy" => PresenceState::Busy,
+        "offline" => PresenceState::Offline,
+        "do_not_disturb" => PresenceState::DoNotDisturb,
+        _ => {
+            let error_response = ErrorResponse {
+                error: "Invalid presence status".to_string(),
+                message: "Supported statuses: online, away, busy, offline, do_not_disturb".to_string(),
+            };
+            let response = warp::reply::json(&error_response);
+            return Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST));
+        }
+    };
+
+    match voip_service.update_presence_status(&user_id, status, req.status_message, req.current_device).await {
+        Ok(()) => Ok(warp::reply::with_status("Presence updated", StatusCode::OK)),
+        Err(err) => {
+            let error_response = ErrorResponse {
+                error: "Presence update failed".to_string(),
+                message: err,
+            };
+            let response = warp::reply::json(&error_response);
+            Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST))
+        }
+    }
+}
+
+/// [GET PRESENCE STATUS] Get user's presence information
+/// @MISSION Retrieve current presence status.
+#[utoipa::path(
+    get,
+    path = "/api/v1/voip/presence",
+    responses(
+        (status = 200, description = "Presence retrieved", body = PresenceStatus),
+        (status = 404, description = "No presence set", body = ErrorResponse)
+    )
+)]
+pub async fn get_presence_status(
+    voip_service: Arc<VoipService>,
+    user_id: String,
+) -> Result<impl Reply, warp::Rejection> {
+    match voip_service.get_presence_status(&user_id).await {
+        Some(presence) => {
+            let response = warp::reply::json(&presence);
+            Ok(warp::reply::with_status(response, StatusCode::OK))
+        }
+        None => {
+            let error_response = ErrorResponse {
+                error: "No presence set".to_string(),
+                message: "User has not set presence status".to_string(),
+            };
+            let response = warp::reply::json(&error_response);
+            Ok(warp::reply::with_status(response, StatusCode::NOT_FOUND))
         }
     }
 }

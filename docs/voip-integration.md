@@ -538,6 +538,234 @@ curl -u sky-genesis:password http://localhost:8080/api/v1/voip/asterisk/health
 curl http://localhost:8080/api/v1/metrics/prometheus | grep voip
 ```
 
+## SSO Integration and Roaming Extensions
+
+### Single Sign-On (SSO)
+
+The VoIP API seamlessly integrates with Sky Genesis Enterprise's single sign-on system, allowing users to access VoIP features with their enterprise credentials from any workstation.
+
+#### SSO Integration Benefits
+- **Transparent Authentication**: Use the same credentials for all services
+- **Centralized Management**: VoIP rights administration via enterprise identity system
+- **Unified Audit**: VoIP access traceability in enterprise logs
+- **Enhanced Security**: Application of enterprise security policies
+
+#### SSO Authentication Flow
+```
+[User] → [Enterprise Portal] → [Keycloak SSO] → [SGE VoIP API]
+      │                      │                      │
+      └─ Credentials ────────┼─ JWT Token ──────────┼─ VoIP Access
+                             │                      │
+                             └─ Policies ──────────┼─ User Rights
+                                                    │
+                                                    └─ Persistent Session
+```
+
+### Roaming Extensions
+
+The roaming extensions system allows users to use their internal enterprise number from any registered device.
+
+#### Roaming Extensions Features
+- **Fixed Personal Number**: Each user keeps their internal number
+- **Multi-Device**: Registration of multiple devices per user
+- **Intelligent Routing**: Calls directed to the appropriate active device
+- **Unified Presence**: Availability status synchronized across devices
+
+#### User Extension Management
+
+##### Assign an Extension
+```http
+POST /api/v1/voip/extensions
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "extension": "1001",
+  "display_name": "John Doe"
+}
+```
+
+##### Retrieve Extension
+```http
+GET /api/v1/voip/extensions
+Authorization: Bearer <token>
+```
+
+#### Device Registration
+
+##### Register a New Device
+```http
+POST /api/v1/voip/devices
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "device_name": "Main Office",
+  "endpoint_type": "desktop",
+  "endpoint_uri": "SIP/1001@desktop-office"
+}
+```
+
+**Supported Device Types:**
+- `sip`: Traditional SIP phone
+- `webrtc`: WebRTC client (browser, web app)
+- `mobile`: Mobile application
+- `desktop`: Desktop application
+
+##### List Registered Devices
+```http
+GET /api/v1/voip/devices
+Authorization: Bearer <token>
+```
+
+##### Update Device Presence
+```http
+PUT /api/v1/voip/devices/{device_id}/presence
+Authorization: Bearer <token>
+Content-Type: application/json
+
+true  # or false to mark offline
+```
+
+#### Presence Management
+
+##### Update Presence Status
+```http
+PUT /api/v1/voip/presence
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "status": "online",
+  "status_message": "Available for calls",
+  "current_device": "desktop-office"
+}
+```
+
+**Supported Presence Statuses:**
+- `online`: Online and available
+- `away`: Away
+- `busy`: Busy
+- `offline`: Offline
+- `do_not_disturb`: Do not disturb
+
+##### Check Presence Status
+```http
+GET /api/v1/voip/presence
+Authorization: Bearer <token>
+```
+
+#### Intelligent Call Routing
+
+The system automatically determines the appropriate device to route incoming calls to:
+
+1. **Extension Verification**: User must have an assigned extension
+2. **Active Device Evaluation**: Search for online devices
+3. **Device Selection**: Choice based on presence and preferences
+4. **Fallback Routing**: Fallback to SIP/{extension} if no active device
+
+```rust
+// Endpoint resolution logic
+async fn resolve_user_endpoint(user_id: &str) -> Result<String, String> {
+    // 1. Check user extension
+    if let Some(extension) = get_user_extension(user_id).await {
+        if !extension.enabled {
+            return Err("Extension disabled".to_string());
+        }
+
+        // 2. Find active devices
+        let devices = get_user_devices(user_id).await;
+        let online_devices: Vec<&DeviceRegistration> = devices.iter()
+            .filter(|d| d.is_online)
+            .collect();
+
+        if online_devices.is_empty() {
+            // 3. Fallback to default SIP endpoint
+            return Ok(format!("SIP/{}", extension.extension));
+        }
+
+        // 4. Select first active device
+        Ok(online_devices[0].endpoint_uri.clone())
+    } else {
+        Err("No extension assigned".to_string())
+    }
+}
+```
+
+### Asterisk Configuration for Roaming Extensions
+
+#### Dynamic Peer Configuration
+```ini
+; /etc/asterisk/sip.conf
+[sky-genesis-dynamic]
+type = peer
+host = dynamic
+context = sky-genesis-voip
+disallow = all
+allow = ulaw,alaw,opus,g729
+dtmfmode = rfc4733
+qualify = yes
+```
+
+#### Stasis Application for Dynamic Routing
+```ini
+; /etc/asterisk/extensions.conf
+[sky-genesis-voip]
+exten => _X.,1,NoOp(Incoming call to ${EXTEN})
+exten => _X.,n,Set(USER_ID=${EXTEN})
+exten => _X.,n,AGI(resolve_endpoint.py,${USER_ID})
+exten => _X.,n,GotoIf($["${ENDPOINT}" = ""]?no_endpoint)
+exten => _X.,n,Dial(${ENDPOINT},30)
+exten => _X.,n,Hangup()
+
+exten => no_endpoint,1,Playback(user-not-registered)
+exten => no_endpoint,n,Hangup()
+```
+
+#### AGI Endpoint Resolution Script
+```python
+#!/usr/bin/env python3
+import sys
+import requests
+import os
+
+SGE_API_URL = os.getenv('SGE_API_URL', 'http://localhost:8080/api/v1')
+SGE_JWT_TOKEN = os.getenv('SGE_JWT_TOKEN')
+
+def resolve_endpoint(user_id):
+    headers = {'Authorization': f'Bearer {SGE_JWT_TOKEN}'}
+
+    # Get user extension
+    response = requests.get(f'{SGE_API_URL}/voip/extensions',
+                          headers=headers)
+    if response.status_code != 200:
+        return ""
+
+    extension_data = response.json()
+    if not extension_data.get('enabled', False):
+        return ""
+
+    # Get active devices
+    response = requests.get(f'{SGE_API_URL}/voip/devices',
+                          headers=headers)
+    if response.status_code != 200:
+        return f"SIP/{extension_data['extension']}"
+
+    devices = response.json()
+    online_devices = [d for d in devices if d['is_online']]
+
+    if not online_devices:
+        return f"SIP/{extension_data['extension']}"
+
+    # Return first active device
+    return online_devices[0]['endpoint_uri']
+
+# Main AGI logic
+user_id = sys.argv[1] if len(sys.argv) > 1 else ""
+endpoint = resolve_endpoint(user_id)
+print(f"SET VARIABLE ENDPOINT {endpoint}")
+```
+
 ## Security and Best Practices
 
 ### Encryption
@@ -549,11 +777,13 @@ curl http://localhost:8080/api/v1/metrics/prometheus | grep voip
 - **JWT Tokens**: For user authentication
 - **API Keys**: For service access
 - **Certificates**: Optional mutual authentication
+- **SSO Integration**: Single sign-on via Keycloak
 
 ### Resource Management
 - **Call Limits**: User-specific limit configuration
 - **Timeout**: Automatic cleanup of inactive calls
 - **Rate Limiting**: Protection against abuse
+- **Roaming Extensions**: Device and presence management
 
 ### Compliance
 - **GDPR**: Personal data management
