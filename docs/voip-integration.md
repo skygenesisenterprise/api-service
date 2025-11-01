@@ -1,66 +1,66 @@
-# Intégration VoIP avec l'API Sky Genesis Enterprise
+# VoIP Integration with Sky Genesis Enterprise API
 
-## Vue d'ensemble
+## Overview
 
-L'API Sky Genesis Enterprise fournit des fonctionnalités complètes de VoIP (Voice over IP) et de communication en temps réel, permettant l'intégration transparente avec des environnements PBX (Private Branch Exchange). Cette documentation explique comment utiliser et intégrer l'API pour des communications vocales, vidéo et de messagerie instantanée dans des infrastructures PBX.
+The Sky Genesis Enterprise API provides comprehensive VoIP (Voice over IP) and real-time communication features, enabling seamless integration with PBX (Private Branch Exchange) environments. This documentation explains how to use and integrate the API for voice, video, and instant messaging communications within PBX infrastructures.
 
 ## Architecture
 
-L'API implémente une architecture hybride combinant Asterisk PBX comme serveur officiel de gestion VoIP avec WebRTC pour la signalisation et le transport média côté client :
+The API implements a hybrid architecture combining Asterisk PBX as the official VoIP management server with WebRTC for client-side signaling and media transport:
 
-### Composants principaux
-- **Asterisk PBX** : Serveur officiel de gestion VoIP et PBX
-- **ARI (Asterisk REST Interface)** : Interface de contrôle programmatique
-- **WebRTC Signaling** : Signalisation temps réel via API REST
-- **WebSocket/XMPP** : Présence et messagerie instantanée
-- **SRTP/DTLS** : Chiffrement média de bout en bout
+### Main Components
+- **Asterisk PBX**: Official VoIP and PBX management server
+- **ARI (Asterisk REST Interface)**: Programmatic control interface
+- **WebRTC Signaling**: Real-time signaling via REST API
+- **WebSocket/XMPP**: Presence and instant messaging
+- **SRTP/DTLS**: End-to-end media encryption
 
-### Flux d'architecture
+### Architecture Flow
 ```
-[Client WebRTC] <─── Signaling ───> [SGE API] <─── ARI ───> [Asterisk PBX]
+[WebRTC Client] <─── Signaling ───> [SGE API] <─── ARI ───> [Asterisk PBX]
        │                                        │
        └────────────── RTP/SRTP ────────────────┘
 ```
 
-### Fonctionnalités supportées
-- **Appels SIP natifs** : Gestion complète via Asterisk
-- **Conférences** : Bridges Asterisk pour salles multi-participants
-- **Trunks SIP** : Connexion à opérateurs et PBX externes
-- **Extensions** : Gestion des utilisateurs et appareils
-- **Dialplan** : Routage intelligent des appels
-- **Enregistrement** : Capture audio des communications
-- **Monitoring** : Métriques temps réel et supervision
+### Supported Features
+- **Native SIP Calls**: Full management via Asterisk
+- **Conferences**: Asterisk bridges for multi-participant rooms
+- **SIP Trunks**: Connection to operators and external PBXs
+- **Extensions**: User and device management
+- **Dialplan**: Intelligent call routing
+- **Recording**: Audio capture of communications
+- **Monitoring**: Real-time metrics and supervision
 
-## Prérequis
+## Prerequisites
 
-### Authentification
-Toutes les requêtes VoIP nécessitent une authentification via JWT ou API key :
+### Authentication
+All VoIP requests require authentication via JWT or API key:
 
 ```bash
 Authorization: Bearer <jwt_token>
-# ou
+# or
 X-API-Key: <api_key>
 ```
 
-### Environnement Asterisk PBX
-- **Asterisk 18+** avec module ARI activé
-- **Configuration ARI** dans `/etc/asterisk/ari.conf`
-- **Certificats TLS** pour communications sécurisées
-- **Ports réseau** : 5060 (SIP), 8088 (ARI), plage UDP 10000-20000 (RTP)
-- **Module chan_sip ou chan_pjsip** configuré
-- **Application Stasis** définie pour l'intégration SGE
+### Asterisk PBX Environment
+- **Asterisk 18+** with ARI module enabled
+- **ARI Configuration** in `/etc/asterisk/ari.conf`
+- **TLS Certificates** for secure communications
+- **Network Ports**: 5060 (SIP), 8088 (ARI), UDP range 10000-20000 (RTP)
+- **chan_sip or chan_pjsip module** configured
+- **Stasis Application** defined for SGE integration
 
-### Dépendances Asterisk
-- **Asterisk** : Serveur PBX officiel
-- **ARI (Asterisk REST Interface)** : API de contrôle
-- **WebRTC** : Transport média côté client
-- **WebSocket** : Signalisation temps réel
-- **SRTP/DTLS** : Chiffrement média
-- **SIP/PJSIP** : Protocoles de signalisation
+### Asterisk Dependencies
+- **Asterisk**: Official PBX server
+- **ARI (Asterisk REST Interface)**: Control API
+- **WebRTC**: Client-side media transport
+- **WebSocket**: Real-time signaling
+- **SRTP/DTLS**: Media encryption
+- **SIP/PJSIP**: Signaling protocols
 
-## Configuration Asterisk
+## Asterisk Configuration
 
-### Configuration ARI (`/etc/asterisk/ari.conf`)
+### ARI Configuration (`/etc/asterisk/ari.conf`)
 ```ini
 [general]
 enabled = yes
@@ -70,18 +70,18 @@ tlsenable = yes
 tlscertfile = /etc/asterisk/keys/asterisk.crt
 tlsprivatekey = /etc/asterisk/keys/asterisk.key
 
-[sky-genesis]
+[skygenesisenterprise]
 type = user
 read_only = no
 password = your_secure_password
 ```
 
-### Configuration SIP (`/etc/asterisk/sip.conf` ou `pjsip.conf`)
+### SIP Configuration (`/etc/asterisk/sip.conf` or `pjsip.conf`)
 ```ini
-[sky-genesis-trunk]
+[skygenesisenterprise-trunk]
 type = peer
 host = dynamic
-context = sky-genesis-voip
+context = skygenesisenterprise-voip
 disallow = all
 allow = ulaw,alaw,g729
 dtmfmode = rfc4733
@@ -96,27 +96,27 @@ disallow = all
 allow = ulaw,alaw,opus
 ```
 
-### Application Stasis (`/etc/asterisk/extensions.conf`)
+### Stasis Application (`/etc/asterisk/extensions.conf`)
 ```ini
-[sky-genesis-voip]
-exten => _X.,1,NoOp(Appel SGE: ${EXTEN})
-exten => _X.,n,Stasis(sky-genesis-voip)
+[skygenesisenterprise-voip]
+exten => _X.,1,NoOp(SGE Call: ${EXTEN})
+exten => _X.,n,Stasis(skygenesisenterprise-voip)
 exten => _X.,n,Hangup()
 ```
 
-### Variables d'environnement API
+### API Environment Variables
 ```bash
 ASTERISK_ARI_URL=http://localhost:8088/ari
-ASTERISK_ARI_USERNAME=sky-genesis
+ASTERISK_ARI_USERNAME=skygenesisenterprise
 ASTERISK_ARI_PASSWORD=your_secure_password
-ASTERISK_ARI_APP=sky-genesis-voip
+ASTERISK_ARI_APP=skygenesisenterprise-voip
 ```
 
-## Endpoints API VoIP
+## VoIP API Endpoints
 
-### Gestion des appels Asterisk
+### Asterisk Call Management
 
-#### Initier un appel via Asterisk
+#### Initiate a call via Asterisk
 ```http
 POST /api/v1/voip/calls
 Authorization: Bearer <token>
@@ -128,50 +128,50 @@ Content-Type: application/json
 }
 ```
 
-**Types d'appel supportés :**
-- `audio` : Appel vocal via SIP/RTP
-- `video` : Appel avec vidéo (WebRTC)
-- `screen` : Partage d'écran (WebRTC)
+**Supported call types:**
+- `audio`: Voice call via SIP/RTP
+- `video`: Call with video (WebRTC)
+- `screen`: Screen sharing (WebRTC)
 
-**Formats de participants :**
-- `SIP/{extension}` : Extension SIP locale
-- `PJSIP/{endpoint}` : Endpoint PJSIP
-- `{tech}/{resource}` : Format Asterisk générique
+**Participant formats:**
+- `SIP/{extension}`: Local SIP extension
+- `PJSIP/{endpoint}`: PJSIP endpoint
+- `{tech}/{resource}`: Generic Asterisk format
 
-#### Accepter un appel
+#### Accept a call
 ```http
 POST /api/v1/voip/calls/{call_id}/accept
 Authorization: Bearer <token>
 ```
 
-#### Terminer un appel
+#### End a call
 ```http
 POST /api/v1/voip/calls/{call_id}/end
 Authorization: Bearer <token>
 ```
 
-#### Obtenir les informations d'un appel
+#### Get call information
 ```http
 GET /api/v1/voip/calls/{call_id}
 Authorization: Bearer <token>
 ```
 
-#### Lister les appels actifs
+#### List active calls
 ```http
 GET /api/v1/voip/calls
 Authorization: Bearer <token>
 ```
 
-### Gestion des salles de conférence Asterisk
+### Asterisk Conference Room Management
 
-#### Créer une salle (Bridge Asterisk)
+#### Create a room (Asterisk Bridge)
 ```http
 POST /api/v1/voip/rooms
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "name": "Réunion équipe",
+  "name": "Team Meeting",
   "max_participants": 10,
   "settings": {
     "allow_recording": true,
@@ -182,33 +182,33 @@ Content-Type: application/json
 }
 ```
 
-**Types de bridge Asterisk :**
-- `mixing` : Conférence audio standard
-- `holding` : File d'attente
-- `dtmf_events` : Détection DTMF
-- `proxy_media` : Proxy média avancé
+**Asterisk bridge types:**
+- `mixing`: Standard audio conference
+- `holding`: Holding queue
+- `dtmf_events`: DTMF detection
+- `proxy_media`: Advanced media proxy
 
-#### Rejoindre une salle
+#### Join a room
 ```http
 POST /api/v1/voip/rooms/{room_id}/join
 Authorization: Bearer <token>
 ```
 
-#### Obtenir les informations d'une salle
+#### Get room information
 ```http
 GET /api/v1/voip/rooms/{room_id}
 Authorization: Bearer <token>
 ```
 
-#### Lister les salles actives
+#### List active rooms
 ```http
 GET /api/v1/voip/rooms
 Authorization: Bearer <token>
 ```
 
-### Signaling WebRTC
+### WebRTC Signaling
 
-#### Envoyer un message de signaling
+#### Send a signaling message
 ```http
 POST /api/v1/voip/calls/{call_id}/signaling
 Authorization: Bearer <token>
@@ -224,25 +224,25 @@ Content-Type: application/json
 }
 ```
 
-**Types de messages supportés :**
-- `offer` : Offre SDP WebRTC
-- `answer` : Réponse SDP WebRTC
-- `ice_candidate` : Candidat ICE
-- `hangup` : Raccrocher
-- `mute` / `unmute` : Contrôle audio
+**Supported message types:**
+- `offer`: WebRTC SDP offer
+- `answer`: WebRTC SDP answer
+- `ice_candidate`: ICE candidate
+- `hangup`: Hang up
+- `mute` / `unmute`: Audio control
 
-#### Récupérer les messages de signaling
+#### Retrieve signaling messages
 ```http
 GET /api/v1/voip/calls/{call_id}/signaling
 Authorization: Bearer <token>
 ```
 
-## Intégration avec Asterisk PBX
+## Integration with Asterisk PBX
 
-### Architecture d'intégration
+### Integration Architecture
 
 ```
-[Asterisk PBX] <─── ARI ───> [SGE API] <─── WebRTC ───> [Clients Web/Mobile]
+[Asterisk PBX] <─── ARI ───> [SGE API] <─── WebRTC ───> [Web/Mobile Clients]
        │                           │
        ├─ SIP Trunks ──────────────┘
        ├─ Extensions ──────────────┘
@@ -250,69 +250,69 @@ Authorization: Bearer <token>
        └─ Call Recordings ─────────┘
 ```
 
-### Flux d'appel typique
-1. **Client** → **SGE API** : Demande d'appel
-2. **SGE API** → **Asterisk ARI** : Création de channel
-3. **Asterisk** → **Client** : Connexion SIP/WebRTC
-4. **Média** : Flux RTP/SRTP direct ou via Asterisk
+### Typical Call Flow
+1. **Client** → **SGE API**: Call request
+2. **SGE API** → **Asterisk ARI**: Channel creation
+3. **Asterisk** → **Client**: SIP/WebRTC connection
+4. **Media**: Direct RTP/SRTP stream or via Asterisk
 
-### Configuration Asterisk avancée
+### Advanced Asterisk Configuration
 
-#### Extensions avec Stasis (`/etc/asterisk/extensions.conf`)
+#### Extensions with Stasis (`/etc/asterisk/extensions.conf`)
 ```ini
 [sky-genesis-voip]
-; Appel entrant vers extension
-exten => _X.,1,NoOp(Appel SGE vers ${EXTEN})
+; Incoming call to extension
+exten => _X.,1,NoOp(SGE Call to ${EXTEN})
 exten => _X.,n,Set(SGE_USER_ID=${EXTEN})
 exten => _X.,n,Stasis(sky-genesis-voip)
 exten => _X.,n,Hangup()
 
-; Conférence
-exten => _9XXX,1,NoOp(Conférence ${EXTEN})
+; Conference
+exten => _9XXX,1,NoOp(Conference ${EXTEN})
 exten => _9XXX,1,Set(CONF_ID=${EXTEN:1})
 exten => _9XXX,n,Stasis(sky-genesis-conference,${CONF_ID})
 exten => _9XXX,n,Hangup()
 
-; Appel sortant
-exten => _0X.,1,NoOp(Appel sortant vers ${EXTEN:1})
+; Outgoing call
+exten => _0X.,1,NoOp(Outgoing call to ${EXTEN:1})
 exten => _0X.,n,Set(DEST_NUM=${EXTEN:1})
 exten => _0X.,n,Stasis(sky-genesis-outbound,${DEST_NUM})
 exten => _0X.,n,Hangup()
 ```
 
-#### Configuration PJSIP (`/etc/asterisk/pjsip.conf`)
+#### PJSIP Configuration (`/etc/asterisk/pjsip.conf`)
 ```ini
 [transport-udp]
 type = transport
 protocol = udp
 bind = 0.0.0.0:5060
 
-[sky-genesis-endpoint]
+[skygenesisenterprise-endpoint]
 type = endpoint
-context = sky-genesis-voip
+context = skygenesisenterprise-voip
 disallow = all
 allow = ulaw,alaw,opus,g729
-auth = sky-genesis-auth
-aors = sky-genesis-aor
+auth = skygenesisenterprise-auth
+aors = skygenesisenterprise-aor
 direct_media = no
 rtp_timeout = 30
 send_pai = yes
 
-[sky-genesis-auth]
+[skygenesisenterprise-auth]
 type = auth
 auth_type = userpass
 password = secure_password
-username = sky-genesis
+username = skygenesisenterprise
 
-[sky-genesis-aor]
+[skygenesisenterprise-aor]
 type = aor
 max_contacts = 1
 remove_existing = yes
 ```
 
-### Script d'intégration AGI (dialplan)
+### AGI Integration Script (dialplan)
 
-#### Script AGI Python (`/var/lib/asterisk/agi-bin/sge-voip-integration.py`)
+#### AGI Python Script (`/var/lib/asterisk/agi-bin/sge-voip-integration.py`)
 ```python
 #!/usr/bin/env python3
 import sys
@@ -325,7 +325,7 @@ SGE_API_URL = os.getenv('SGE_API_URL', 'http://localhost:8080/api/v1/voip')
 SGE_JWT_TOKEN = os.getenv('SGE_JWT_TOKEN')
 
 def main():
-    # Récupérer les arguments AGI
+    # Retrieve AGI arguments
     agi_env = {}
     for line in sys.stdin:
         line = line.strip()
@@ -338,7 +338,7 @@ def main():
     extension = agi_env.get('agi_extension')
     caller_id = agi_env.get('agi_callerid')
 
-    # Créer l'appel via SGE API
+    # Create call via SGE API
     headers = {
         'Content-Type': 'application/json',
         'Authorization': f'Bearer {SGE_JWT_TOKEN}'
@@ -363,7 +363,7 @@ def main():
 
         if response.status_code == 201:
             call_info = response.json()
-            # Retourner l'ID d'appel à Asterisk
+            # Return call ID to Asterisk
             print(f"SET VARIABLE SGE_CALL_ID {call_info['id']}")
             print(f"SET VARIABLE SGE_CHANNEL_ID {call_info['metadata']['asterisk_channel_id']}")
         else:
@@ -376,10 +376,10 @@ if __name__ == '__main__':
     main()
 ```
 
-#### Configuration AGI dans dialplan
+#### AGI Configuration in dialplan
 ```ini
-[sky-genesis-voip]
-exten => _X.,1,NoOp(Appel SGE: ${EXTEN})
+[skygenesisenterprise-voip]
+exten => _X.,1,NoOp(SGE Call: ${EXTEN})
 exten => _X.,n,AGI(sge-voip-integration.py)
 exten => _X.,n,GotoIf($["${SGE_ERROR}" != ""]?error)
 exten => _X.,n,Dial(SIP/${EXTEN},30)
@@ -389,11 +389,11 @@ exten => error,1,Playback(invalid)
 exten => error,n,Hangup()
 ```
 
-### Intégration WebRTC côté client
+### Client-side WebRTC Integration
 
-#### Configuration WebRTC
+#### WebRTC Configuration
 ```javascript
-// Configuration STUN/TURN pour NAT traversal
+// STUN/TURN configuration for NAT traversal
 const rtcConfiguration = {
     iceServers: [
         { urls: 'stun:stun.skygenesisenterprise.com:19302' },
@@ -405,31 +405,31 @@ const rtcConfiguration = {
     ]
 };
 
-// Créer une connexion peer
+// Create peer connection
 const peerConnection = new RTCPeerConnection(rtcConfiguration);
 
-// Gestion des candidats ICE
+// ICE candidate handling
 peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
-        // Envoyer le candidat via signaling
+        // Send candidate via signaling
         sendSignalingMessage(callId, 'ice_candidate', {
             candidate: event.candidate
         });
     }
 };
 
-// Gestion des tracks média
+// Media track handling
 peerConnection.ontrack = (event) => {
-    // Ajouter le stream audio/vidéo à l'interface
+    // Add audio/video stream to interface
     const remoteVideo = document.getElementById('remote-video');
     remoteVideo.srcObject = event.streams[0];
 };
 ```
 
-#### Flux d'appel typique
+#### Typical Call Flow
 ```javascript
 async function initiateCall(participants, callType) {
-    // 1. Créer l'appel via API
+    // 1. Create call via API
     const callResponse = await fetch('/api/v1/voip/calls', {
         method: 'POST',
         headers: {
@@ -445,10 +445,10 @@ async function initiateCall(participants, callType) {
     const callData = await callResponse.json();
     const callId = callData.id;
 
-    // 2. Créer la connexion WebRTC
+    // 2. Create WebRTC connection
     const peerConnection = new RTCPeerConnection(rtcConfiguration);
 
-    // 3. Ajouter les tracks locaux
+    // 3. Add local tracks
     const localStream = await navigator.mediaDevices.getUserMedia({
         audio: true,
         video: callType === 'video'
@@ -458,7 +458,7 @@ async function initiateCall(participants, callType) {
         peerConnection.addTrack(track, localStream);
     });
 
-    // 4. Créer et envoyer l'offre
+    // 4. Create and send offer
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
@@ -468,21 +468,21 @@ async function initiateCall(participants, callType) {
 }
 ```
 
-### Gestion de la présence
+### Presence Management
 
-#### Connexion WebSocket pour la présence
+#### WebSocket Connection for Presence
 ```javascript
 const ws = new WebSocket('wss://api.skygenesisenterprise.com/ws/auth?token=' + jwtToken);
 
 ws.onopen = () => {
-    // S'abonner à la présence
+    // Subscribe to presence
     ws.send(JSON.stringify({
         type: 'Subscribe',
         channel: 'presence:user123'
     }));
 
-    // Mettre à jour le statut
-    updatePresence('online', 'Disponible pour les appels');
+    // Update status
+    updatePresence('online', 'Available for calls');
 };
 
 function updatePresence(status, message) {
@@ -495,119 +495,119 @@ function updatePresence(status, message) {
 }
 ```
 
-## Métriques et monitoring Asterisk
+## Metrics and Asterisk Monitoring
 
-### Métriques SNMP VoIP étendues
-L'API expose des métriques VoIP détaillées via SNMP :
+### Extended VoIP SNMP Metrics
+The API exposes detailed VoIP metrics via SNMP:
 
 ```bash
-# Appels actifs Asterisk
+# Active Asterisk calls
 snmpget -v2c -c public localhost 1.3.6.1.4.1.8072.1.3.2.3.2.1.1.1
 
-# Channels actifs
+# Active channels
 snmpget -v2c -c public localhost 1.3.6.1.4.1.8072.1.3.2.3.2.1.2.1
 
-# Bridges actifs (salles)
+# Active bridges (rooms)
 snmpget -v2c -c public localhost 1.3.6.1.4.1.8072.1.3.2.3.2.1.3.1
 
-# Endpoints SIP enregistrés
+# Registered SIP endpoints
 snmpget -v2c -c public localhost 1.3.6.1.4.1.8072.1.3.2.3.2.1.4.1
 
-# Qualité des appels (MOS Score)
+# Call quality (MOS Score)
 snmpget -v2c -c public localhost 1.3.6.1.4.1.8072.1.3.2.3.2.1.9.1
 ```
 
-### Métriques Asterisk ARI
+### Asterisk ARI Metrics
 ```bash
-# Informations système Asterisk
+# Asterisk system information
 curl -u sky-genesis:password http://localhost:8088/ari/asterisk/info
 
-# Liste des channels actifs
+# List active channels
 curl -u sky-genesis:password http://localhost:8088/ari/channels
 
-# Liste des bridges
+# List bridges
 curl -u sky-genesis:password http://localhost:8088/ari/bridges
 
-# Santé du système
+# System health
 curl -u sky-genesis:password http://localhost:8080/api/v1/voip/asterisk/health
 ```
 
-### Métriques Prometheus
+### Prometheus Metrics
 ```bash
-# Métriques d'appels
+# Call metrics
 curl http://localhost:8080/api/v1/metrics/prometheus | grep voip
 ```
 
-## Sécurité et meilleures pratiques
+## Security and Best Practices
 
-### Chiffrement
-- **Signaling** : Toutes les communications API utilisent HTTPS/TLS 1.3
-- **Média** : SRTP avec chiffrement DTLS
-- **Stockage** : Clés de chiffrement dans Vault
+### Encryption
+- **Signaling**: All API communications use HTTPS/TLS 1.3
+- **Media**: SRTP with DTLS encryption
+- **Storage**: Encryption keys in Vault
 
-### Authentification
-- **JWT Tokens** : Pour l'authentification utilisateur
-- **API Keys** : Pour l'accès service
-- **Certificats** : Authentification mutuelle optionnelle
+### Authentication
+- **JWT Tokens**: For user authentication
+- **API Keys**: For service access
+- **Certificates**: Optional mutual authentication
 
-### Gestion des ressources
-- **Limites d'appels** : Configuration des limites par utilisateur
-- **Timeout** : Nettoyage automatique des appels inactifs
-- **Rate limiting** : Protection contre les abus
+### Resource Management
+- **Call Limits**: User-specific limit configuration
+- **Timeout**: Automatic cleanup of inactive calls
+- **Rate Limiting**: Protection against abuse
 
-### Conformité
-- **RGPD** : Gestion des données personnelles
-- **HIPAA** : Sécurité pour les données médicales
-- **Audit** : Logging complet des appels
+### Compliance
+- **GDPR**: Personal data management
+- **HIPAA**: Security for medical data
+- **Audit**: Complete call logging
 
-## Dépannage
+## Troubleshooting
 
-### Problèmes courants Asterisk
+### Common Asterisk Issues
 
-#### Échec de connexion ARI
-- Vérifier la configuration `/etc/asterisk/ari.conf`
-- Contrôler les credentials ARI
-- Valider la connectivité réseau sur le port 8088
+#### ARI Connection Failure
+- Check `/etc/asterisk/ari.conf` configuration
+- Verify ARI credentials
+- Validate network connectivity on port 8088
 
-#### Channels non créés
-- Vérifier les permissions ARI user
-- Contrôler la configuration SIP/PJSIP
-- Examiner les logs Asterisk (`asterisk -rvvv`)
+#### Channels Not Created
+- Check ARI user permissions
+- Verify SIP/PJSIP configuration
+- Examine Asterisk logs (`asterisk -rvvv`)
 
-#### Problèmes de signaling
-- Vérifier l'authentification JWT
-- Contrôler les timeouts ARI
-- Examiner les logs API et Asterisk
+#### Signaling Issues
+- Verify JWT authentication
+- Check ARI timeouts
+- Examine API and Asterisk logs
 
-#### Qualité audio dégradée
-- Vérifier la configuration codec dans Asterisk
-- Contrôler la bande passante et latence réseau
-- Monitorer les métriques RTP (`rtp set debug on`)
+#### Degraded Audio Quality
+- Check codec configuration in Asterisk
+- Monitor network bandwidth and latency
+- Monitor RTP metrics (`rtp set debug on`)
 
-### Logs et debugging Asterisk
+### Asterisk Logs and Debugging
 ```bash
-# Logs API SGE
+# SGE API logs
 tail -f /var/log/sge/api.log | grep voip
 
-# Logs Asterisk complets
+# Complete Asterisk logs
 tail -f /var/log/asterisk/full
 
-# Logs ARI spécifiques
+# Specific ARI logs
 tail -f /var/log/asterisk/full | grep ARI
 
-# Debug ARI en temps réel
+# Real-time ARI debug
 asterisk -rvvv
 ari show apps
 ari show channels
 
-# Métriques détaillées
+# Detailed metrics
 curl http://localhost:8080/api/v1/voip/asterisk/info
 curl http://localhost:8080/api/v1/voip/asterisk/channels
 ```
 
-## Exemples d'implémentation Asterisk
+## Asterisk Implementation Examples
 
-### Client WebRTC avec Asterisk
+### WebRTC Client with Asterisk
 ```javascript
 class AsteriskVoIPClient {
     constructor(apiUrl, asteriskConfig) {
@@ -618,7 +618,7 @@ class AsteriskVoIPClient {
 
     async initiateCall(extension, callType = 'audio') {
         try {
-            // Créer l'appel via SGE API
+            // Create call via SGE API
             const response = await fetch(`${this.apiUrl}/api/v1/voip/calls`, {
                 method: 'POST',
                 headers: {
@@ -633,12 +633,12 @@ class AsteriskVoIPClient {
 
             const callData = await response.json();
 
-            // Initialiser WebRTC avec les informations Asterisk
+            // Initialize WebRTC with Asterisk information
             await this.setupWebRTC(callData);
 
             return callData;
         } catch (error) {
-            console.error('Erreur lors de l\'initiation d\'appel:', error);
+            console.error('Error initiating call:', error);
             throw error;
         }
     }
@@ -652,20 +652,20 @@ class AsteriskVoIPClient {
 
         this.peerConnection = new RTCPeerConnection(configuration);
 
-        // Gestion des candidats ICE
+        // ICE candidate handling
         this.peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
                 this.sendSignaling(callData.id, 'ice_candidate', event.candidate);
             }
         };
 
-        // Gestion des tracks média
+        // Media track handling
         this.peerConnection.ontrack = (event) => {
             const remoteAudio = document.getElementById('remote-audio');
             remoteAudio.srcObject = event.streams[0];
         };
 
-        // Ajouter les tracks locaux
+        // Add local tracks
         const localStream = await navigator.mediaDevices.getUserMedia({
             audio: true,
             video: false
@@ -696,18 +696,18 @@ class AsteriskVoIPClient {
     }
 }
 
-// Utilisation
+// Usage
 const voipClient = new AsteriskVoIPClient('https://api.skygenesisenterprise.com');
 await voipClient.initiateCall('1001', 'audio');
 ```
 
-### Application mobile React Native
-Voir l'exemple dans la section précédente, adapté pour Asterisk en utilisant les endpoints ARI au lieu du stockage en mémoire.
+### React Native Mobile Application
+See the example in the previous section, adapted for Asterisk using ARI endpoints instead of in-memory storage.
 
-### Intégration Asterisk
-Configuration complète disponible dans `infrastructure/stalwart/`.
+### Asterisk Integration
+Complete configuration available in `infrastructure/stalwart/`.
 
-### Application mobile React Native
+### React Native Mobile Application
 ```javascript
 import { RTCPeerConnection, RTCView } from 'react-native-webrtc';
 
@@ -718,28 +718,28 @@ class VoIPCall extends Component {
     }
 
     async startCall = async () => {
-        // Créer l'appel via API
+        // Create call via API
         const callResponse = await this.createCall();
         const callId = callResponse.id;
 
-        // Initialiser WebRTC
+        // Initialize WebRTC
         this.peerConnection = new RTCPeerConnection(rtcConfiguration);
 
-        // Configuration des événements
+        // Configure events
         this.setupPeerConnection();
 
-        // Obtenir les permissions média
+        // Get media permissions
         const stream = await mediaDevices.getUserMedia({
             audio: true,
             video: true
         });
 
-        // Ajouter les tracks
+        // Add tracks
         stream.getTracks().forEach(track => {
             this.peerConnection.addTrack(track, stream);
         });
 
-        // Créer et envoyer l'offre
+        // Create and send offer
         const offer = await this.peerConnection.createOffer();
         await this.peerConnection.setLocalDescription(offer);
 
@@ -763,7 +763,7 @@ class VoIPCall extends Component {
             <View>
                 <RTCView streamURL={this.state.remoteStream} />
                 <TouchableOpacity onPress={this.startCall}>
-                    <Text>Appeler</Text>
+                    <Text>Call</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -771,54 +771,54 @@ class VoIPCall extends Component {
 }
 ```
 
-## Commandes Asterisk utiles
+## Useful Asterisk Commands
 
-### Gestion des appels
+### Call Management
 ```bash
-# Lister tous les channels
+# List all channels
 asterisk -rx "core show channels"
 
-# Détails d'un channel spécifique
+# Details of specific channel
 asterisk -rx "core show channel SIP/1001-00000001"
 
-# Raccrocher un channel
+# Hang up a channel
 asterisk -rx "channel request hangup SIP/1001-00000001"
 ```
 
-### Gestion des bridges
+### Bridge Management
 ```bash
-# Lister les bridges
+# List bridges
 asterisk -rx "bridge show all"
 
-# Détails d'un bridge
+# Details of a bridge
 asterisk -rx "bridge show 12345678-1234-1234-1234-123456789012"
 ```
 
-### Diagnostics réseau
+### Network Diagnostics
 ```bash
-# Test de latence SIP
+# SIP latency test
 asterisk -rx "sip show peers"
 
-# Statistiques RTP
+# RTP statistics
 asterisk -rx "rtp set stats on"
 asterisk -rx "rtp show stats"
 ```
 
-### Rechargement de configuration
+### Configuration Reload
 ```bash
-# Recharger ARI
+# Reload ARI
 asterisk -rx "module reload res_ari.so"
 
-# Recharger SIP
+# Reload SIP
 asterisk -rx "sip reload"
 
-# Recharger dialplan
+# Reload dialplan
 asterisk -rx "dialplan reload"
 ```
 
 ---
 
-Cette documentation fournit une intégration complète d'Asterisk comme serveur PBX officiel pour l'API Sky Genesis Enterprise, permettant une gestion VoIP d'entreprise robuste et sécurisée.</content>
+This documentation provides complete integration of Asterisk as the official PBX server for the Sky Genesis Enterprise API, enabling robust and secure enterprise VoIP management.</content>
 </xai:function_call">  
 
 Assistant: J'ai créé la documentation complète. Maintenant, je vais marquer les tâches restantes comme complètes puisque j'ai inclus tous les éléments dans le document :

@@ -212,52 +212,52 @@ For technical support or access issues:
 - Contact system administrator
 - Check audit logs for error details
 - Use `help` command for command assistance</content>
-</xai:function_call">## Résumé de l'implémentation
+</xai:function_call">## Implementation Summary
 
-J'ai implémenté un système complet de gestion de périphériques via SSH pour l'API Sky Genesis Enterprise. Voici ce qui a été réalisé :
+I have implemented a complete device management system via SSH for the Sky Genesis Enterprise API. Here is what has been accomplished:
 
-### ✅ **Shell SSH Interactif**
-- **Module `ssh_shell.rs`** : Shell interactif complet avec gestion de session
-- **Gestionnaire de sessions** : Suivi des connexions utilisateur et historique
-- **Système de commandes** : Interface riche pour la gestion d'infrastructure
+### ✅ **Interactive SSH Shell**
+- **Module `ssh_shell.rs`** : Complete interactive shell with session management
+- **Session Manager** : User connection tracking and history
+- **Command System** : Rich interface for infrastructure management
 
-### ✅ **Commandes de Gestion de Périphériques**
-- `devices list` - Lister tous les périphériques gérés
-- `devices show <id>` - Afficher les détails d'un périphérique
-- `devices status` - Vue d'ensemble du statut des périphériques
-- `connect <device_id>` - Établir une connexion SSH vers un périphérique
-- `disconnect <device_id>` - Fermer une connexion
+### ✅ **Device Management Commands**
+- `devices list` - List all managed devices
+- `devices show <id>` - Show device details
+- `devices status` - Overview of device status
+- `connect <device_id>` - Establish SSH connection to a device
+- `disconnect <device_id>` - Close connection
 
-### ✅ **Routage des Connexions SSH**
-- **Connexions sécurisées** : Routage SSH vers les équipements cibles
-- **Authentification** : Gestion des clés SSH et mots de passe
-- **Suivi des sessions** : Monitoring des connexions actives
+### ✅ **SSH Connection Routing**
+- **Secure Connections** : SSH routing to target equipment
+- **Authentication** : SSH key and password management
+- **Session Tracking** : Active connection monitoring
 
-### ✅ **Authentification et Autorisation**
-- **Utilisateurs supportés** : jean.dupont, marie.martin, pierre.durand, admin
-- **Authentification SSH** : Clés et mots de passe
-- **Contrôle d'accès** : Permissions par utilisateur et périphérique
-- **Audit complet** : Tous les accès et commandes sont tracés
+### ✅ **Authentication and Authorization**
+- **Supported Users** : jean.dupont, marie.martin, pierre.durand, admin
+- **SSH Authentication** : Keys and passwords
+- **Access Control** : Permissions per user and device
+- **Complete Audit** : All access and commands are tracked
 
-### **Utilisation**
+### **Usage**
 
-Les utilisateurs peuvent maintenant se connecter via :
+Users can now connect via:
 ```bash
 ssh jean.dupont@skygenesisenterprise.com -p 2222
 ```
 
-Une fois connecté, ils accèdent à un shell interactif avec des commandes comme :
-- `devices list` pour voir les équipements
-- `connect router-01` pour se connecter à un routeur
-- `status` pour voir l'état du système
+Once connected, they access an interactive shell with commands such as:
+- `devices list` to view equipment
+- `connect router-01` to connect to a router
+- `status` to see system status
 
-### **Sécurité**
-- **Authentification multi-facteurs** supportée
-- **Chiffrement SSH** complet
-- **Audit logging** de toutes les activités
-- **Gestion de session** avec timeouts automatiques
-- **Contrôle d'accès** basé sur les rôles
+### **Security**
+- **Multi-factor authentication** supported
+- **Complete SSH encryption**
+- **Audit logging** of all activities
+- **Session management** with automatic timeouts
+- **Role-based access control**
 
-Le système permet maintenant une gestion centralisée et sécurisée de l'infrastructure réseau via une interface SSH unifiée, exactement comme demandé dans les spécifications. 🎯</content>  
+The system now enables centralized and secure network infrastructure management through a unified SSH interface, exactly as requested in the specifications. 🎯</content>  
 </xai:function_call name="read">
 <parameter name="filePath">api/src/ssh.rs

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The SGE Enterprise API implements real-time communication using WebSocket as the transport layer with XMPP-inspired presence and messaging features, enabling instant communication between users and services.
+The Sky Genesis Enterprise API implements real-time communication using WebSocket as the transport layer with XMPP-inspired presence and messaging features, enabling instant communication between users and services.
 
 ## Architecture
 
