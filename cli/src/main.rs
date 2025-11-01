@@ -27,6 +27,8 @@ enum Commands {
     Search(controllers::SearchArgs),
     /// Telemetry and monitoring commands
     Telemetry(controllers::TelemetryArgs),
+    /// Device management commands
+    Device(controllers::DeviceArgs),
 }
 
 #[tokio::main]
@@ -47,5 +49,6 @@ async fn main() -> anyhow::Result<()> {
         Commands::Mail(args) => controllers::handle_mail(args, &state).await,
         Commands::Search(args) => controllers::handle_search(args, &state).await,
         Commands::Telemetry(args) => controllers::handle_telemetry(args, &state).await,
+        Commands::Device(args) => controllers::handle_device(args, &state).await,
     }
 }

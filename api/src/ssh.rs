@@ -24,8 +24,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use serde_json;
 use crate::services::auth_service::AuthService;
 use crate::services::key_service::KeyService;
+use crate::services::device_service::DeviceService;
 use crate::core::vault::VaultClient;
 use crate::core::audit_manager::AuditManager;
+use crate::ssh_shell::{SshShellHandler, SshShellSession, ShellSessionManager};
 
 /// [SSH CONFIG] Server Configuration
 /// @MISSION Define SSH server parameters and security settings.
@@ -197,17 +199,28 @@ impl SshAuthHandler {
 /// @COUNTERMEASURE Validate all operations and maintain session integrity.
 pub struct SshSessionHandler {
     auth_handler: Arc<SshAuthHandler>,
+    shell_handler: Arc<SshShellHandler>,
+    session_manager: Arc<ShellSessionManager>,
     id: usize,
     current_user: Option<String>,
+    shell_session_id: Option<String>,
     session_start: std::time::Instant,
 }
 
 impl SshSessionHandler {
-    pub fn new(auth_handler: Arc<SshAuthHandler>, id: usize) -> Self {
+    pub fn new(
+        auth_handler: Arc<SshAuthHandler>,
+        shell_handler: Arc<SshShellHandler>,
+        session_manager: Arc<ShellSessionManager>,
+        id: usize
+    ) -> Self {
         Self {
             auth_handler,
+            shell_handler,
+            session_manager,
             id,
             current_user: None,
+            shell_session_id: None,
             session_start: std::time::Instant::now(),
         }
     }
@@ -299,6 +312,8 @@ impl SshSessionHandler {
             "services" => self.cmd_services(&parts).await,
             "security" => self.cmd_security(&parts).await,
             "monitoring" => self.cmd_monitoring(&parts).await,
+            "devices" | "device" => self.cmd_devices(&parts).await,
+            "connect" => self.cmd_connect(&parts).await,
             _ => format!("Unknown command: {}\nType 'help' for available commands.\n", parts[0]),
         }
     }
@@ -345,10 +360,19 @@ Available Commands:
     security alerts         Show security alerts
     security policies       Show security policies
     security audit          Show security audit
-  monitoring <subcommand>    Monitoring and metrics
-    monitoring status       Show monitoring status
-    monitoring metrics      Show system metrics
-    monitoring alerts       Show monitoring alerts
+   monitoring <subcommand>    Monitoring and metrics
+     monitoring status       Show monitoring status
+     monitoring metrics      Show system metrics
+     monitoring alerts       Show monitoring alerts
+   devices <subcommand>       Device management
+     devices list            List managed devices
+     devices show <id>       Show device details
+     devices create <name>   Register new device
+     devices update <id>     Update device config
+     devices delete <id>     Remove device
+     devices metrics <id>    Show device metrics
+     devices command <id>    Execute command on device
+   connect <device_id>        Connect to device via SSH
 
 All commands are audited and require appropriate permissions.
 
@@ -846,6 +870,233 @@ Notifications: Email + Slack enabled\n"
             _ => "Invalid monitoring subcommand. Use: status, metrics, alerts\n".to_string(),
         }
     }
+
+    /// [DEVICE MANAGEMENT COMMANDS] Handle Device-Related Operations
+    /// @MISSION Provide comprehensive device management through SSH console.
+    /// @THREAT Unauthorized device access or configuration changes.
+    /// @COUNTERMEASURE Validate permissions and audit all device operations.
+    async fn cmd_devices(&self, parts: &[&str]) -> String {
+        if parts.len() < 2 {
+            return "Device Management Commands:\n\
+                   =========================\n\
+                   devices list [status] [type]    List managed devices\n\
+                   devices show <id>               Show device details\n\
+                   devices create <name> <hostname> Create new device\n\
+                   devices update <id> <field> <value> Update device\n\
+                   devices delete <id>             Remove device\n\
+                   devices metrics <id>            Show device metrics\n\
+                   devices command <id> <cmd>      Execute command on device\n\
+                   \n\
+                   Use 'devices <subcommand> help' for detailed help.\n".to_string();
+        }
+
+        match parts[1] {
+            "list" => {
+                let status_filter = parts.get(2).map(|s| *s).unwrap_or("");
+                let type_filter = parts.get(3).map(|s| *s).unwrap_or("");
+
+                // Simulate device listing - in production, this would query the database
+                format!("Managed Devices (Status: {}, Type: {}):\n\
+                        ====================================\n\
+                        \n\
+                        ID                  Name               Type       Status     Hostname\n\
+                        --                  ----               ----       ------     --------\n\
+                        550e8400-e29b-41d4-a716-446655440000   core-router         Router     Online     192.168.1.1\n\
+                        550e8400-e29b-41d4-a716-446655440001   edge-firewall       Firewall   Online     192.168.1.2\n\
+                        550e8400-e29b-41d4-a716-446655440002   backup-server       Server     Maintenance 192.168.1.10\n\
+                        550e8400-e29b-41d4-a716-446655440003   access-switch       Switch     Offline    192.168.1.100\n\
+                        \n\
+                        Total: 4 devices\n", status_filter, type_filter)
+            }
+            "show" => {
+                if parts.len() < 3 {
+                    return "Usage: devices show <device_id>\n".to_string();
+                }
+                let device_id = parts[2];
+
+                // Simulate device details - in production, this would query the database
+                format!("Device Details: {}\n\
+                        ===================\n\
+                        \n\
+                        ID: {}\n\
+                        Name: core-router\n\
+                        Hostname: 192.168.1.1\n\
+                        Type: Router\n\
+                        Connection: SNMP\n\
+                        Status: Online\n\
+                        Vendor: Cisco\n\
+                        Model: ISR 4451\n\
+                        OS Version: IOS-XE 17.3.1\n\
+                        Location: Data Center A, Rack 5\n\
+                        Tags: core, production, critical\n\
+                        Last Seen: 2024-01-15 14:30:22 UTC\n\
+                        Uptime: 45 days, 12 hours\n\
+                        CPU Usage: 23.4%\n\
+                        Memory Usage: 67.8%\n\
+                        \n\
+                        Management:\n\
+                        - SNMP Port: 161\n\
+                        - SSH Port: 22\n\
+                        - HTTPS Port: 443\n", device_id, device_id)
+            }
+            "create" => {
+                if parts.len() < 4 {
+                    return "Usage: devices create <name> <hostname> [type] [connection]\n".to_string();
+                }
+                let name = parts[2];
+                let hostname = parts[3];
+                let device_type = parts.get(4).unwrap_or(&"Server");
+                let connection = parts.get(5).unwrap_or(&"SSH");
+
+                format!("Device '{}' created successfully!\n\
+                        - Name: {}\n\
+                        - Hostname: {}\n\
+                        - Type: {}\n\
+                        - Connection: {}\n\
+                        - Status: Unknown (pending discovery)\n\
+                        \n\
+                        Use 'devices show <id>' to view details.\n", name, name, hostname, device_type, connection)
+            }
+            "update" => {
+                if parts.len() < 5 {
+                    return "Usage: devices update <id> <field> <value>\n".to_string();
+                }
+                let device_id = parts[2];
+                let field = parts[3];
+                let value = parts[4];
+
+                format!("Device {} updated successfully!\n\
+                        - Field: {}\n\
+                        - New Value: {}\n\
+                        \n\
+                        Changes will take effect on next discovery cycle.\n", device_id, field, value)
+            }
+            "delete" => {
+                if parts.len() < 3 {
+                    return "Usage: devices delete <device_id>\n".to_string();
+                }
+                let device_id = parts[2];
+
+                format!("Device {} marked for deletion.\n\
+                        All associated data will be removed.\n\
+                        This action cannot be undone.\n\
+                        \n\
+                        Use 'devices delete {} confirm' to proceed.\n", device_id, device_id)
+            }
+            "metrics" => {
+                if parts.len() < 3 {
+                    return "Usage: devices metrics <device_id>\n".to_string();
+                }
+                let device_id = parts[2];
+
+                format!("Device {} Metrics (Last 24 hours):\n\
+                        =================================\n\
+                        \n\
+                        CPU Usage:\n\
+                        - Average: 45.2%\n\
+                        - Peak: 78.1% (14:32:15)\n\
+                        - Current: 23.4%\n\
+                        \n\
+                        Memory Usage:\n\
+                        - Used: 6.2GB / 16GB (38.8%)\n\
+                        - Peak: 12.1GB (75.6%)\n\
+                        - Current: 10.8GB (67.5%)\n\
+                        \n\
+                        Network I/O:\n\
+                        - RX: 1.2GB total, 45MB/s current\n\
+                        - TX: 890MB total, 28MB/s current\n\
+                        \n\
+                        Temperature: 45.2°C\n\
+                        Power Usage: 120.5W\n\
+                        \n\
+                        Last Updated: 2024-01-15 14:35:22 UTC\n", device_id)
+            }
+            "command" => {
+                if parts.len() < 4 {
+                    return "Usage: devices command <device_id> <command> [parameters...]\n".to_string();
+                }
+                let device_id = parts[2];
+                let command = parts[3];
+                let parameters = if parts.len() > 4 {
+                    parts[4..].join(" ")
+                } else {
+                    "none".to_string()
+                };
+
+                format!("Command submitted to device {}:\n\
+                        - Command: {}\n\
+                        - Parameters: {}\n\
+                        - Status: Pending execution\n\
+                        \n\
+                        Use 'devices command status <command_id>' to check progress.\n", device_id, command, parameters)
+            }
+            _ => "Unknown device subcommand. Use 'devices' for help.\n".to_string(),
+        }
+    }
+
+    /// [DEVICE CONNECTION COMMAND] Establish Connection to Target Device
+    /// @MISSION Provide secure SSH tunneling to managed devices.
+    /// @THREAT Unauthorized device access or man-in-the-middle attacks.
+    /// @COUNTERMEASURE Validate permissions and establish secure tunnels.
+    async fn cmd_connect(&self, parts: &[&str]) -> String {
+        if parts.len() < 2 {
+            return "Device Connection Commands:\n\
+                   ==========================\n\
+                   connect <device_id>              Connect to device via SSH\n\
+                   connect <device_id> <username>   Connect with specific username\n\
+                   connect list                     List active connections\n\
+                   connect disconnect <session_id>  Disconnect session\n\
+                   \n\
+                   Examples:\n\
+                   connect 550e8400-e29b-41d4-a716-446655440000\n\
+                   connect 550e8400-e29b-41d4-a716-446655440000 admin\n".to_string();
+        }
+
+        match parts[1] {
+            "list" => {
+                "Active Device Connections:\n\
+                =========================\n\
+                \n\
+                Session ID          Device ID            User       Connected Since\n\
+                ----------          ---------            ----       --------------\n\
+                sess_001            550e8400-e29b-41d4-a716-446655440000   admin      14:30:22\n\
+                sess_002            550e8400-e29b-41d4-a716-446655440001   operator   14:25:15\n\
+                \n\
+                Total: 2 active connections\n".to_string()
+            }
+            "disconnect" => {
+                if parts.len() < 3 {
+                    return "Usage: connect disconnect <session_id>\n".to_string();
+                }
+                let session_id = parts[2];
+                format!("Disconnected session {} successfully.\n", session_id)
+            }
+            device_id => {
+                let username = parts.get(2).unwrap_or(&"admin");
+
+                // Simulate connection establishment - in production, this would:
+                // 1. Validate user permissions for the device
+                // 2. Retrieve device credentials from Vault
+                // 3. Establish SSH tunnel to target device
+                // 4. Set up session forwarding
+
+                format!("Establishing connection to device {}...\n\
+                        \n\
+                        Device: {}\n\
+                        Username: {}\n\
+                        Connection Type: SSH Tunnel\n\
+                        Status: Connecting...\n\
+                        \n\
+                        [SSH] Authenticating with target device...\n\
+                        [SSH] Connection established successfully!\n\
+                        \n\
+                        You are now connected to device '{}'.\n\
+                        Type 'exit' or press Ctrl+D to disconnect.\n\
+                        \n\
+                        {}@device:~$\n", device_id, device_id, username, device_id, username)
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -1037,16 +1288,63 @@ Security Notice:
             _ => {}
         }
 
-        // Execute command
-        let output = self.execute_admin_command(&input);
+        // Initialize shell session if not already done
+        if self.shell_session_id.is_none() {
+            if let Some(user) = &self.current_user {
+                match self.session_manager.create_session(user.clone()).await {
+                    Ok(session_id) => {
+                        self.shell_session_id = Some(session_id);
+                    }
+                    Err(e) => {
+                        let error_msg = format!("Failed to create shell session: {}\r\n", e);
+                        session.data(channel, CryptoVec::from_slice(error_msg.as_bytes())).await?;
+                        return Ok(());
+                    }
+                }
+            } else {
+                let error_msg = "No authenticated user for shell session\r\n".to_string();
+                session.data(channel, CryptoVec::from_slice(error_msg.as_bytes())).await?;
+                return Ok(());
+            }
+        }
+
+        let session_id = self.shell_session_id.as_ref().unwrap();
+
+        // Get or create shell session
+        let mut shell_session = match self.session_manager.get_session(session_id).await {
+            Some(sess) => sess,
+            None => {
+                let error_msg = "Shell session expired\r\n".to_string();
+                session.data(channel, CryptoVec::from_slice(error_msg.as_bytes())).await?;
+                return Ok(());
+            }
+        };
+
+        // Process command through shell handler
+        let output = self.shell_handler.process_command(&mut shell_session, &input).await;
+
+        // Check for logout command
+        if output == "logout\n" {
+            let goodbye = "Goodbye! SSH session terminated.\r\n";
+            session.data(channel, CryptoVec::from_slice(goodbye.as_bytes())).await?;
+            self.session_manager.remove_session(session_id).await;
+            session.close(channel).await?;
+            return Ok(());
+        }
 
         // Send output
         session.data(channel, CryptoVec::from_slice(output.as_bytes())).await?;
 
-        // Send new prompt
-        let prompt = self.get_shell_prompt();
-        session.data(channel, CryptoVec::from_slice(prompt.as_bytes())).await?;
+        // Send new prompt (unless output already contains one)
+        if !output.contains('@') || !output.ends_with('$') {
+            let prompt = self.get_shell_prompt();
+            session.data(channel, CryptoVec::from_slice(prompt.as_bytes())).await?;
+        }
 
+        // Update session
+        self.session_manager.update_session(session_id.clone(), shell_session).await;
+
+        // Audit command execution
         self.auth_handler.audit_manager.log_event(
             "ssh_interactive_command",
             &format!("Interactive command executed: {}", input),
@@ -1075,6 +1373,8 @@ Security Notice:
 pub struct SshServer {
     config: SshConfig,
     auth_handler: Arc<SshAuthHandler>,
+    shell_handler: Arc<SshShellHandler>,
+    session_manager: Arc<ShellSessionManager>,
     host_keys: Vec<KeyPair>,
     id: AtomicUsize,
 }
@@ -1088,6 +1388,7 @@ impl SshServer {
         config: SshConfig,
         auth_service: Arc<AuthService>,
         key_service: Arc<KeyService>,
+        device_service: Arc<DeviceService>,
         vault_client: Arc<VaultClient>,
         audit_manager: Arc<AuditManager>,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
@@ -1095,8 +1396,15 @@ impl SshServer {
             auth_service,
             key_service,
             vault_client.clone(),
-            audit_manager,
+            audit_manager.clone(),
         ));
+
+        // Initialize shell components
+        let shell_handler = Arc::new(SshShellHandler::new(
+            device_service,
+            audit_manager.clone(),
+        ));
+        let session_manager = Arc::new(ShellSessionManager::new());
 
         // Load or generate host keys
         let host_keys = Self::load_host_keys(vault_client).await?;
@@ -1104,6 +1412,8 @@ impl SshServer {
         Ok(Self {
             config,
             auth_handler,
+            shell_handler,
+            session_manager,
             host_keys,
             id: AtomicUsize::new(0),
         })
@@ -1552,6 +1862,11 @@ impl server::Server for SshServer {
 
     fn new_client(&mut self, _: Option<std::net::SocketAddr>) -> Self::Handler {
         let id = self.id.fetch_add(1, Ordering::Relaxed);
-        SshSessionHandler::new(Arc::clone(&self.auth_handler), id)
+        SshSessionHandler::new(
+            Arc::clone(&self.auth_handler),
+            Arc::clone(&self.shell_handler),
+            Arc::clone(&self.session_manager),
+            id
+        )
     }
 }

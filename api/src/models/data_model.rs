@@ -596,3 +596,196 @@ impl ZTNADatabasePolicy {
         Ok(())
     }
 }
+
+/// [DEVICE STATUS ENUM] Operational Status of Managed Devices
+/// @MISSION Track device availability and health.
+/// @THREAT Unmonitored or failed devices.
+/// @COUNTERMEASURE Regular health checks and status monitoring.
+/// @AUDIT Status changes are logged.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum DeviceStatus {
+    Online,
+    Offline,
+    Maintenance,
+    Error,
+    Unknown,
+}
+
+/// [DEVICE TYPE ENUM] Types of Devices that can be Managed
+/// @MISSION Categorize devices for appropriate management.
+/// @THREAT Incorrect device handling.
+/// @COUNTERMEASURE Type-specific management logic.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum DeviceType {
+    Router,
+    Switch,
+    Server,
+    Firewall,
+    LoadBalancer,
+    AccessPoint,
+    IoTDevice,
+    Other,
+}
+
+/// [DEVICE CONNECTION TYPE] How the Device Connects to Management
+/// @MISSION Define connection methods for device management.
+/// @THREAT Insecure or unreliable connections.
+/// @COUNTERMEASURE Secure, authenticated connections.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum DeviceConnectionType {
+    SNMP,
+    SSH,
+    REST,
+    WebSocket,
+    MQTT,
+}
+
+/// [DEVICE MODEL] Remote Device Management Structure
+/// @MISSION Enable secure remote management of network devices.
+/// @THREAT Unauthorized device access or configuration changes.
+/// @COUNTERMEASURE Authentication, authorization, and audit logging.
+/// @AUDIT All device operations are logged with user context.
+/// @FLOW Register -> Authenticate -> Connect -> Manage -> Audit
+/// @DEPENDENCY Organization, user permissions, and secure connections.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Device {
+    /// Unique identifier for the device
+    pub id: Uuid,
+    /// Human-readable name for the device
+    pub name: String,
+    /// Device hostname or IP address
+    pub hostname: String,
+    /// Device IP address (if different from hostname)
+    pub ip_address: Option<String>,
+    /// Type of device
+    pub device_type: DeviceType,
+    /// Connection method for management
+    pub connection_type: DeviceConnectionType,
+    /// Device vendor/manufacturer
+    pub vendor: Option<String>,
+    /// Device model
+    pub model: Option<String>,
+    /// Operating system or firmware version
+    pub os_version: Option<String>,
+    /// Current operational status
+    pub status: DeviceStatus,
+    /// Associated organization
+    pub organization_id: Uuid,
+    /// Device location (datacenter, rack, etc.)
+    pub location: Option<String>,
+    /// Device tags for categorization
+    pub tags: Vec<String>,
+    /// Management port (SNMP: 161, SSH: 22, etc.)
+    pub management_port: Option<u16>,
+    /// SNMP community string or SSH credentials reference
+    pub credentials_ref: Option<String>,
+    /// Last successful contact timestamp
+    pub last_seen: Option<DateTime<Utc>>,
+    /// Device uptime in seconds
+    pub uptime: Option<i64>,
+    /// CPU usage percentage
+    pub cpu_usage: Option<f32>,
+    /// Memory usage percentage
+    pub memory_usage: Option<f32>,
+    /// Additional device-specific metadata
+    pub metadata: std::collections::HashMap<String, String>,
+    /// Created timestamp
+    pub created_at: DateTime<Utc>,
+    /// Last modified timestamp
+    pub updated_at: DateTime<Utc>,
+}
+
+/// [DEVICE COMMAND MODEL] Remote Command Execution on Devices
+/// @MISSION Execute commands on managed devices securely.
+/// @THREAT Unauthorized command execution.
+/// @COUNTERMEASURE Command validation and audit logging.
+/// @AUDIT All commands are logged with execution results.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceCommand {
+    /// Unique identifier for the command execution
+    pub id: Uuid,
+    /// Target device ID
+    pub device_id: Uuid,
+    /// User who initiated the command
+    pub user_id: Uuid,
+    /// Command to execute
+    pub command: String,
+    /// Command parameters
+    pub parameters: Option<std::collections::HashMap<String, String>>,
+    /// Command execution status
+    pub status: CommandStatus,
+    /// Command output/result
+    pub output: Option<String>,
+    /// Exit code (for shell commands)
+    pub exit_code: Option<i32>,
+    /// Execution start time
+    pub started_at: Option<DateTime<Utc>>,
+    /// Execution completion time
+    pub completed_at: Option<DateTime<Utc>>,
+    /// Created timestamp
+    pub created_at: DateTime<Utc>,
+}
+
+/// [COMMAND STATUS ENUM] Status of Device Command Execution
+/// @MISSION Track command execution lifecycle.
+/// @THREAT Unmonitored command execution.
+/// @COUNTERMEASURE Status tracking and timeout handling.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum CommandStatus {
+    Pending,
+    Running,
+    Completed,
+    Failed,
+    Timeout,
+    Cancelled,
+}
+
+/// [DEVICE METRICS MODEL] Performance and Health Metrics
+/// @MISSION Collect and store device performance data.
+/// @THREAT Missing performance visibility.
+/// @COUNTERMEASURE Regular metric collection and alerting.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceMetrics {
+    /// Unique identifier for the metrics entry
+    pub id: Uuid,
+    /// Target device ID
+    pub device_id: Uuid,
+    /// Timestamp when metrics were collected
+    pub timestamp: DateTime<Utc>,
+    /// CPU usage percentage
+    pub cpu_usage: Option<f32>,
+    /// Memory usage percentage
+    pub memory_usage: Option<f32>,
+    /// Disk usage percentage
+    pub disk_usage: Option<f32>,
+    /// Network interface statistics
+    pub network_stats: Option<NetworkStats>,
+    /// Temperature readings
+    pub temperature: Option<f32>,
+    /// Power consumption
+    pub power_usage: Option<f32>,
+    /// Custom metrics
+    pub custom_metrics: std::collections::HashMap<String, f32>,
+}
+
+/// [NETWORK STATS] Network Interface Statistics
+/// @MISSION Track network performance metrics.
+/// @THREAT Network performance issues.
+/// @COUNTERMEASURE Interface monitoring and alerting.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetworkStats {
+    /// Interface name
+    pub interface: String,
+    /// Bytes received
+    pub rx_bytes: u64,
+    /// Bytes transmitted
+    pub tx_bytes: u64,
+    /// Packets received
+    pub rx_packets: u64,
+    /// Packets transmitted
+    pub tx_packets: u64,
+    /// Receive errors
+    pub rx_errors: u64,
+    /// Transmit errors
+    pub tx_errors: u64,
+}

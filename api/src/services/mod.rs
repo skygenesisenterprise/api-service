@@ -12,3 +12,4 @@ pub mod authorization_service;
 pub mod data_service;
 pub mod monitoring_service;
 pub mod openpgp_service;
+pub mod device_service;

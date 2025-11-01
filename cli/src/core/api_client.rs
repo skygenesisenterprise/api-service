@@ -223,6 +223,101 @@ impl SshApiClient {
         let result = self.call_method("security.alerts", serde_json::json!({}))?;
         Ok(serde_json::from_value(result)?)
     }
+
+    /// [HTTP GET] Perform HTTP GET request
+    /// @MISSION Enable REST API calls for device management
+    pub async fn get(&self, path: &str) -> Result<String> {
+        // For now, use a simple HTTP client. In production, this should use the same
+        // authentication and security as the SSH-based calls
+        let client = reqwest::Client::new();
+        let url = format!("http://{}:8080{}", self.host, path); // Assuming API runs on port 8080
+
+        let response = client
+            .get(&url)
+            .header("Authorization", "Bearer dummy-token") // TODO: Use proper auth
+            .send()
+            .await
+            .map_err(|e| anyhow!("HTTP GET failed: {}", e))?;
+
+        if !response.status().is_success() {
+            return Err(anyhow!("HTTP GET failed with status: {}", response.status()));
+        }
+
+        let body = response.text().await
+            .map_err(|e| anyhow!("Failed to read response body: {}", e))?;
+
+        Ok(body)
+    }
+
+    /// [HTTP POST] Perform HTTP POST request
+    pub async fn post(&self, path: &str, body: &str) -> Result<String> {
+        let client = reqwest::Client::new();
+        let url = format!("http://{}:8080{}", self.host, path);
+
+        let response = client
+            .post(&url)
+            .header("Authorization", "Bearer dummy-token") // TODO: Use proper auth
+            .header("Content-Type", "application/json")
+            .body(body.to_string())
+            .send()
+            .await
+            .map_err(|e| anyhow!("HTTP POST failed: {}", e))?;
+
+        if !response.status().is_success() {
+            return Err(anyhow!("HTTP POST failed with status: {}", response.status()));
+        }
+
+        let body = response.text().await
+            .map_err(|e| anyhow!("Failed to read response body: {}", e))?;
+
+        Ok(body)
+    }
+
+    /// [HTTP PUT] Perform HTTP PUT request
+    pub async fn put(&self, path: &str, body: &str) -> Result<String> {
+        let client = reqwest::Client::new();
+        let url = format!("http://{}:8080{}", self.host, path);
+
+        let response = client
+            .put(&url)
+            .header("Authorization", "Bearer dummy-token") // TODO: Use proper auth
+            .header("Content-Type", "application/json")
+            .body(body.to_string())
+            .send()
+            .await
+            .map_err(|e| anyhow!("HTTP PUT failed: {}", e))?;
+
+        if !response.status().is_success() {
+            return Err(anyhow!("HTTP PUT failed with status: {}", response.status()));
+        }
+
+        let body = response.text().await
+            .map_err(|e| anyhow!("Failed to read response body: {}", e))?;
+
+        Ok(body)
+    }
+
+    /// [HTTP DELETE] Perform HTTP DELETE request
+    pub async fn delete(&self, path: &str) -> Result<String> {
+        let client = reqwest::Client::new();
+        let url = format!("http://{}:8080{}", self.host, path);
+
+        let response = client
+            .delete(&url)
+            .header("Authorization", "Bearer dummy-token") // TODO: Use proper auth
+            .send()
+            .await
+            .map_err(|e| anyhow!("HTTP DELETE failed: {}", e))?;
+
+        if !response.status().is_success() {
+            return Err(anyhow!("HTTP DELETE failed with status: {}", response.status()));
+        }
+
+        let body = response.text().await
+            .map_err(|e| anyhow!("Failed to read response body: {}", e))?;
+
+        Ok(body)
+    }
 }
 
 // ============================================================================

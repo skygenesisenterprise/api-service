@@ -130,7 +130,6 @@ pub async fn decrypt_message(
         })),
     }
 }
-}
 
 /// Sign a message
 pub async fn sign_message(

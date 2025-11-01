@@ -230,6 +230,62 @@ CREATE TABLE message_reads (
 );
 
 -- ======================================
+-- DEVICE MANAGEMENT
+-- ======================================
+
+CREATE TABLE devices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    hostname VARCHAR(255) NOT NULL,
+    ip_address INET,
+    device_type VARCHAR(50) NOT NULL,
+    connection_type VARCHAR(50) NOT NULL,
+    vendor VARCHAR(255),
+    model VARCHAR(255),
+    os_version VARCHAR(255),
+    status VARCHAR(50) DEFAULT 'unknown',
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    location VARCHAR(255),
+    tags TEXT[],
+    management_port INTEGER,
+    credentials_ref VARCHAR(255),
+    last_seen TIMESTAMP,
+    uptime BIGINT,
+    cpu_usage REAL,
+    memory_usage REAL,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
+);
+
+CREATE TABLE device_commands (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    device_id UUID REFERENCES devices(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    command TEXT NOT NULL,
+    parameters JSONB,
+    status VARCHAR(50) DEFAULT 'pending',
+    output TEXT,
+    exit_code INTEGER,
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT now()
+);
+
+CREATE TABLE device_metrics (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    device_id UUID REFERENCES devices(id) ON DELETE CASCADE,
+    timestamp TIMESTAMP DEFAULT now(),
+    cpu_usage REAL,
+    memory_usage REAL,
+    disk_usage REAL,
+    network_stats JSONB,
+    temperature REAL,
+    power_usage REAL,
+    custom_metrics JSONB DEFAULT '{}'
+);
+
+-- ======================================
 -- TRIGGERS
 -- ======================================
 
@@ -273,6 +329,11 @@ EXECUTE FUNCTION update_timestamp();
 
 CREATE TRIGGER update_data_sources_timestamp
 BEFORE UPDATE ON data_sources
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+CREATE TRIGGER update_devices_timestamp
+BEFORE UPDATE ON devices
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 

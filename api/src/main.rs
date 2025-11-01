@@ -147,6 +147,16 @@ async fn main() {
       /// @COUNTERMEASURE Use Sequoia OpenPGP with secure key management.
       let openpgp_service = Arc::new(crate::services::openpgp_service::OpenPGPService::new());
 
+      /// [DEVICE MANAGEMENT LAYER] Remote Device Management Service
+      /// @MISSION Enable secure remote management of network devices.
+      /// @THREAT Unauthorized device access or configuration changes.
+      /// @COUNTERMEASURE Authentication, authorization, and audit logging.
+      let device_service = Arc::new(crate::services::device_service::DeviceService::new(
+          db_pool.clone(),
+          vault_client.clone(),
+          snmp_manager.clone(),
+      ));
+
     let vault_token = std::env::var("VAULT_TOKEN").unwrap_or_default();
     let vault_manager = Arc::new(crate::services::vault_manager::VaultManager::new("dummy".to_string(), vault_token));
 
@@ -174,13 +184,14 @@ async fn main() {
          idle_timeout: 300, // 5 minutes
          auth_timeout: 60,  // 1 minute
      };
-     let ssh_server = Arc::new(crate::ssh::SshServer::new(
-         ssh_config,
-         auth_service.clone(),
-         key_service.clone(),
-         vault_client.clone(),
-         audit_manager.clone(),
-     ).await.unwrap());
+      let ssh_server = Arc::new(crate::ssh::SshServer::new(
+          ssh_config,
+          auth_service.clone(),
+          key_service.clone(),
+          device_service.clone(),
+          vault_client.clone(),
+          audit_manager.clone(),
+      ).await.unwrap());
 
     /// [MONITORING LAYER] SNMP Management and Audit
     /// @MISSION Provide network monitoring and security auditing.
@@ -308,6 +319,7 @@ async fn main() {
             two_factor_service,
             data_service,
             openpgp_service.clone(),
+            device_service,
            ws_server,
            snmp_manager,
            snmp_agent,

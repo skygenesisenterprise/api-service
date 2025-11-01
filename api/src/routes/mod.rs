@@ -14,6 +14,7 @@ pub mod search_routes;
 pub mod ssh_routes;
 pub mod data_routes;
 pub mod openpgp_routes;
+pub mod device_routes;
 
 use warp::Filter;
 use std::sync::Arc;
@@ -25,6 +26,7 @@ use crate::services::application_service::ApplicationService;
 use crate::services::two_factor_service::TwoFactorService;
 use crate::services::data_service::DataService;
 use crate::services::openpgp_service::OpenPGPService;
+use crate::services::device_service::DeviceService;
 use crate::websocket::WebSocketServer;
 use crate::core::snmp_manager::SnmpManager;
 use crate::core::snmp_agent::SnmpAgent;
@@ -49,6 +51,7 @@ pub fn routes(
     two_factor_service: Arc<TwoFactorService>,
     data_service: Arc<DataService>,
     openpgp_service: Arc<OpenPGPService>,
+    device_service: Arc<DeviceService>,
     ws_server: Arc<WebSocketServer>,
     snmp_manager: Arc<SnmpManager>,
     snmp_agent: Arc<SnmpAgent>,
@@ -73,6 +76,7 @@ pub fn routes(
     let auth_routes = crate::routes::auth_routes::auth_routes(auth_service, session_service, application_service, two_factor_service, keycloak_client, fido2_manager);
     let data_routes = crate::routes::data_routes::data_routes(data_service);
     let openpgp_routes = crate::routes::openpgp_routes::openpgp_routes(openpgp_service, keycloak_client.clone());
+    let device_routes = crate::routes::device_routes::device_routes(device_service, audit_manager.clone());
     let websocket_routes = crate::routes::websocket_routes::websocket_routes(ws_server, keycloak_client);
     let security_routes = crate::routes::security_routes::security_routes();
     let snmp_routes = crate::routes::snmp_routes::snmp_routes(snmp_manager, snmp_agent, trap_listener, audit_manager);
@@ -129,5 +133,5 @@ pub fn routes(
             "#)
         });
 
-    hello.or(key_routes).or(auth_routes).or(data_routes).or(openpgp_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(monitoring_routes).or(search_routes).or(ssh_routes).or(openapi_json).or(swagger_ui)
+    hello.or(key_routes).or(auth_routes).or(data_routes).or(openpgp_routes).or(device_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(monitoring_routes).or(search_routes).or(ssh_routes).or(openapi_json).or(swagger_ui)
 }

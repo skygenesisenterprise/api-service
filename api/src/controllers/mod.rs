@@ -25,3 +25,5 @@ pub mod key_controller;
 pub mod data_controller;
 /// [OPENPGP CONTROLLER MODULE] OpenPGP cryptographic operations
 pub mod openpgp_controller;
+/// [DEVICE CONTROLLER MODULE] Remote device management operations
+pub mod device_controller;
