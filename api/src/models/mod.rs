@@ -22,3 +22,7 @@ pub mod user;
 pub mod mail;
 /// [DATABASE MODEL MODULE] Database connection and management models
 pub mod data_model;
+/// [SEARCH MODEL MODULE] Search and indexing data structures
+pub mod search_models;
+/// [OPENPGP MODEL MODULE] OpenPGP cryptographic data structures
+pub mod openpgp_model;

@@ -135,11 +135,17 @@ async fn main() {
      /// @COUNTERMEASURE Use FIPS-compliant algorithms and regular rotation.
      let key_service = Arc::new(crate::services::key_service::KeyService::new(vault_client.clone()));
 
-     /// [DATABASE LAYER] Multi-Database Connection Management
-     /// @MISSION Provide secure access to multiple database types.
-     /// @THREAT Unauthorized database access or credential exposure.
-     /// @COUNTERMEASURE Encrypted credentials in Vault and access control.
-     let data_service = Arc::new(crate::services::data_service::DataService::new(vault_client.clone()));
+      /// [DATABASE LAYER] Multi-Database Connection Management
+      /// @MISSION Provide secure access to multiple database types.
+      /// @THREAT Unauthorized database access or credential exposure.
+      /// @COUNTERMEASURE Encrypted credentials in Vault and access control.
+      let data_service = Arc::new(crate::services::data_service::DataService::new(vault_client.clone()));
+
+      /// [OPENPGP LAYER] OpenPGP Cryptographic Operations
+      /// @MISSION Provide OpenPGP key generation, signing, and encryption.
+      /// @THREAT Weak cryptography or key compromise.
+      /// @COUNTERMEASURE Use Sequoia OpenPGP with secure key management.
+      let openpgp_service = Arc::new(crate::services::openpgp_service::OpenPGPService::new());
 
     let vault_token = std::env::var("VAULT_TOKEN").unwrap_or_default();
     let vault_manager = Arc::new(crate::services::vault_manager::VaultManager::new("dummy".to_string(), vault_token));
@@ -293,14 +299,15 @@ async fn main() {
      /// @MISSION Expose all service endpoints with unified security controls.
      /// @THREAT API abuse or unauthorized access.
      /// @COUNTERMEASURE Implement rate limiting, input validation, and audit logging.
-       let routes = routes::routes(
-           vault_manager,
-           key_service,
-           auth_service,
-           session_service,
-           application_service,
-           two_factor_service,
-           data_service,
+        let routes = routes::routes(
+            vault_manager,
+            key_service,
+            auth_service,
+            session_service,
+            application_service,
+            two_factor_service,
+            data_service,
+            openpgp_service.clone(),
            ws_server,
            snmp_manager,
            snmp_agent,
@@ -349,6 +356,7 @@ async fn main() {
         }
     });
 
+    let openpgp_service = Arc::new(crate::services::openpgp_service::OpenPGPService::new());
     let routes = routes::routes(
         vault_manager,
         key_service,
@@ -357,6 +365,7 @@ async fn main() {
         application_service,
         two_factor_service,
         data_service,
+        openpgp_service,
         ws_server,
         snmp_manager,
         snmp_agent,

@@ -23,3 +23,5 @@ pub mod auth_controller;
 pub mod key_controller;
 /// [DATA CONTROLLER MODULE] Database connection and query management
 pub mod data_controller;
+/// [OPENPGP CONTROLLER MODULE] OpenPGP cryptographic operations
+pub mod openpgp_controller;

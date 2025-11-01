@@ -24,3 +24,5 @@ pub mod auth_middleware;
 pub mod auth_guard;
 /// [CERT AUTH MIDDLEWARE MODULE] Certificate-based authentication with signatures
 pub mod cert_auth_middleware;
+/// [OPENPGP MIDDLEWARE MODULE] PGP key validation and cryptographic middleware
+pub mod openpgp_middleware;

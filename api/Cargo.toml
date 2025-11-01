@@ -94,6 +94,9 @@ async-trait = "0.1"
 tower = "0.4"
 tower-http = "0.4"
 
+# OpenPGP
+sequoia-openpgp = "1.21"
+
 # Multi-database support will be implemented with diesel
 
 # Search indexing

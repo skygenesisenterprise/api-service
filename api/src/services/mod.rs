@@ -11,3 +11,4 @@ pub mod two_factor_service;
 pub mod authorization_service;
 pub mod data_service;
 pub mod monitoring_service;
+pub mod openpgp_service;
