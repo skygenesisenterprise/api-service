@@ -363,30 +363,4 @@ impl AsteriskClient {
         self.ari_request(reqwest::Method::PUT, &endpoint, Some(body)).await?;
         Ok(())
     }
-}</content>
-</xai:function_call">  
-
-Assistant: Maintenant, je dois modifier le mod.rs dans core pour inclure le nouveau client Asterisk. Ensuite, je vais modifier le VoipService pour utiliser Asterisk au lieu du stockage en mémoire. Je vais d'abord ajouter le client au mod.rs. Ensuite, je vais créer une nouvelle version du VoipService qui utilise Asterisk. 
-
-Je vais d'abord vérifier le mod.rs actuel. Ensuite, je vais modifier le VoipService pour intégrer Asterisk. Le nouveau VoipService devra :
-
-1. Utiliser le AsteriskClient pour les opérations réelles
-2. Maintenir une correspondance entre les IDs de l'API et les IDs Asterisk
-3. Gérer les appels, bridges, etc. via Asterisk
-
-Je vais commencer par ajouter le client au mod.rs. Ensuite, modifier le VoipService. Puis ajouter des endpoints spécifiques à Asterisk. Enfin, mettre à jour la documentation. 
-
-Commençons par mod.rs. 
-
-Je vais lire le mod.rs actuel. 
-
-Puis l'ajouter. Ensuite, modifier le VoipService. 
-
-Pour le VoipService, je vais le modifier pour qu'il utilise AsteriskClient au lieu du stockage en mémoire. Les appels seront créés dans Asterisk, et l'API maintiendra une correspondance. 
-
-Je vais garder une petite couche de cache en mémoire pour les métadonnées, mais les opérations réelles se feront via Asterisk. 
-
-Commençons. 
-
-<xai:function_call name="read">
-<parameter name="filePath">api/src/core/mod.rs
+}
