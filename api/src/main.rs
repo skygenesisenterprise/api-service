@@ -161,7 +161,7 @@ async fn main() {
        /// @MISSION Provide VoIP functionality with secure signaling.
        /// @THREAT Unauthorized calls, eavesdropping.
        /// @COUNTERMEASURE Authentication, encryption, audit logging.
-       let voip_service = Arc::new(crate::services::voip_service::VoipService::new());
+       let voip_service = Arc::new(crate::services::voip_service::VoipService::new(asterisk_config));
 
     let vault_token = std::env::var("VAULT_TOKEN").unwrap_or_default();
     let vault_manager = Arc::new(crate::services::vault_manager::VaultManager::new("dummy".to_string(), vault_token));
@@ -298,6 +298,23 @@ async fn main() {
     /// @THREAT Undetected security incidents.
     /// @COUNTERMEASURE Export all telemetry with cryptographic integrity.
     let _otel_components = crate::core::opentelemetry::init_opentelemetry("sky-genesis-api", "1.0.0").await.unwrap();
+
+    /// [VOIP LAYER] Asterisk PBX Integration
+    /// @MISSION Provide native VoIP capabilities through Asterisk PBX.
+    /// @THREAT PBX compromise or call interception.
+    /// @COUNTERMEASURE Secure ARI communication and audit all VoIP operations.
+    let asterisk_base_url = std::env::var("ASTERISK_ARI_URL").unwrap_or("http://localhost:8088/ari".to_string());
+    let asterisk_username = std::env::var("ASTERISK_ARI_USERNAME").unwrap_or("skygenesis".to_string());
+    let asterisk_password = vault_client.get_secret("asterisk/ari_password").await.unwrap_or("password".to_string());
+    let asterisk_app_name = std::env::var("ASTERISK_ARI_APP").unwrap_or("sky-genesis-voip".to_string());
+
+    let asterisk_config = crate::core::asterisk_client::AsteriskConfig {
+        base_url: asterisk_base_url,
+        username: asterisk_username,
+        password: asterisk_password,
+        app_name: asterisk_app_name,
+    };
+    let asterisk_client = Arc::new(crate::core::asterisk_client::AsteriskClient::new(asterisk_config));
     let metrics = Arc::new(crate::core::opentelemetry::Metrics::new().unwrap());
 
     /// [MONITORING SERVICE] System Health and Status Monitoring
@@ -342,7 +359,9 @@ async fn main() {
            carddav_handler,
            metrics,
            ssh_server,
-           voip_service,
+        voip_service,
+        asterisk_client,
+           asterisk_client,
        );
 
     /// [NETWORK PERIMETER] Service Binding Configuration

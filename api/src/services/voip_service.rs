@@ -21,6 +21,7 @@ use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
+use crate::core::asterisk_client::{AsteriskClient, AsteriskConfig};
 
 /// [VOIP CALL MODEL] Voice/Video Call Information
 /// @MISSION Structure call data with participants and metadata.
@@ -103,33 +104,39 @@ pub struct RoomSettings {
     pub moderator_id: Option<String>,
 }
 
-/// [VOIP SERVICE] Main VoIP Service Implementation
-/// @MISSION Provide VoIP functionality with secure signaling.
-/// @THREAT Unauthorized calls, eavesdropping.
-/// @COUNTERMEASURE Authentication, encryption, audit logging.
+/// [VOIP SERVICE] Main VoIP Service Implementation with Asterisk Integration
+/// @MISSION Provide VoIP functionality through native Asterisk PBX integration.
+/// @THREAT Unauthorized calls, eavesdropping, PBX compromise.
+/// @COUNTERMEASURE Authentication, encryption, audit logging, Asterisk security.
 pub struct VoipService {
+    asterisk_client: Arc<AsteriskClient>,
+    call_mappings: Arc<RwLock<HashMap<String, String>>>, // API call_id -> Asterisk channel_id
+    room_mappings: Arc<RwLock<HashMap<String, String>>>, // API room_id -> Asterisk bridge_id
     active_calls: Arc<RwLock<HashMap<String, VoipCall>>>,
     active_rooms: Arc<RwLock<HashMap<String, VoipRoom>>>,
-    signaling_channels: Arc<RwLock<HashMap<String, Vec<SignalingMessage>>>>,
 }
 
 impl VoipService {
-    /// [SERVICE INITIALIZATION] Create new VoIP service
-    /// @MISSION Initialize VoIP service with secure state management.
-    /// @THREAT State corruption, memory leaks.
-    /// @COUNTERMEASURE Atomic operations, proper cleanup.
-    pub fn new() -> Self {
+    /// [SERVICE INITIALIZATION] Create new VoIP service with Asterisk integration
+    /// @MISSION Initialize VoIP service with Asterisk PBX backend.
+    /// @THREAT Asterisk connectivity issues, configuration errors.
+    /// @COUNTERMEASURE Connection validation, error handling, fallback modes.
+    pub fn new(asterisk_config: AsteriskConfig) -> Self {
+        let asterisk_client = Arc::new(AsteriskClient::new(asterisk_config));
+
         Self {
+            asterisk_client,
+            call_mappings: Arc::new(RwLock::new(HashMap::new())),
+            room_mappings: Arc::new(RwLock::new(HashMap::new())),
             active_calls: Arc::new(RwLock::new(HashMap::new())),
             active_rooms: Arc::new(RwLock::new(HashMap::new())),
-            signaling_channels: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
-    /// [CALL INITIATION] Start a new VoIP call
-    /// @MISSION Create and initiate a new voice/video call.
-    /// @THREAT Unauthorized call initiation.
-    /// @COUNTERMEASURE User authentication and permission validation.
+    /// [CALL INITIATION] Start a new VoIP call through Asterisk
+    /// @MISSION Create and initiate a new voice/video call via Asterisk PBX.
+    /// @THREAT Unauthorized call initiation, Asterisk resource exhaustion.
+    /// @COUNTERMEASURE User authentication, rate limiting, resource monitoring.
     pub async fn initiate_call(
         &self,
         caller_id: &str,
@@ -137,6 +144,17 @@ impl VoipService {
         call_type: CallType,
     ) -> Result<VoipCall, String> {
         let call_id = Uuid::new_v4().to_string();
+
+        // Create Asterisk channel for caller (assuming SIP endpoint format: SIP/{caller_id})
+        let endpoint = format!("SIP/{}", caller_id);
+        let channel = match self.asterisk_client.create_channel(&endpoint, &self.asterisk_client.config.app_name, None).await {
+            Ok(channel) => channel,
+            Err(e) => return Err(format!("Failed to create Asterisk channel: {}", e)),
+        };
+
+        // Store mapping between API call_id and Asterisk channel_id
+        let mut mappings = self.call_mappings.write().await;
+        mappings.insert(call_id.clone(), channel.id.clone());
 
         let call = VoipCall {
             id: call_id.clone(),
@@ -147,7 +165,12 @@ impl VoipService {
             start_time: Utc::now(),
             end_time: None,
             room_id: None,
-            metadata: HashMap::new(),
+            metadata: {
+                let mut meta = HashMap::new();
+                meta.insert("asterisk_channel_id".to_string(), channel.id);
+                meta.insert("asterisk_channel_name".to_string(), channel.name);
+                meta
+            },
         };
 
         let mut calls = self.active_calls.write().await;
@@ -156,15 +179,21 @@ impl VoipService {
         Ok(call)
     }
 
-    /// [CALL ACCEPTANCE] Accept an incoming call
-    /// @MISSION Accept a ringing call and establish connection.
-    /// @THREAT Unauthorized call acceptance.
-    /// @COUNTERMEASURE Participant validation.
+    /// [CALL ACCEPTANCE] Accept an incoming call via Asterisk
+    /// @MISSION Accept a ringing call and establish connection through Asterisk.
+    /// @THREAT Unauthorized call acceptance, channel manipulation.
+    /// @COUNTERMEASURE Participant validation, Asterisk channel verification.
     pub async fn accept_call(&self, call_id: &str, user_id: &str) -> Result<(), String> {
-        let mut calls = self.active_calls.write().await;
+        let mappings = self.call_mappings.read().await;
+        let asterisk_channel_id = mappings.get(call_id)
+            .ok_or_else(|| "Call mapping not found".to_string())?;
 
+        // Answer the Asterisk channel
+        self.asterisk_client.answer_channel(asterisk_channel_id).await?;
+
+        let mut calls = self.active_calls.write().await;
         if let Some(call) = calls.get_mut(call_id) {
-            if call.participants.contains(&user_id.to_string()) {
+            if call.participants.contains(&user_id.to_string()) || call.caller_id == user_id {
                 call.status = CallStatus::Connected;
                 Ok(())
             } else {
@@ -175,13 +204,18 @@ impl VoipService {
         }
     }
 
-    /// [CALL TERMINATION] End an active call
-    /// @MISSION Terminate a call and clean up resources.
-    /// @THREAT Resource leaks, incomplete cleanup.
-    /// @COUNTERMEASURE Proper state management and cleanup.
+    /// [CALL TERMINATION] End an active call via Asterisk
+    /// @MISSION Terminate a call and clean up Asterisk resources.
+    /// @THREAT Resource leaks, incomplete cleanup, orphaned channels.
+    /// @COUNTERMEASURE Proper state management, Asterisk channel cleanup.
     pub async fn end_call(&self, call_id: &str, user_id: &str) -> Result<(), String> {
-        let mut calls = self.active_calls.write().await;
+        let mappings = self.call_mappings.read().await;
+        if let Some(asterisk_channel_id) = mappings.get(call_id) {
+            // Hang up the Asterisk channel
+            self.asterisk_client.delete_channel(asterisk_channel_id).await?;
+        }
 
+        let mut calls = self.active_calls.write().await;
         if let Some(call) = calls.get_mut(call_id) {
             if call.caller_id == user_id || call.participants.contains(&user_id.to_string()) {
                 call.status = CallStatus::Ended;
@@ -195,10 +229,10 @@ impl VoipService {
         }
     }
 
-    /// [ROOM CREATION] Create a new conference room
-    /// @MISSION Set up a conference room for multiple participants.
-    /// @THREAT Unauthorized room creation.
-    /// @COUNTERMEASURE User permissions and resource limits.
+    /// [ROOM CREATION] Create a new conference room via Asterisk
+    /// @MISSION Set up a conference room for multiple participants using Asterisk bridges.
+    /// @THREAT Unauthorized room creation, bridge resource exhaustion.
+    /// @COUNTERMEASURE User permissions, resource limits, Asterisk bridge management.
     pub async fn create_room(
         &self,
         owner_id: &str,
@@ -207,6 +241,14 @@ impl VoipService {
         settings: RoomSettings,
     ) -> Result<VoipRoom, String> {
         let room_id = Uuid::new_v4().to_string();
+
+        // Create Asterisk bridge for the conference room
+        let bridge = self.asterisk_client.create_bridge("mixing", Some(name)).await
+            .map_err(|e| format!("Failed to create Asterisk bridge: {}", e))?;
+
+        // Store mapping between API room_id and Asterisk bridge_id
+        let mut mappings = self.room_mappings.write().await;
+        mappings.insert(room_id.clone(), bridge.id.clone());
 
         let room = VoipRoom {
             id: room_id.clone(),
@@ -225,13 +267,16 @@ impl VoipService {
         Ok(room)
     }
 
-    /// [ROOM JOIN] Join an existing conference room
-    /// @MISSION Add participant to conference room.
-    /// @THREAT Room capacity overflow, unauthorized access.
-    /// @COUNTERMEASURE Capacity checks and permission validation.
+    /// [ROOM JOIN] Join an existing conference room via Asterisk
+    /// @MISSION Add participant to conference room by connecting to Asterisk bridge.
+    /// @THREAT Room capacity overflow, unauthorized access, bridge manipulation.
+    /// @COUNTERMEASURE Capacity checks, permission validation, Asterisk bridge security.
     pub async fn join_room(&self, room_id: &str, user_id: &str) -> Result<(), String> {
-        let mut rooms = self.active_rooms.write().await;
+        let mappings = self.room_mappings.read().await;
+        let asterisk_bridge_id = mappings.get(room_id)
+            .ok_or_else(|| "Room mapping not found".to_string())?;
 
+        let mut rooms = self.active_rooms.write().await;
         if let Some(room) = rooms.get_mut(room_id) {
             if room.participants.len() >= room.max_participants as usize {
                 return Err("Room is full".to_string());
@@ -239,6 +284,15 @@ impl VoipService {
 
             if !room.participants.contains(&user_id.to_string()) {
                 room.participants.push(user_id.to_string());
+
+                // Create Asterisk channel for the user and add to bridge
+                let endpoint = format!("SIP/{}", user_id);
+                let channel = self.asterisk_client.create_channel(&endpoint, &self.asterisk_client.config.app_name, None).await
+                    .map_err(|e| format!("Failed to create channel for room join: {}", e))?;
+
+                // Add channel to bridge
+                self.asterisk_client.add_channel_to_bridge(asterisk_bridge_id, &channel.id).await
+                    .map_err(|e| format!("Failed to add channel to bridge: {}", e))?;
             }
 
             Ok(())

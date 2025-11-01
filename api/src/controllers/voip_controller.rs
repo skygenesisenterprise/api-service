@@ -17,6 +17,7 @@
 
 use warp::Reply;
 use crate::services::voip_service::{VoipService, VoipCall, VoipRoom, SignalingMessage, CallType, RoomSettings};
+use crate::core::asterisk_client::{AsteriskClient, AriChannel, AriBridge, AriEndpoint};
 use std::sync::Arc;
 use warp::http::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -424,6 +425,252 @@ pub async fn get_signaling(
             };
             let response = warp::reply::json(&error_response);
             Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST))
+        }
+    }
+}
+
+// ===== ASTERISK-SPECIFIC ENDPOINTS =====
+
+/// [GET ASTERISK CHANNELS] Get all active Asterisk channels
+/// @MISSION Retrieve real-time channel information from Asterisk PBX.
+/// @THREAT Information disclosure, PBX state exposure.
+/// @COUNTERMEASURE Access control, data sanitization.
+/// @AUDIT Channel queries are logged.
+#[utoipa::path(
+    get,
+    path = "/api/v1/voip/asterisk/channels",
+    responses(
+        (status = 200, description = "Channels retrieved successfully", body = Vec<AriChannel>),
+        (status = 500, description = "Asterisk communication error", body = ErrorResponse)
+    )
+)]
+pub async fn get_asterisk_channels(
+    asterisk_client: Arc<AsteriskClient>,
+) -> Result<impl Reply, warp::Rejection> {
+    match asterisk_client.get_channels().await {
+        Ok(channels) => {
+            let response = warp::reply::json(&channels);
+            Ok(warp::reply::with_status(response, StatusCode::OK))
+        }
+        Err(err) => {
+            let error_response = ErrorResponse {
+                error: "Failed to retrieve Asterisk channels".to_string(),
+                message: err,
+            };
+            let response = warp::reply::json(&error_response);
+            Ok(warp::reply::with_status(response, StatusCode::INTERNAL_SERVER_ERROR))
+        }
+    }
+}
+
+/// [GET ASTERISK CHANNEL] Get specific Asterisk channel information
+/// @MISSION Retrieve detailed channel information from Asterisk.
+/// @THREAT Information disclosure.
+/// @COUNTERMEASURE Access control.
+/// @AUDIT Channel access is logged.
+#[utoipa::path(
+    get,
+    path = "/api/v1/voip/asterisk/channels/{channel_id}",
+    responses(
+        (status = 200, description = "Channel information retrieved", body = AriChannel),
+        (status = 404, description = "Channel not found", body = ErrorResponse),
+        (status = 500, description = "Asterisk communication error", body = ErrorResponse)
+    )
+)]
+pub async fn get_asterisk_channel(
+    channel_id: String,
+    asterisk_client: Arc<AsteriskClient>,
+) -> Result<impl Reply, warp::Rejection> {
+    match asterisk_client.get_channel(&channel_id).await {
+        Ok(channel) => {
+            let response = warp::reply::json(&channel);
+            Ok(warp::reply::with_status(response, StatusCode::OK))
+        }
+        Err(err) => {
+            let error_response = ErrorResponse {
+                error: "Failed to retrieve Asterisk channel".to_string(),
+                message: err,
+            };
+            let response = warp::reply::json(&error_response);
+            let status = if err.contains("not found") {
+                StatusCode::NOT_FOUND
+            } else {
+                StatusCode::INTERNAL_SERVER_ERROR
+            };
+            Ok(warp::reply::with_status(response, status))
+        }
+    }
+}
+
+/// [GET ASTERISK BRIDGES] Get all Asterisk bridges
+/// @MISSION Retrieve conference bridge information from Asterisk.
+/// @THREAT Information disclosure.
+/// @COUNTERMEASURE Access control.
+/// @AUDIT Bridge queries are logged.
+#[utoipa::path(
+    get,
+    path = "/api/v1/voip/asterisk/bridges",
+    responses(
+        (status = 200, description = "Bridges retrieved successfully", body = Vec<AriBridge>),
+        (status = 500, description = "Asterisk communication error", body = ErrorResponse)
+    )
+)]
+pub async fn get_asterisk_bridges(
+    asterisk_client: Arc<AsteriskClient>,
+) -> Result<impl Reply, warp::Rejection> {
+    match asterisk_client.get_bridges().await {
+        Ok(bridges) => {
+            let response = warp::reply::json(&bridges);
+            Ok(warp::reply::with_status(response, StatusCode::OK))
+        }
+        Err(err) => {
+            let error_response = ErrorResponse {
+                error: "Failed to retrieve Asterisk bridges".to_string(),
+                message: err,
+            };
+            let response = warp::reply::json(&error_response);
+            Ok(warp::reply::with_status(response, StatusCode::INTERNAL_SERVER_ERROR))
+        }
+    }
+}
+
+/// [GET ASTERISK ENDPOINTS] Get all SIP endpoints
+/// @MISSION Retrieve SIP endpoint information from Asterisk.
+/// @THREAT Information disclosure.
+/// @COUNTERMEASURE Access control.
+/// @AUDIT Endpoint queries are logged.
+#[utoipa::path(
+    get,
+    path = "/api/v1/voip/asterisk/endpoints",
+    responses(
+        (status = 200, description = "Endpoints retrieved successfully", body = Vec<AriEndpoint>),
+        (status = 500, description = "Asterisk communication error", body = ErrorResponse)
+    )
+)]
+pub async fn get_asterisk_endpoints(
+    asterisk_client: Arc<AsteriskClient>,
+) -> Result<impl Reply, warp::Rejection> {
+    match asterisk_client.get_endpoints().await {
+        Ok(endpoints) => {
+            let response = warp::reply::json(&endpoints);
+            Ok(warp::reply::with_status(response, StatusCode::OK))
+        }
+        Err(err) => {
+            let error_response = ErrorResponse {
+                error: "Failed to retrieve Asterisk endpoints".to_string(),
+                message: err,
+            };
+            let response = warp::reply::json(&error_response);
+            Ok(warp::reply::with_status(response, StatusCode::INTERNAL_SERVER_ERROR))
+        }
+    }
+}
+
+/// [GET ASTERISK ENDPOINT] Get specific SIP endpoint information
+/// @MISSION Retrieve detailed endpoint information from Asterisk.
+/// @THREAT Information disclosure.
+/// @COUNTERMEASURE Access control.
+/// @AUDIT Endpoint access is logged.
+#[utoipa::path(
+    get,
+    path = "/api/v1/voip/asterisk/endpoints/{tech}/{resource}",
+    responses(
+        (status = 200, description = "Endpoint information retrieved", body = AriEndpoint),
+        (status = 404, description = "Endpoint not found", body = ErrorResponse),
+        (status = 500, description = "Asterisk communication error", body = ErrorResponse)
+    )
+)]
+pub async fn get_asterisk_endpoint(
+    tech: String,
+    resource: String,
+    asterisk_client: Arc<AsteriskClient>,
+) -> Result<impl Reply, warp::Rejection> {
+    match asterisk_client.get_endpoint(&tech, &resource).await {
+        Ok(endpoint) => {
+            let response = warp::reply::json(&endpoint);
+            Ok(warp::reply::with_status(response, StatusCode::OK))
+        }
+        Err(err) => {
+            let error_response = ErrorResponse {
+                error: "Failed to retrieve Asterisk endpoint".to_string(),
+                message: err,
+            };
+            let response = warp::reply::json(&error_response);
+            let status = if err.contains("not found") {
+                StatusCode::NOT_FOUND
+            } else {
+                StatusCode::INTERNAL_SERVER_ERROR
+            };
+            Ok(warp::reply::with_status(response, status))
+        }
+    }
+}
+
+/// [GET ASTERISK INFO] Get Asterisk system information
+/// @MISSION Retrieve Asterisk PBX system status and configuration.
+/// @THREAT Information disclosure.
+/// @COUNTERMEASURE Access control, data filtering.
+/// @AUDIT System queries are logged.
+#[utoipa::path(
+    get,
+    path = "/api/v1/voip/asterisk/info",
+    responses(
+        (status = 200, description = "Asterisk information retrieved", body = serde_json::Value),
+        (status = 500, description = "Asterisk communication error", body = ErrorResponse)
+    )
+)]
+pub async fn get_asterisk_info(
+    asterisk_client: Arc<AsteriskClient>,
+) -> Result<impl Reply, warp::Rejection> {
+    match asterisk_client.get_asterisk_info().await {
+        Ok(info) => {
+            let response = warp::reply::json(&info);
+            Ok(warp::reply::with_status(response, StatusCode::OK))
+        }
+        Err(err) => {
+            let error_response = ErrorResponse {
+                error: "Failed to retrieve Asterisk information".to_string(),
+                message: err,
+            };
+            let response = warp::reply::json(&error_response);
+            Ok(warp::reply::with_status(response, StatusCode::INTERNAL_SERVER_ERROR))
+        }
+    }
+}
+
+/// [ASTERISK HEALTH CHECK] Check Asterisk connectivity
+/// @MISSION Verify Asterisk PBX availability and responsiveness.
+/// @THREAT Service disruption detection.
+/// @COUNTERMEASURE Health monitoring.
+/// @AUDIT Health checks are logged.
+#[utoipa::path(
+    get,
+    path = "/api/v1/voip/asterisk/health",
+    responses(
+        (status = 200, description = "Asterisk is healthy"),
+        (status = 503, description = "Asterisk is unhealthy", body = ErrorResponse)
+    )
+)]
+pub async fn asterisk_health_check(
+    asterisk_client: Arc<AsteriskClient>,
+) -> Result<impl Reply, warp::Rejection> {
+    match asterisk_client.health_check().await {
+        Ok(true) => Ok(warp::reply::with_status("Asterisk is healthy", StatusCode::OK)),
+        Ok(false) => {
+            let error_response = ErrorResponse {
+                error: "Asterisk unhealthy".to_string(),
+                message: "Asterisk PBX is not responding".to_string(),
+            };
+            let response = warp::reply::json(&error_response);
+            Ok(warp::reply::with_status(response, StatusCode::SERVICE_UNAVAILABLE))
+        }
+        Err(err) => {
+            let error_response = ErrorResponse {
+                error: "Health check failed".to_string(),
+                message: err,
+            };
+            let response = warp::reply::json(&error_response);
+            Ok(warp::reply::with_status(response, StatusCode::INTERNAL_SERVER_ERROR))
         }
     }
 }

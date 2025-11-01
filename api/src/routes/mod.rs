@@ -42,6 +42,7 @@ use crate::core::webdav::{WebDavHandler, CalDavHandler, CardDavHandler};
 use crate::core::opentelemetry::Metrics;
 use crate::ssh::SshServer;
 use crate::services::voip_service::VoipService;
+use crate::core::asterisk_client::AsteriskClient;
 use tokio::sync::Mutex;
 
 pub fn routes(
@@ -71,6 +72,7 @@ pub fn routes(
     monitoring_service: Arc<crate::services::monitoring_service::MonitoringService>,
     ssh_server: Arc<SshServer>,
     voip_service: Arc<VoipService>,
+    asterisk_client: Arc<AsteriskClient>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let hello = warp::path!("hello")
         .map(|| "Hello, World!");
@@ -90,7 +92,7 @@ pub fn routes(
     let monitoring_routes = crate::routes::monitoring_routes::monitoring_routes(monitoring_service);
     let search_routes = crate::routes::search_routes::search_routes(auth_service.clone(), vault_client.clone(), metrics.clone());
     let ssh_routes = crate::routes::ssh_routes::ssh_routes(ssh_server, audit_manager.clone());
-    let voip_routes = crate::routes::voip_routes::voip_routes(voip_service);
+    let voip_routes = crate::routes::voip_routes::voip_routes(voip_service, asterisk_client);
 
     // OpenAPI JSON endpoint
     let openapi_json = warp::path!("api-docs" / "openapi.json")
