@@ -19,3 +19,5 @@
 pub mod query;
 /// [KEY QUERIES MODULE] API key database operations
 pub mod key_queries;
+/// [VOIP QUERIES MODULE] VoIP call and conference database operations
+pub mod voip_queries;

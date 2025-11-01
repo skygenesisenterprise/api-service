@@ -20,3 +20,5 @@ pub mod util;
 pub mod key_utils;
 /// [TOKEN UTILITIES] JWT and authentication token management
 pub mod tokens;
+/// [VOIP UTILITIES] VoIP-specific utility functions and helpers
+pub mod voip_utils;

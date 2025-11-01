@@ -172,3 +172,10 @@ pub mod snmp_agent;
 /// @COUNTERMEASURE Correlate traps with other security data.
 /// @DEPENDENCY snmp-trap-listener crate.
 pub mod snmp_trap_listener;
+
+/// [VOIP INFRASTRUCTURE] Voice over IP Core Systems
+/// @MISSION Provide WebRTC signaling and media handling infrastructure.
+/// @THREAT VoIP security vulnerabilities, eavesdropping.
+/// @COUNTERMEASURE End-to-end encryption, secure signaling, access control.
+/// @DEPENDENCY WebRTC, RTP, SRTP protocols.
+pub mod voip;

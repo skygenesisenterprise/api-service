@@ -193,6 +193,25 @@ pub fn snmp_routes(
         .and(jwt_auth())
         .and_then(handle_agent_status);
 
+    // VoIP monitoring endpoints
+    let voip_metrics = snmp_base
+        .and(warp::path("voip"))
+        .and(warp::path("metrics"))
+        .and(warp::get())
+        .and(with_snmp_agent(snmp_agent.clone()))
+        .and(jwt_auth())
+        .and_then(handle_voip_metrics);
+
+    let voip_traps = snmp_base
+        .and(warp::path("voip"))
+        .and(warp::path("traps"))
+        .and(warp::get())
+        .and(warp::query::<TrapQueryParams>())
+        .and(with_trap_listener(trap_listener.clone()))
+        .and(with_audit_manager(audit_manager.clone()))
+        .and(jwt_auth())
+        .and_then(handle_voip_traps);
+
     // Combine all routes
     query
         .or(mibs)
@@ -200,6 +219,8 @@ pub fn snmp_routes(
         .or(config)
         .or(update_config)
         .or(agent_status)
+        .or(voip_metrics)
+        .or(voip_traps)
 }
 
 /// Handle SNMP query requests
@@ -321,8 +342,70 @@ async fn handle_snmp_mibs(
         ],
     };
 
+    let voip_mib = SnmpMibInfo {
+        name: "SGE-VOIP-MIB".to_string(),
+        base_oid: "1.3.6.1.4.1.8072.1.3.2.3.2".to_string(),
+        description: "Sky Genesis Enterprise VoIP MIB for communication monitoring".to_string(),
+        oids: vec![
+            SnmpOidInfo {
+                oid: "1.3.6.1.4.1.8072.1.3.2.3.2.1.1.1".to_string(),
+                name: "voipActiveCalls".to_string(),
+                description: "Number of active VoIP calls".to_string(),
+                data_type: "Gauge32".to_string(),
+            },
+            SnmpOidInfo {
+                oid: "1.3.6.1.4.1.8072.1.3.2.3.2.1.2.1".to_string(),
+                name: "voipActiveRooms".to_string(),
+                description: "Number of active conference rooms".to_string(),
+                data_type: "Gauge32".to_string(),
+            },
+            SnmpOidInfo {
+                oid: "1.3.6.1.4.1.8072.1.3.2.3.2.1.3.1".to_string(),
+                name: "voipTotalParticipants".to_string(),
+                description: "Total number of VoIP participants".to_string(),
+                data_type: "Gauge32".to_string(),
+            },
+            SnmpOidInfo {
+                oid: "1.3.6.1.4.1.8072.1.3.2.3.2.1.4.1".to_string(),
+                name: "voipAverageCallDuration".to_string(),
+                description: "Average call duration in seconds".to_string(),
+                data_type: "String".to_string(),
+            },
+            SnmpOidInfo {
+                oid: "1.3.6.1.4.1.8072.1.3.2.3.2.1.5.1".to_string(),
+                name: "voipSignalingMessagesPerSecond".to_string(),
+                description: "Signaling messages processed per second".to_string(),
+                data_type: "String".to_string(),
+            },
+            SnmpOidInfo {
+                oid: "1.3.6.1.4.1.8072.1.3.2.3.2.1.6.1".to_string(),
+                name: "voipMediaBytesPerSecond".to_string(),
+                description: "Media data transferred per second".to_string(),
+                data_type: "Counter64".to_string(),
+            },
+            SnmpOidInfo {
+                oid: "1.3.6.1.4.1.8072.1.3.2.3.2.1.7.1".to_string(),
+                name: "voipErrorRate".to_string(),
+                description: "VoIP error rate (0.0-1.0)".to_string(),
+                data_type: "String".to_string(),
+            },
+            SnmpOidInfo {
+                oid: "1.3.6.1.4.1.8072.1.3.2.3.2.1.8.1".to_string(),
+                name: "voipBandwidthUsageKbps".to_string(),
+                description: "Current VoIP bandwidth usage in Kbps".to_string(),
+                data_type: "Gauge32".to_string(),
+            },
+            SnmpOidInfo {
+                oid: "1.3.6.1.4.1.8072.1.3.2.3.2.1.9.1".to_string(),
+                name: "voipCallQualityScore".to_string(),
+                description: "Average call quality score (0-100)".to_string(),
+                data_type: "String".to_string(),
+            },
+        ],
+    };
+
     let response = SnmpMibListResponse {
-        mibs: vec![sge_mib],
+        mibs: vec![sge_mib, voip_mib],
     };
 
     Ok(warp::reply::json(&response))
@@ -443,11 +526,107 @@ async fn handle_agent_status(
             "1.3.6.1.4.1.8072.1.3.2.3.1.1.1.1",  // sgeApiStatus
             "1.3.6.1.4.1.8072.1.3.2.3.1.1.2.1",  // sgeApiUptime
             "1.3.6.1.4.1.8072.1.3.2.3.1.1.4.1",  // sgeActiveConnections
-            "1.3.6.1.4.1.8072.1.3.2.3.1.1.5.1"   // sgeMemoryUsage
+            "1.3.6.1.4.1.8072.1.3.2.3.1.1.5.1",  // sgeMemoryUsage
+            // VoIP OIDs
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.1.1",  // voipActiveCalls
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.2.1",  // voipActiveRooms
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.3.1",  // voipTotalParticipants
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.4.1",  // voipAverageCallDuration
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.5.1",  // voipSignalingMessagesPerSecond
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.6.1",  // voipMediaBytesPerSecond
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.7.1",  // voipErrorRate
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.8.1",  // voipBandwidthUsageKbps
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.9.1"   // voipCallQualityScore
         ]
     });
 
     Ok(warp::reply::json(&status))
+}
+
+/// Handle VoIP metrics requests
+#[utoipa::path(
+    get,
+    path = "/api/v1/snmp/voip/metrics",
+    responses(
+        (status = 200, description = "VoIP metrics retrieved", body = serde_json::Value),
+        (status = 401, description = "Unauthorized")
+    ),
+    security(("jwt" = []))
+)]
+async fn handle_voip_metrics(
+    snmp_agent: Arc<SnmpAgent>,
+    _claims: Claims,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let mib = snmp_agent.get_mib().await;
+
+    let voip_metrics = serde_json::json!({
+        "active_calls": mib.voip.active_calls,
+        "active_rooms": mib.voip.active_rooms,
+        "total_participants": mib.voip.total_participants,
+        "average_call_duration_seconds": mib.voip.average_call_duration,
+        "signaling_messages_per_second": mib.voip.signaling_messages_per_second,
+        "media_bytes_per_second": mib.voip.media_bytes_per_second,
+        "error_rate": mib.voip.error_rate,
+        "bandwidth_usage_kbps": mib.voip.bandwidth_usage_kbps,
+        "call_quality_score": mib.voip.call_quality_score,
+        "last_call_started": mib.voip.last_call_started,
+        "last_call_ended": mib.voip.last_call_ended,
+        "voip_oids": [
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.1.1",  // voipActiveCalls
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.2.1",  // voipActiveRooms
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.3.1",  // voipTotalParticipants
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.4.1",  // voipAverageCallDuration
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.5.1",  // voipSignalingMessagesPerSecond
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.6.1",  // voipMediaBytesPerSecond
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.7.1",  // voipErrorRate
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.8.1",  // voipBandwidthUsageKbps
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.9.1"   // voipCallQualityScore
+        ]
+    });
+
+    Ok(warp::reply::json(&voip_metrics))
+}
+
+/// Handle VoIP trap log requests
+#[utoipa::path(
+    get,
+    path = "/api/v1/snmp/voip/traps",
+    params(
+        ("limit" = Option<usize>, Query, description = "Maximum number of traps to return"),
+        ("offset" = Option<usize>, Query, description = "Offset for pagination")
+    ),
+    responses(
+        (status = 200, description = "VoIP trap log retrieved", body = SnmpTrapLogResponse),
+        (status = 401, description = "Unauthorized")
+    ),
+    security(("jwt" = []))
+)]
+async fn handle_voip_traps(
+    params: TrapQueryParams,
+    trap_listener: Arc<SnmpTrapListener>,
+    audit_manager: Arc<AuditManager>,
+    claims: Claims,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    // In a real implementation, traps would be stored in a database
+    // For now, return empty list filtered for VoIP traps
+    let traps = Vec::new();
+
+    // Audit VoIP trap log access
+    audit_manager.audit_event(
+        AuditEventType::Access,
+        AuditSeverity::Info,
+        Some(&claims.sub),
+        "snmp_api",
+        "VoIP SNMP trap log accessed",
+        None,
+    ).await;
+
+    let response = SnmpTrapLogResponse {
+        traps,
+        total_count: 0,
+    };
+
+    Ok(warp::reply::json(&response))
 }
 
 // Helper functions for dependency injection

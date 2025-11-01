@@ -26,3 +26,5 @@ pub mod data_model;
 pub mod search_models;
 /// [OPENPGP MODEL MODULE] OpenPGP cryptographic data structures
 pub mod openpgp_model;
+/// [VOIP MODEL MODULE] Voice over IP call and conference data structures
+pub mod voip;

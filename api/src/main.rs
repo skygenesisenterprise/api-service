@@ -151,11 +151,17 @@ async fn main() {
       /// @MISSION Enable secure remote management of network devices.
       /// @THREAT Unauthorized device access or configuration changes.
       /// @COUNTERMEASURE Authentication, authorization, and audit logging.
-      let device_service = Arc::new(crate::services::device_service::DeviceService::new(
-          db_pool.clone(),
-          vault_client.clone(),
-          snmp_manager.clone(),
-      ));
+       let device_service = Arc::new(crate::services::device_service::DeviceService::new(
+           db_pool.clone(),
+           vault_client.clone(),
+           snmp_manager.clone(),
+       ));
+
+       /// [VOIP SERVICE] Voice over IP and video conferencing service
+       /// @MISSION Provide VoIP functionality with secure signaling.
+       /// @THREAT Unauthorized calls, eavesdropping.
+       /// @COUNTERMEASURE Authentication, encryption, audit logging.
+       let voip_service = Arc::new(crate::services::voip_service::VoipService::new());
 
     let vault_token = std::env::var("VAULT_TOKEN").unwrap_or_default();
     let vault_manager = Arc::new(crate::services::vault_manager::VaultManager::new("dummy".to_string(), vault_token));
@@ -310,33 +316,34 @@ async fn main() {
      /// @MISSION Expose all service endpoints with unified security controls.
      /// @THREAT API abuse or unauthorized access.
      /// @COUNTERMEASURE Implement rate limiting, input validation, and audit logging.
-        let routes = routes::routes(
-            vault_manager,
-            key_service,
-            auth_service,
-            session_service,
-            application_service,
-            two_factor_service,
-            data_service,
-            openpgp_service.clone(),
-            device_service,
-           ws_server,
-           snmp_manager,
-           snmp_agent,
-           trap_listener,
-           audit_manager,
-           keycloak_client,
-           fido2_manager,
-           monitoring_service,
-          vpn_manager,
-          tailscale_manager,
-          grpc_client,
-          webdav_handler,
-          caldav_handler,
-          carddav_handler,
-          metrics,
-          ssh_server,
-      );
+         let routes = routes::routes(
+             vault_manager,
+             key_service,
+             auth_service,
+             session_service,
+             application_service,
+             two_factor_service,
+             data_service,
+             openpgp_service.clone(),
+             device_service,
+            ws_server,
+            snmp_manager,
+            snmp_agent,
+            trap_listener,
+            audit_manager,
+            keycloak_client,
+            fido2_manager,
+            monitoring_service,
+           vpn_manager,
+           tailscale_manager,
+           grpc_client,
+           webdav_handler,
+           caldav_handler,
+           carddav_handler,
+           metrics,
+           ssh_server,
+           voip_service,
+       );
 
     /// [NETWORK PERIMETER] Service Binding Configuration
     /// @MISSION Establish secure network listening post.
@@ -392,7 +399,9 @@ async fn main() {
         caldav_handler,
         carddav_handler,
         metrics,
+        monitoring_service,
         ssh_server,
+        voip_service,
     );
 
     // Get port from environment variable or default to 8080

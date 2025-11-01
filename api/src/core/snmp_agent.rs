@@ -38,6 +38,7 @@ pub struct SgeMib {
     pub security: SecurityMetrics,
     pub performance: PerformanceMetrics,
     pub network: NetworkMetrics,
+    pub voip: VoipMetrics,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,6 +84,21 @@ pub struct NetworkMetrics {
     pub packets_sent: u64,
     pub active_connections: u64,
     pub error_count: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VoipMetrics {
+    pub active_calls: u32,
+    pub active_rooms: u32,
+    pub total_participants: u32,
+    pub average_call_duration: f64,
+    pub signaling_messages_per_second: f64,
+    pub media_bytes_per_second: u64,
+    pub error_rate: f64,
+    pub bandwidth_usage_kbps: u64,
+    pub call_quality_score: f64,
+    pub last_call_started: Option<chrono::DateTime<Utc>>,
+    pub last_call_ended: Option<chrono::DateTime<Utc>>,
 }
 
 /// SNMP Agent for SGE
@@ -287,6 +303,42 @@ impl SnmpAgent {
             "1.3.6.1.4.1.8072.1.3.2.3.1.1.5.1" => {
                 Ok(snmp_parser::SnmpValue::Gauge32((mib.performance.memory_usage / 1024 / 1024) as u32)) // MB
             }
+            // VoIP Active Calls: 1.3.6.1.4.1.8072.1.3.2.3.2.1.1.1
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.1.1" => {
+                Ok(snmp_parser::SnmpValue::Gauge32(mib.voip.active_calls))
+            }
+            // VoIP Active Rooms: 1.3.6.1.4.1.8072.1.3.2.3.2.1.2.1
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.2.1" => {
+                Ok(snmp_parser::SnmpValue::Gauge32(mib.voip.active_rooms))
+            }
+            // VoIP Total Participants: 1.3.6.1.4.1.8072.1.3.2.3.2.1.3.1
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.3.1" => {
+                Ok(snmp_parser::SnmpValue::Gauge32(mib.voip.total_participants))
+            }
+            // VoIP Average Call Duration: 1.3.6.1.4.1.8072.1.3.2.3.2.1.4.1
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.4.1" => {
+                Ok(snmp_parser::SnmpValue::String(format!("{:.2}", mib.voip.average_call_duration).as_bytes().to_vec()))
+            }
+            // VoIP Signaling Messages/sec: 1.3.6.1.4.1.8072.1.3.2.3.2.1.5.1
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.5.1" => {
+                Ok(snmp_parser::SnmpValue::String(format!("{:.2}", mib.voip.signaling_messages_per_second).as_bytes().to_vec()))
+            }
+            // VoIP Media Bytes/sec: 1.3.6.1.4.1.8072.1.3.2.3.2.1.6.1
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.6.1" => {
+                Ok(snmp_parser::SnmpValue::Counter64(mib.voip.media_bytes_per_second))
+            }
+            // VoIP Error Rate: 1.3.6.1.4.1.8072.1.3.2.3.2.1.7.1
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.7.1" => {
+                Ok(snmp_parser::SnmpValue::String(format!("{:.4}", mib.voip.error_rate).as_bytes().to_vec()))
+            }
+            // VoIP Bandwidth Usage (kbps): 1.3.6.1.4.1.8072.1.3.2.3.2.1.8.1
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.8.1" => {
+                Ok(snmp_parser::SnmpValue::Gauge32(mib.voip.bandwidth_usage_kbps as u32))
+            }
+            // VoIP Call Quality Score: 1.3.6.1.4.1.8072.1.3.2.3.2.1.9.1
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.9.1" => {
+                Ok(snmp_parser::SnmpValue::String(format!("{:.2}", mib.voip.call_quality_score).as_bytes().to_vec()))
+            }
             _ => Err(SnmpAgentError::OidNotFound(oid.to_string())),
         }
     }
@@ -408,6 +460,19 @@ impl Default for SgeMib {
                 packets_sent: 0,
                 active_connections: 0,
                 error_count: 0,
+            },
+            voip: VoipMetrics {
+                active_calls: 0,
+                active_rooms: 0,
+                total_participants: 0,
+                average_call_duration: 0.0,
+                signaling_messages_per_second: 0.0,
+                media_bytes_per_second: 0,
+                error_rate: 0.0,
+                bandwidth_usage_kbps: 0,
+                call_quality_score: 100.0,
+                last_call_started: None,
+                last_call_ended: None,
             },
         }
     }

@@ -26,3 +26,5 @@ pub mod auth_guard;
 pub mod cert_auth_middleware;
 /// [OPENPGP MIDDLEWARE MODULE] PGP key validation and cryptographic middleware
 pub mod openpgp_middleware;
+/// [VOIP MIDDLEWARE MODULE] VoIP call validation, rate limiting, and security
+pub mod voip_middleware;

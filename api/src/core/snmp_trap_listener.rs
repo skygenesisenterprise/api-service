@@ -493,6 +493,60 @@ impl SnmpTrapListener {
                         }
                     }
                 }
+                // VoIP Call Started
+                "1.3.6.1.4.1.8072.1.3.2.3.2.2.1.1" => {
+                    severity = TrapSeverity::Info;
+                    actions.push("log_voip_call_started".to_string());
+                    actions.push("update_voip_metrics".to_string());
+                }
+                // VoIP Call Ended
+                "1.3.6.1.4.1.8072.1.3.2.3.2.2.1.2" => {
+                    severity = TrapSeverity::Info;
+                    actions.push("log_voip_call_ended".to_string());
+                    actions.push("update_voip_metrics".to_string());
+                }
+                // VoIP Room Created
+                "1.3.6.1.4.1.8072.1.3.2.3.2.2.1.3" => {
+                    severity = TrapSeverity::Info;
+                    actions.push("log_voip_room_created".to_string());
+                    actions.push("update_voip_metrics".to_string());
+                }
+                // VoIP Room Closed
+                "1.3.6.1.4.1.8072.1.3.2.3.2.2.1.4" => {
+                    severity = TrapSeverity::Info;
+                    actions.push("log_voip_room_closed".to_string());
+                    actions.push("update_voip_metrics".to_string());
+                }
+                // VoIP Quality Issue
+                "1.3.6.1.4.1.8072.1.3.2.3.2.2.1.5" => {
+                    severity = TrapSeverity::Warning;
+                    actions.push("alert_voip_quality_issue".to_string());
+                    actions.push("check_voip_connectivity".to_string());
+                }
+                // VoIP Capacity Warning
+                "1.3.6.1.4.1.8072.1.3.2.3.2.2.1.6" => {
+                    severity = TrapSeverity::Warning;
+                    actions.push("alert_voip_capacity_warning".to_string());
+                    actions.push("scale_voip_resources".to_string());
+                }
+                // VoIP High Error Rate
+                "1.3.6.1.4.1.8072.1.3.2.3.2.2.1.7" => {
+                    if let TrapValue::String(error_rate) = &variable.value {
+                        if let Ok(rate) = error_rate.parse::<f64>() {
+                            if rate > 0.05 { // > 5% error rate
+                                severity = TrapSeverity::Error;
+                                actions.push("alert_voip_high_errors".to_string());
+                                actions.push("investigate_voip_issues".to_string());
+                            }
+                        }
+                    }
+                }
+                // VoIP Bandwidth Exceeded
+                "1.3.6.1.4.1.8072.1.3.2.3.2.2.1.8" => {
+                    severity = TrapSeverity::Critical;
+                    actions.push("alert_voip_bandwidth_exceeded".to_string());
+                    actions.push("throttle_voip_traffic".to_string());
+                }
                 _ => {
                     // Unknown trap - log for analysis
                     actions.push("log_unknown_trap".to_string());
@@ -555,6 +609,59 @@ impl SnmpTrapListener {
             "cleanup_memory" => {
                 // Trigger memory cleanup
                 println!("Attempting memory cleanup for {}", trap.source_ip);
+            }
+            // VoIP-specific actions
+            "log_voip_call_started" => {
+                // Log VoIP call start
+                println!("VoIP call started from {}", trap.source_ip);
+            }
+            "log_voip_call_ended" => {
+                // Log VoIP call end
+                println!("VoIP call ended from {}", trap.source_ip);
+            }
+            "log_voip_room_created" => {
+                // Log VoIP room creation
+                println!("VoIP conference room created from {}", trap.source_ip);
+            }
+            "log_voip_room_closed" => {
+                // Log VoIP room closure
+                println!("VoIP conference room closed from {}", trap.source_ip);
+            }
+            "alert_voip_quality_issue" => {
+                // Alert VoIP quality issues
+                println!("VOIP QUALITY ALERT: Quality issues detected from {}", trap.source_ip);
+            }
+            "check_voip_connectivity" => {
+                // Check VoIP connectivity
+                println!("Checking VoIP connectivity for {}", trap.source_ip);
+            }
+            "alert_voip_capacity_warning" => {
+                // Alert VoIP capacity issues
+                println!("VOIP CAPACITY WARNING: High utilization from {}", trap.source_ip);
+            }
+            "scale_voip_resources" => {
+                // Scale VoIP resources
+                println!("Attempting to scale VoIP resources for {}", trap.source_ip);
+            }
+            "alert_voip_high_errors" => {
+                // Alert high VoIP error rates
+                println!("VOIP ERROR ALERT: High error rate detected from {}", trap.source_ip);
+            }
+            "investigate_voip_issues" => {
+                // Investigate VoIP issues
+                println!("Investigating VoIP issues for {}", trap.source_ip);
+            }
+            "alert_voip_bandwidth_exceeded" => {
+                // Alert VoIP bandwidth exceeded
+                println!("VOIP BANDWIDTH ALERT: Bandwidth limit exceeded from {}", trap.source_ip);
+            }
+            "throttle_voip_traffic" => {
+                // Throttle VoIP traffic
+                println!("Attempting to throttle VoIP traffic for {}", trap.source_ip);
+            }
+            "update_voip_metrics" => {
+                // Update VoIP metrics in monitoring system
+                println!("Updating VoIP metrics from trap data from {}", trap.source_ip);
             }
             "log_unknown_trap" => {
                 // Log unknown trap for analysis

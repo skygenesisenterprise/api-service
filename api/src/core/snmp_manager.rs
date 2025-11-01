@@ -129,6 +129,43 @@ impl SnmpManager {
                 // SGE API Uptime
                 SnmpValue::Counter(3600) // 1 hour
             }
+            // VoIP Metrics
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.1.1" => {
+                // VoIP Active Calls
+                SnmpValue::Gauge(5) // Mock: 5 active calls
+            }
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.2.1" => {
+                // VoIP Active Rooms
+                SnmpValue::Gauge(2) // Mock: 2 active rooms
+            }
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.3.1" => {
+                // VoIP Total Participants
+                SnmpValue::Gauge(15) // Mock: 15 total participants
+            }
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.4.1" => {
+                // VoIP Average Call Duration
+                SnmpValue::String("420.50".to_string()) // Mock: 420.5 seconds
+            }
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.5.1" => {
+                // VoIP Signaling Messages/sec
+                SnmpValue::String("12.34".to_string()) // Mock: 12.34 msg/sec
+            }
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.6.1" => {
+                // VoIP Media Bytes/sec
+                SnmpValue::Counter(5242880) // Mock: 5MB/sec
+            }
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.7.1" => {
+                // VoIP Error Rate
+                SnmpValue::String("0.0123".to_string()) // Mock: 1.23% error rate
+            }
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.8.1" => {
+                // VoIP Bandwidth Usage (kbps)
+                SnmpValue::Gauge(2560) // Mock: 2560 kbps
+            }
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.9.1" => {
+                // VoIP Call Quality Score
+                SnmpValue::String("94.75".to_string()) // Mock: 94.75% quality
+            }
             _ => {
                 return Err(SnmpError::OidNotFound(request.oid));
             }
@@ -210,6 +247,16 @@ impl SnmpManager {
             "1.3.6.1.4.1.8072.1.3.2.3.1.1.1.1" => "SGE API Status".to_string(),
             "1.3.6.1.4.1.8072.1.3.2.3.1.1.2.1" => "SGE Service Health".to_string(),
             "1.3.6.1.4.1.8072.1.3.2.3.1.1.3.1" => "SGE Active Connections".to_string(),
+            // VoIP OIDs
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.1.1" => "VoIP Active Calls".to_string(),
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.2.1" => "VoIP Active Rooms".to_string(),
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.3.1" => "VoIP Total Participants".to_string(),
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.4.1" => "VoIP Average Call Duration (seconds)".to_string(),
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.5.1" => "VoIP Signaling Messages per Second".to_string(),
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.6.1" => "VoIP Media Bytes per Second".to_string(),
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.7.1" => "VoIP Error Rate".to_string(),
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.8.1" => "VoIP Bandwidth Usage (kbps)".to_string(),
+            "1.3.6.1.4.1.8072.1.3.2.3.2.1.9.1" => "VoIP Call Quality Score (0-100)".to_string(),
             _ => format!("Unknown OID: {}", oid),
         }
     }
