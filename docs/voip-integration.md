@@ -570,6 +570,7 @@ The roaming extensions system allows users to use their internal enterprise numb
 - **Multi-Device**: Registration of multiple devices per user
 - **Intelligent Routing**: Calls directed to the appropriate active device
 - **Unified Presence**: Availability status synchronized across devices
+- **International Extensions**: Support for country code prefixes (e.g., 32-1001 for Belgium)
 
 #### User Extension Management
 
@@ -582,6 +583,56 @@ Content-Type: application/json
 {
   "extension": "1001",
   "display_name": "John Doe"
+}
+```
+
+**International Extension Format:**
+Extensions can include country code prefixes with flexible local extension formats:
+- `"32-1001"` - Belgium extension 1001
+- `"1-555"` - US extension 555
+- `"33-2001"` - France extension 2001
+- `"32-001-00-00-00"` - Complex Belgian VoIP number (country-enterprise-local)
+- `"1-800-123-4567"` - US toll-free with area code
+
+##### Get Supported Country Codes
+```http
+GET /api/v1/voip/country-codes
+Authorization: Bearer <token>
+```
+
+Returns a list of supported country codes with their names.
+
+##### Get Extensions by Country
+```http
+GET /api/v1/voip/extensions/country/{country_code}
+Authorization: Bearer <token>
+```
+
+Example: `GET /api/v1/voip/extensions/country/32` returns all Belgian extensions.
+
+##### Get All Extensions with Country Info
+```http
+GET /api/v1/voip/extensions/with-country-info
+Authorization: Bearer <token>
+```
+
+Returns all extensions with their country code and country name information.
+
+##### Parse Extension Structure
+```http
+GET /api/v1/voip/extensions/parse/{extension}
+Authorization: Bearer <token>
+```
+
+Analyzes and breaks down an extension into its components. Example for `32-001-00-00-00`:
+
+```json
+{
+  "country_code": "32",
+  "country_name": "Belgium",
+  "local_extension": "001-00-00-00",
+  "full_extension": "32-001-00-00-00",
+  "parts": ["32", "001", "00", "00", "00"]
 }
 ```
 
@@ -999,6 +1050,135 @@ class VoIPCall extends Component {
         );
     }
 }
+```
+
+## VoIP Federation
+
+### Federation Overview
+
+The Sky Genesis Enterprise API supports a federated VoIP architecture where each office can maintain its own Asterisk server while connecting to the central enterprise network. This enables distributed VoIP infrastructure with centralized management and security.
+
+### Federation Components
+
+- **Federated Offices**: Individual offices with their own Asterisk PBX
+- **Federation Links**: Secure connections between offices (SIP trunks, IAX, API gateway)
+- **Federation Routes**: Intelligent routing rules for inter-office calls
+- **Federation Tokens**: Secure authentication for inter-office communication
+
+### Registering a Federated Office
+
+```http
+POST /api/v1/voip/federation/offices
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "name": "Brussels Office",
+  "location": "Brussels, Belgium",
+  "office_prefix": "BRU",
+  "asterisk_config": {
+    "host": "asterisk-bru.company.com",
+    "port": 5038,
+    "ari_url": "http://asterisk-bru.company.com:8088/ari",
+    "ari_username": "federation",
+    "ari_password": "secure_password",
+    "sip_trunk_host": "sip.company.com",
+    "sip_trunk_port": 5060,
+    "federation_context": "federation-bru"
+  }
+}
+```
+
+### Creating Federation Links
+
+```http
+POST /api/v1/voip/federation/links
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "source_office_id": "office-bru-id",
+  "target_office_id": "office-par-id",
+  "link_type": "SipTrunk",
+  "priority": 1
+}
+```
+
+**Link Types:**
+- `SipTrunk`: Direct SIP trunk between Asterisk servers
+- `IaxTrunk`: IAX2 trunk (more efficient for VoIP)
+- `ApiGateway`: Route via central API gateway
+- `PstnGateway`: PSTN connectivity
+
+### Defining Federation Routes
+
+```http
+POST /api/v1/voip/federation/routes
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "source_office_prefix": "BRU",
+  "destination_pattern": "PAR-*",
+  "target_office_id": "office-par-id",
+  "cost_priority": 1
+}
+```
+
+### Federation Authentication
+
+Federated offices authenticate using federation tokens:
+
+```http
+Authorization: Bearer <federation_token>
+X-Federation-Office: <office_prefix>
+```
+
+### Asterisk Federation Configuration
+
+#### Federation Context Example (`/etc/asterisk/extensions.conf`)
+
+```ini
+[federation-bru]
+; Outgoing calls to other offices
+exten => _PAR-.,1,NoOp(Federation call from BRU to PAR)
+exten => _PAR-.,n,Dial(SIP/federation-par/${EXTEN:4})
+
+; Incoming calls from federation
+exten => _BRU-.,1,NoOp(Incoming federation call)
+exten => _BRU-.,n,Dial(SIP/${EXTEN:4})
+
+; Emergency routing
+exten => _911,1,NoOp(Emergency call)
+exten => _911,n,Dial(SIP/trunk-pstn/911)
+```
+
+#### SIP Trunk Configuration (`/etc/asterisk/sip.conf`)
+
+```ini
+[federation-par]
+type=peer
+host=dynamic
+context=federation-bru
+disallow=all
+allow=ulaw,alaw,g729
+qualify=yes
+secret=federation_secret_par
+```
+
+### Federation Security
+
+- **Encrypted Links**: All federation links use SRTP/TLS encryption
+- **Token Authentication**: Federation tokens with expiration
+- **Access Control**: Office-specific permissions and routing rules
+- **Audit Logging**: All federation activities are logged
+- **Failover**: Automatic failover to backup links
+
+### Monitoring Federation
+
+```http
+GET /api/v1/voip/federation/offices
+GET /api/v1/voip/federation/links
 ```
 
 ## Useful Asterisk Commands

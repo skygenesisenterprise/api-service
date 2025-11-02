@@ -150,6 +150,109 @@ pub fn voip_routes(
             voip_controller::get_user_extension(vs, user_id).await
         });
 
+    // Country-specific extension routes
+    let get_extensions_by_country = voip_base.clone()
+        .and(warp::path("extensions"))
+        .and(warp::path("country"))
+        .and(warp::path::param::<String>())
+        .and(warp::path::end())
+        .and(warp::get())
+        .and_then(|user_id: String, vs: Arc<VoipService>, country_code: String| async move {
+            voip_controller::get_extensions_by_country(vs, country_code).await
+        });
+
+    let get_all_extensions_with_country_info = voip_base.clone()
+        .and(warp::path("extensions"))
+        .and(warp::path("with-country-info"))
+        .and(warp::path::end())
+        .and(warp::get())
+        .and_then(|user_id: String, vs: Arc<VoipService>| async move {
+            voip_controller::get_all_extensions_with_country_info(vs).await
+        });
+
+    let get_country_codes = warp::path("api")
+        .and(warp::path("v1"))
+        .and(warp::path("voip"))
+        .and(warp::path("country-codes"))
+        .and(warp::path::end())
+        .and(warp::get())
+        .and_then(|| async move {
+            voip_controller::get_country_codes().await
+        });
+
+    let parse_extension_structure = warp::path("api")
+        .and(warp::path("v1"))
+        .and(warp::path("voip"))
+        .and(warp::path("extensions"))
+        .and(warp::path("parse"))
+        .and(warp::path::param::<String>())
+        .and(warp::path::end())
+        .and(warp::get())
+        .and_then(|extension: String| async move {
+            voip_controller::parse_extension_structure(extension).await
+        });
+
+    // Federation routes
+    let federation_base = warp::path("federation");
+
+    let register_federated_office = federation_base.clone()
+        .and(warp::path("offices"))
+        .and(warp::path::end())
+        .and(warp::post())
+        .and(warp::body::json())
+        .and_then(move |req| {
+            let vs = voip_service.clone();
+            async move {
+                voip_controller::register_federated_office(vs, req).await
+            }
+        });
+
+    let get_federated_offices = federation_base.clone()
+        .and(warp::path("offices"))
+        .and(warp::path::end())
+        .and(warp::get())
+        .and_then(move || {
+            let vs = voip_service.clone();
+            async move {
+                voip_controller::get_federated_offices(vs).await
+            }
+        });
+
+    let create_federation_link = federation_base.clone()
+        .and(warp::path("links"))
+        .and(warp::path::end())
+        .and(warp::post())
+        .and(warp::body::json())
+        .and_then(move |req| {
+            let vs = voip_service.clone();
+            async move {
+                voip_controller::create_federation_link(vs, req).await
+            }
+        });
+
+    let get_federation_links = federation_base.clone()
+        .and(warp::path("links"))
+        .and(warp::path::end())
+        .and(warp::get())
+        .and_then(move || {
+            let vs = voip_service.clone();
+            async move {
+                voip_controller::get_federation_links(vs).await
+            }
+        });
+
+    let create_federation_route = federation_base.clone()
+        .and(warp::path("routes"))
+        .and(warp::path::end())
+        .and(warp::post())
+        .and(warp::body::json())
+        .and_then(move |req| {
+            let vs = voip_service.clone();
+            async move {
+                voip_controller::create_federation_route(vs, req).await
+            }
+        });
+
     // Device management routes
     let register_device = voip_base.clone()
         .and(warp::path("devices"))
@@ -209,6 +312,15 @@ pub fn voip_routes(
         .or(join_room)
         .or(assign_extension)
         .or(get_extension)
+        .or(get_extensions_by_country)
+        .or(get_all_extensions_with_country_info)
+        .or(get_country_codes)
+        .or(parse_extension_structure)
+        .or(register_federated_office)
+        .or(get_federated_offices)
+        .or(create_federation_link)
+        .or(get_federation_links)
+        .or(create_federation_route)
         .or(register_device)
         .or(get_devices)
         .or(update_device_presence)

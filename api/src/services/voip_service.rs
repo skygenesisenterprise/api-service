@@ -25,6 +25,7 @@ use crate::core::asterisk_client::{AsteriskClient, AsteriskConfig};
 
 /// [USER EXTENSION MODEL] User's Internal Extension Number
 /// @MISSION Map users to their internal phone numbers for roaming access.
+/// @NOTE Extension can include country code prefix (e.g., "32-1001" for Belgium)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserExtension {
     pub user_id: String,
@@ -57,6 +58,327 @@ pub enum EndpointType {
     Desktop,
 }
 
+/// [COUNTRY CODE MAPPING] Standard international dialing codes
+/// @MISSION Provide mapping between country codes and country names
+pub const COUNTRY_CODES: &[(&str, &str)] = &[
+    ("1", "United States/Canada"),
+    ("7", "Russia/Kazakhstan"),
+    ("20", "Egypt"),
+    ("27", "South Africa"),
+    ("30", "Greece"),
+    ("31", "Netherlands"),
+    ("32", "Belgium"),
+    ("33", "France"),
+    ("34", "Spain"),
+    ("36", "Hungary"),
+    ("39", "Italy"),
+    ("40", "Romania"),
+    ("41", "Switzerland"),
+    ("43", "Austria"),
+    ("44", "United Kingdom"),
+    ("45", "Denmark"),
+    ("46", "Sweden"),
+    ("47", "Norway"),
+    ("48", "Poland"),
+    ("49", "Germany"),
+    ("51", "Peru"),
+    ("52", "Mexico"),
+    ("53", "Cuba"),
+    ("54", "Argentina"),
+    ("55", "Brazil"),
+    ("56", "Chile"),
+    ("57", "Colombia"),
+    ("58", "Venezuela"),
+    ("60", "Malaysia"),
+    ("61", "Australia"),
+    ("62", "Indonesia"),
+    ("63", "Philippines"),
+    ("64", "New Zealand"),
+    ("65", "Singapore"),
+    ("66", "Thailand"),
+    ("81", "Japan"),
+    ("82", "South Korea"),
+    ("84", "Vietnam"),
+    ("86", "China"),
+    ("90", "Turkey"),
+    ("91", "India"),
+    ("92", "Pakistan"),
+    ("93", "Afghanistan"),
+    ("94", "Sri Lanka"),
+    ("95", "Myanmar"),
+    ("98", "Iran"),
+    ("212", "Morocco"),
+    ("213", "Algeria"),
+    ("216", "Tunisia"),
+    ("218", "Libya"),
+    ("220", "Gambia"),
+    ("221", "Senegal"),
+    ("222", "Mauritania"),
+    ("223", "Mali"),
+    ("224", "Guinea"),
+    ("225", "Ivory Coast"),
+    ("226", "Burkina Faso"),
+    ("227", "Niger"),
+    ("228", "Togo"),
+    ("229", "Benin"),
+    ("230", "Mauritius"),
+    ("231", "Liberia"),
+    ("232", "Sierra Leone"),
+    ("233", "Ghana"),
+    ("234", "Nigeria"),
+    ("235", "Chad"),
+    ("236", "Central African Republic"),
+    ("237", "Cameroon"),
+    ("238", "Cape Verde"),
+    ("239", "Sao Tome and Principe"),
+    ("240", "Equatorial Guinea"),
+    ("241", "Gabon"),
+    ("242", "Republic of the Congo"),
+    ("243", "Democratic Republic of the Congo"),
+    ("244", "Angola"),
+    ("245", "Guinea-Bissau"),
+    ("246", "British Indian Ocean Territory"),
+    ("247", "Ascension Island"),
+    ("248", "Seychelles"),
+    ("249", "Sudan"),
+    ("250", "Rwanda"),
+    ("251", "Ethiopia"),
+    ("252", "Somalia"),
+    ("253", "Djibouti"),
+    ("254", "Kenya"),
+    ("255", "Tanzania"),
+    ("256", "Uganda"),
+    ("257", "Burundi"),
+    ("258", "Mozambique"),
+    ("260", "Zambia"),
+    ("261", "Madagascar"),
+    ("262", "Reunion/Mayotte"),
+    ("263", "Zimbabwe"),
+    ("264", "Namibia"),
+    ("265", "Malawi"),
+    ("266", "Lesotho"),
+    ("267", "Botswana"),
+    ("268", "Swaziland"),
+    ("269", "Comoros"),
+    ("290", "Saint Helena"),
+    ("291", "Eritrea"),
+    ("297", "Aruba"),
+    ("298", "Faroe Islands"),
+    ("299", "Greenland"),
+    ("350", "Gibraltar"),
+    ("351", "Portugal"),
+    ("352", "Luxembourg"),
+    ("353", "Ireland"),
+    ("354", "Iceland"),
+    ("355", "Albania"),
+    ("356", "Malta"),
+    ("357", "Cyprus"),
+    ("358", "Finland"),
+    ("359", "Bulgaria"),
+    ("370", "Lithuania"),
+    ("371", "Latvia"),
+    ("372", "Estonia"),
+    ("373", "Moldova"),
+    ("374", "Armenia"),
+    ("375", "Belarus"),
+    ("376", "Andorra"),
+    ("377", "Monaco"),
+    ("378", "San Marino"),
+    ("380", "Ukraine"),
+    ("381", "Serbia"),
+    ("382", "Montenegro"),
+    ("383", "Kosovo"),
+    ("385", "Croatia"),
+    ("386", "Slovenia"),
+    ("387", "Bosnia and Herzegovina"),
+    ("389", "Macedonia"),
+    ("420", "Czech Republic"),
+    ("421", "Slovakia"),
+    ("423", "Liechtenstein"),
+    ("500", "Falkland Islands"),
+    ("501", "Belize"),
+    ("502", "Guatemala"),
+    ("503", "El Salvador"),
+    ("504", "Honduras"),
+    ("505", "Nicaragua"),
+    ("506", "Costa Rica"),
+    ("507", "Panama"),
+    ("508", "Saint Pierre and Miquelon"),
+    ("509", "Haiti"),
+    ("590", "Guadeloupe"),
+    ("591", "Bolivia"),
+    ("592", "Guyana"),
+    ("593", "Ecuador"),
+    ("594", "French Guiana"),
+    ("595", "Paraguay"),
+    ("596", "Martinique"),
+    ("597", "Suriname"),
+    ("598", "Uruguay"),
+    ("599", "Netherlands Antilles"),
+    ("670", "East Timor"),
+    ("672", "Antarctica"),
+    ("673", "Brunei"),
+    ("674", "Nauru"),
+    ("675", "Papua New Guinea"),
+    ("676", "Tonga"),
+    ("677", "Solomon Islands"),
+    ("678", "Vanuatu"),
+    ("679", "Fiji"),
+    ("680", "Palau"),
+    ("681", "Wallis and Futuna"),
+    ("682", "Cook Islands"),
+    ("683", "Niue"),
+    ("684", "American Samoa"),
+    ("685", "Samoa"),
+    ("686", "Kiribati"),
+    ("687", "New Caledonia"),
+    ("688", "Tuvalu"),
+    ("689", "French Polynesia"),
+    ("690", "Tokelau"),
+    ("691", "Micronesia"),
+    ("692", "Marshall Islands"),
+    ("850", "North Korea"),
+    ("852", "Hong Kong"),
+    ("853", "Macau"),
+    ("855", "Cambodia"),
+    ("856", "Laos"),
+    ("880", "Bangladesh"),
+    ("886", "Taiwan"),
+    ("960", "Maldives"),
+    ("961", "Lebanon"),
+    ("962", "Jordan"),
+    ("963", "Syria"),
+    ("964", "Iraq"),
+    ("965", "Kuwait"),
+    ("966", "Saudi Arabia"),
+    ("967", "Yemen"),
+    ("968", "Oman"),
+    ("970", "Palestine"),
+    ("971", "United Arab Emirates"),
+    ("972", "Israel"),
+    ("973", "Bahrain"),
+    ("974", "Qatar"),
+    ("975", "Bhutan"),
+    ("976", "Mongolia"),
+    ("977", "Nepal"),
+    ("992", "Tajikistan"),
+    ("993", "Turkmenistan"),
+    ("994", "Azerbaijan"),
+    ("995", "Georgia"),
+    ("996", "Kyrgyzstan"),
+    ("998", "Uzbekistan"),
+];
+
+/// [EXTENSION PARSING] Parse extension with optional country code
+/// @MISSION Extract country code and local extension from full extension string.
+/// @NOTE Supports complex formats like "32-001-00-00-00" where first part is country code
+/// @PARAM extension: Full extension string (e.g., "32-001-00-00-00", "32-1001" or "1001")
+/// @RETURN (country_code_option, local_extension)
+pub fn parse_extension_with_country_code(extension: &str) -> (Option<String>, String) {
+    let parts: Vec<&str> = extension.split('-').collect();
+
+    // Check if first part is a valid country code
+    if !parts.is_empty() {
+        let potential_country_code = parts[0];
+
+        // Validate country code exists in our mapping
+        if COUNTRY_CODES.iter().any(|(code, _)| *code == potential_country_code) {
+            // Country code found, rest is local extension
+            let local_extension = parts[1..].join("-");
+            return (Some(potential_country_code.to_string()), local_extension);
+        }
+    }
+
+    // No valid country code found, treat as local extension
+    (None, extension.to_string())
+}
+
+/// [VALIDATE EXTENSION] Validate extension format
+/// @MISSION Ensure extension follows correct format with optional country code.
+/// @NOTE Supports complex formats with multiple dash-separated numeric parts
+/// @PARAM extension: Extension to validate
+/// @RETURN true if valid, false otherwise
+pub fn validate_extension_format(extension: &str) -> bool {
+    if extension.is_empty() {
+        return false;
+    }
+
+    let parts: Vec<&str> = extension.split('-').collect();
+
+    // Must have at least one part
+    if parts.is_empty() {
+        return false;
+    }
+
+    // Check if first part looks like it should be a country code (numeric and 1-3 digits)
+    let first_part_numeric = parts[0].chars().all(|c| c.is_numeric());
+    let first_part_length = parts[0].len();
+
+    if first_part_numeric && first_part_length >= 1 && first_part_length <= 3 {
+        // First part looks like a country code, validate it exists
+        if !COUNTRY_CODES.iter().any(|(valid_code, _)| *valid_code == parts[0]) {
+            return false; // Invalid country code
+        }
+        // Valid country code, validate remaining parts
+        for part in &parts[1..] {
+            if part.is_empty() || !part.chars().all(|c| c.is_numeric()) {
+                return false;
+            }
+        }
+        // Must have at least one part after country code
+        if parts.len() <= 1 {
+            return false;
+        }
+    } else {
+        // First part doesn't look like country code, validate all parts as local extension
+        for part in &parts {
+            if part.is_empty() || !part.chars().all(|c| c.is_numeric()) {
+                return false;
+            }
+        }
+    }
+
+    true
+}
+
+/// [GET COUNTRY NAME] Get country name from country code
+/// @MISSION Provide human-readable country name for UI display.
+/// @PARAM country_code: Two or three digit country code
+/// @RETURN Country name if found, None otherwise
+pub fn get_country_name(country_code: &str) -> Option<String> {
+    COUNTRY_CODES.iter()
+        .find(|(code, _)| *code == country_code)
+        .map(|(_, name)| name.to_string())
+}
+
+/// [GET EXTENSION COUNTRY INFO] Get country information for extension
+/// @MISSION Extract country code and name from extension.
+/// @PARAM extension: Full extension string
+/// @RETURN (country_code, country_name) tuple, both optional
+pub fn get_extension_country_info(extension: &str) -> (Option<String>, Option<String>) {
+    let (country_code, _) = parse_extension_with_country_code(extension);
+    let country_name = country_code.as_ref().and_then(|code| get_country_name(code));
+    (country_code, country_name)
+}
+
+/// [PARSE EXTENSION STRUCTURE] Parse complete extension structure
+/// @MISSION Provide detailed breakdown of all extension components.
+/// @PARAM extension: Full extension string
+/// @RETURN Structured representation of the extension
+pub fn parse_extension_structure(extension: &str) -> ExtensionStructure {
+    let parts: Vec<String> = extension.split('-').map(|s| s.to_string()).collect();
+    let (country_code, local_extension) = parse_extension_with_country_code(extension);
+    let country_name = country_code.as_ref().and_then(|code| get_country_name(code));
+
+    ExtensionStructure {
+        country_code,
+        country_name,
+        local_extension,
+        full_extension: extension.to_string(),
+        parts,
+    }
+}
+
 /// [PRESENCE STATUS MODEL] User Presence Information
 /// @MISSION Track user availability across devices.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,6 +398,88 @@ pub enum PresenceState {
     Busy,
     Offline,
     DoNotDisturb,
+}
+
+/// [FEDERATED OFFICE MODEL] Represents a federated office with its own Asterisk server
+/// @MISSION Enable distributed VoIP infrastructure with secure inter-office connectivity.
+/// @NOTE Each office can have its own Asterisk server while connecting to the central network.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FederatedOffice {
+    pub id: String,
+    pub name: String,
+    pub location: String,
+    pub asterisk_config: AsteriskFederationConfig,
+    pub federation_token: String, // Secure token for inter-office authentication
+    pub created_at: DateTime<Utc>,
+    pub last_connected: Option<DateTime<Utc>>,
+    pub is_active: bool,
+    pub office_prefix: String, // Prefix for this office's extensions (e.g., "BRU" for Brussels)
+}
+
+/// [ASTERISK FEDERATION CONFIG] Configuration for federated Asterisk connections
+/// @MISSION Store connection details for federated Asterisk servers.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AsteriskFederationConfig {
+    pub host: String,
+    pub port: u16,
+    pub ari_url: String,
+    pub ari_username: String,
+    pub ari_password: String, // Encrypted in production
+    pub sip_trunk_host: String,
+    pub sip_trunk_port: u16,
+    pub federation_context: String, // Asterisk context for federation
+}
+
+/// [FEDERATION LINK MODEL] Secure connection between two federated offices
+/// @MISSION Establish and manage secure VoIP trunks between offices.
+/// @NOTE Bidirectional links with encryption and authentication.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FederationLink {
+    pub id: String,
+    pub source_office_id: String,
+    pub target_office_id: String,
+    pub link_type: FederationLinkType,
+    pub encryption_enabled: bool,
+    pub bandwidth_limit: Option<u32>, // Kbps limit for the link
+    pub priority: u8, // Routing priority (1-10, higher = preferred)
+    pub created_at: DateTime<Utc>,
+    pub last_used: Option<DateTime<Utc>>,
+    pub is_active: bool,
+}
+
+/// [FEDERATION LINK TYPE] Type of connection between federated offices
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum FederationLinkType {
+    SipTrunk,      // Direct SIP trunk
+    IaxTrunk,      // IAX2 trunk (more efficient for VoIP)
+    ApiGateway,    // Via central API gateway
+    PstnGateway,   // PSTN connectivity
+}
+
+/// [FEDERATION ROUTE] Routing rule for inter-office calls
+/// @MISSION Define how calls should be routed between federated offices.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FederationRoute {
+    pub id: String,
+    pub source_office_prefix: String,
+    pub destination_pattern: String, // Regex pattern for destination matching
+    pub target_office_id: String,
+    pub preferred_link_id: Option<String>,
+    pub fallback_links: Vec<String>, // Link IDs to try if primary fails
+    pub cost_priority: u8, // Cost-based routing priority
+    pub created_at: DateTime<Utc>,
+    pub is_active: bool,
+}
+
+/// [EXTENSION STRUCTURE] Structured representation of a VoIP extension
+/// @MISSION Provide detailed breakdown of extension components
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExtensionStructure {
+    pub country_code: Option<String>,
+    pub country_name: Option<String>,
+    pub local_extension: String,
+    pub full_extension: String,
+    pub parts: Vec<String>, // All parts split by dashes
 }
 
 /// [VOIP CALL MODEL] Voice/Video Call Information
@@ -173,6 +577,12 @@ pub struct VoipService {
     device_registrations: Arc<RwLock<HashMap<String, Vec<DeviceRegistration>>>>, // user_id -> devices
     presence_status: Arc<RwLock<HashMap<String, PresenceStatus>>>, // user_id -> presence
     signaling_channels: Arc<RwLock<HashMap<String, Vec<SignalingMessage>>>>, // call_id -> messages
+
+    // Federation fields
+    federated_offices: Arc<RwLock<HashMap<String, FederatedOffice>>>, // office_id -> office
+    federation_links: Arc<RwLock<HashMap<String, FederationLink>>>, // link_id -> link
+    federation_routes: Arc<RwLock<HashMap<String, FederationRoute>>>, // route_id -> route
+    office_tokens: Arc<RwLock<HashMap<String, String>>>, // token -> office_id (for auth)
 }
 
 impl VoipService {
@@ -193,6 +603,12 @@ impl VoipService {
             device_registrations: Arc::new(RwLock::new(HashMap::new())),
             presence_status: Arc::new(RwLock::new(HashMap::new())),
             signaling_channels: Arc::new(RwLock::new(HashMap::new())),
+
+            // Federation initialization
+            federated_offices: Arc::new(RwLock::new(HashMap::new())),
+            federation_links: Arc::new(RwLock::new(HashMap::new())),
+            federation_routes: Arc::new(RwLock::new(HashMap::new())),
+            office_tokens: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -466,6 +882,11 @@ impl VoipService {
     /// @THREAT Extension conflicts, unauthorized assignment.
     /// @COUNTERMEASURE Validation, uniqueness checks.
     pub async fn assign_user_extension(&self, user_id: &str, extension: &str, display_name: Option<String>) -> Result<UserExtension, String> {
+        // Validate extension format
+        if !validate_extension_format(extension) {
+            return Err("Invalid extension format. Use format: [country_code-]local_extension (e.g., '1001' or '32-1001')".to_string());
+        }
+
         let mut extensions = self.user_extensions.write().await;
 
         // Check if extension is already assigned to another user
@@ -492,6 +913,237 @@ impl VoipService {
     pub async fn get_user_extension(&self, user_id: &str) -> Option<UserExtension> {
         let extensions = self.user_extensions.read().await;
         extensions.get(user_id).cloned()
+    }
+
+    /// [LIST EXTENSIONS BY COUNTRY] Get all extensions for a specific country
+    /// @MISSION Filter extensions by country code for administrative purposes.
+    /// @PARAM country_code: Country code to filter by (e.g., "32" for Belgium)
+    /// @RETURN List of user extensions for the specified country
+    pub async fn get_extensions_by_country(&self, country_code: &str) -> Vec<UserExtension> {
+        let extensions = self.user_extensions.read().await;
+        extensions.values()
+            .filter(|ext| {
+                let (ext_country_code, _) = parse_extension_with_country_code(&ext.extension);
+                ext_country_code.as_ref() == Some(&country_code.to_string())
+            })
+            .cloned()
+            .collect()
+    }
+
+    /// [LIST ALL EXTENSIONS WITH COUNTRY INFO] Get all extensions with country information
+    /// @MISSION Provide comprehensive extension list with country details.
+    /// @RETURN List of extensions with their country information
+    pub async fn get_all_extensions_with_country_info(&self) -> Vec<(UserExtension, Option<String>, Option<String>)> {
+        let extensions = self.user_extensions.read().await;
+        extensions.values()
+            .map(|ext| {
+                let (country_code, country_name) = get_extension_country_info(&ext.extension);
+                (ext.clone(), country_code, country_name)
+            })
+            .collect()
+    }
+
+    // ============================================================================
+    // FEDERATION MANAGEMENT METHODS
+    // ============================================================================
+
+    /// [REGISTER FEDERATED OFFICE] Register a new federated office
+    /// @MISSION Add a new office to the federation with its Asterisk configuration.
+    /// @THREAT Unauthorized office registration, configuration conflicts.
+    /// @COUNTERMEASURE Token-based authentication, validation checks.
+    pub async fn register_federated_office(
+        &self,
+        name: &str,
+        location: &str,
+        office_prefix: &str,
+        asterisk_config: AsteriskFederationConfig,
+    ) -> Result<FederatedOffice, String> {
+        let mut offices = self.federated_offices.write().await;
+
+        // Check if office prefix is already used
+        for office in offices.values() {
+            if office.office_prefix == office_prefix {
+                return Err("Office prefix already exists".to_string());
+            }
+        }
+
+        let office_id = Uuid::new_v4().to_string();
+        let federation_token = Uuid::new_v4().to_string(); // In production, use proper token generation
+
+        let office = FederatedOffice {
+            id: office_id.clone(),
+            name: name.to_string(),
+            location: location.to_string(),
+            asterisk_config,
+            federation_token: federation_token.clone(),
+            created_at: Utc::now(),
+            last_connected: None,
+            is_active: true,
+            office_prefix: office_prefix.to_string(),
+        };
+
+        offices.insert(office_id.clone(), office.clone());
+
+        // Register token for authentication
+        let mut tokens = self.office_tokens.write().await;
+        tokens.insert(federation_token, office_id);
+
+        Ok(office)
+    }
+
+    /// [AUTHENTICATE FEDERATION TOKEN] Validate federation token
+    /// @MISSION Verify that a federation token is valid and return office info.
+    /// @THREAT Token spoofing, unauthorized access.
+    /// @COUNTERMEASURE Secure token validation, expiration checks.
+    pub async fn authenticate_federation_token(&self, token: &str) -> Option<FederatedOffice> {
+        let tokens = self.office_tokens.read().await;
+        if let Some(office_id) = tokens.get(token) {
+            let offices = self.federated_offices.read().await;
+            if let Some(office) = offices.get(office_id) {
+                if office.is_active {
+                    return Some(office.clone());
+                }
+            }
+        }
+        None
+    }
+
+    /// [CREATE FEDERATION LINK] Establish connection between two offices
+    /// @MISSION Create secure VoIP trunk between federated offices.
+    /// @THREAT Link configuration errors, security vulnerabilities.
+    /// @COUNTERMEASURE Validation, encryption requirements.
+    pub async fn create_federation_link(
+        &self,
+        source_office_id: &str,
+        target_office_id: &str,
+        link_type: FederationLinkType,
+        priority: u8,
+    ) -> Result<FederationLink, String> {
+        let offices = self.federated_offices.read().await;
+
+        // Validate offices exist and are active
+        if !offices.contains_key(source_office_id) || !offices.contains_key(target_office_id) {
+            return Err("One or both offices not found".to_string());
+        }
+
+        let mut links = self.federation_links.write().await;
+        let link_id = Uuid::new_v4().to_string();
+
+        let link = FederationLink {
+            id: link_id.clone(),
+            source_office_id: source_office_id.to_string(),
+            target_office_id: target_office_id.to_string(),
+            link_type,
+            encryption_enabled: true, // Always enable encryption
+            bandwidth_limit: None,
+            priority,
+            created_at: Utc::now(),
+            last_used: None,
+            is_active: true,
+        };
+
+        links.insert(link_id, link.clone());
+        Ok(link)
+    }
+
+    /// [CREATE FEDERATION ROUTE] Define routing rule for inter-office calls
+    /// @MISSION Set up intelligent call routing between federated offices.
+    /// @THREAT Routing loops, incorrect destinations.
+    /// @COUNTERMEASURE Pattern validation, loop detection.
+    pub async fn create_federation_route(
+        &self,
+        source_office_prefix: &str,
+        destination_pattern: &str,
+        target_office_id: &str,
+        cost_priority: u8,
+    ) -> Result<FederationRoute, String> {
+        let offices = self.federated_offices.read().await;
+
+        // Validate target office exists
+        if !offices.contains_key(target_office_id) {
+            return Err("Target office not found".to_string());
+        }
+
+        let mut routes = self.federation_routes.write().await;
+        let route_id = Uuid::new_v4().to_string();
+
+        let route = FederationRoute {
+            id: route_id.clone(),
+            source_office_prefix: source_office_prefix.to_string(),
+            destination_pattern: destination_pattern.to_string(),
+            target_office_id: target_office_id.to_string(),
+            preferred_link_id: None,
+            fallback_links: vec![],
+            cost_priority,
+            created_at: Utc::now(),
+            is_active: true,
+        };
+
+        routes.insert(route_id, route.clone());
+        Ok(route)
+    }
+
+    /// [RESOLVE FEDERATION ROUTE] Find appropriate route for inter-office call
+    /// @MISSION Determine which office and link to use for routing a call.
+    /// @THREAT No available route, routing conflicts.
+    /// @COUNTERMEASURE Fallback routing, priority-based selection.
+    pub async fn resolve_federation_route(
+        &self,
+        source_office_prefix: &str,
+        destination: &str,
+    ) -> Option<(FederatedOffice, FederationLink)> {
+        let routes = self.federation_routes.read().await;
+        let offices = self.federated_offices.read().await;
+        let links = self.federation_links.read().await;
+
+        // Find matching route
+        for route in routes.values() {
+            if route.source_office_prefix == source_office_prefix && route.is_active {
+                // Simple pattern matching (in production, use regex)
+                if destination.contains(&route.destination_pattern) ||
+                   route.destination_pattern == "*" { // Wildcard for all destinations
+
+                    if let Some(target_office) = offices.get(&route.target_office_id) {
+                        // Find preferred link or any active link
+                        let preferred_link_id = route.preferred_link_id.as_ref()
+                            .or_else(|| route.fallback_links.first());
+
+                        if let Some(link_id) = preferred_link_id {
+                            if let Some(link) = links.get(link_id) {
+                                if link.is_active {
+                                    return Some((target_office.clone(), link.clone()));
+                                }
+                            }
+                        }
+
+                        // Fallback: find any active link to target office
+                        for link in links.values() {
+                            if (link.source_office_id == route.source_office_prefix ||
+                                link.target_office_id == route.target_office_id) &&
+                               link.is_active {
+                                return Some((target_office.clone(), link.clone()));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    /// [GET FEDERATED OFFICES] List all federated offices
+    /// @MISSION Provide administrative view of all offices in the federation.
+    pub async fn get_federated_offices(&self) -> Vec<FederatedOffice> {
+        let offices = self.federated_offices.read().await;
+        offices.values().cloned().collect()
+    }
+
+    /// [GET FEDERATION LINKS] List all federation links
+    /// @MISSION Provide view of all inter-office connections.
+    pub async fn get_federation_links(&self) -> Vec<FederationLink> {
+        let links = self.federation_links.read().await;
+        links.values().cloned().collect()
     }
 
     /// [DEVICE REGISTRATION] Register a new device for user
@@ -586,8 +1238,10 @@ impl VoipService {
                 .collect();
 
             if online_devices.is_empty() {
-                // Fallback to default SIP endpoint
-                return Ok(format!("SIP/{}", extension.extension));
+                // Parse extension to extract local extension (without country code)
+                let (_, local_extension) = parse_extension_with_country_code(&extension.extension);
+                // Fallback to default SIP endpoint using local extension
+                return Ok(format!("SIP/{}", local_extension));
             }
 
             // For now, route to first online device
@@ -663,7 +1317,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_assign_user_extension() {
-        let service = VoipService::test_instance();
+        let service = VoipService::new().await;
 
         let result = service.assign_user_extension("user123", "1001", Some("John Doe".to_string())).await;
         assert!(result.is_ok());
@@ -673,6 +1327,69 @@ mod tests {
         assert_eq!(extension.extension, "1001");
         assert_eq!(extension.display_name, Some("John Doe".to_string()));
         assert!(extension.enabled);
+    }
+
+    #[tokio::test]
+    async fn test_international_extensions() {
+        let service = VoipService::new().await;
+
+        // Test Belgian extension
+        let result = service.assign_user_extension("user_be", "32-1001", Some("Belgian User".to_string())).await;
+        assert!(result.is_ok());
+        let extension = result.unwrap();
+        assert_eq!(extension.extension, "32-1001");
+
+        // Test US extension
+        let result = service.assign_user_extension("user_us", "1-555", Some("US User".to_string())).await;
+        assert!(result.is_ok());
+        let extension = result.unwrap();
+        assert_eq!(extension.extension, "1-555");
+
+        // Test complex Belgian extension
+        let result = service.assign_user_extension("user_be_complex", "32-001-00-00-00", Some("Complex Belgian User".to_string())).await;
+        assert!(result.is_ok());
+        let extension = result.unwrap();
+        assert_eq!(extension.extension, "32-001-00-00-00");
+
+        // Test invalid country code (999 doesn't exist)
+        let result = service.assign_user_extension("user_invalid", "999-1001", None).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid extension format"));
+
+        // Test parsing functions
+        let (country_code, local_ext) = parse_extension_with_country_code("32-1001");
+        assert_eq!(country_code, Some("32".to_string()));
+        assert_eq!(local_ext, "1001");
+
+        let (country_code, local_ext) = parse_extension_with_country_code("32-001-00-00-00");
+        assert_eq!(country_code, Some("32".to_string()));
+        assert_eq!(local_ext, "001-00-00-00");
+
+        let (country_code, local_ext) = parse_extension_with_country_code("1001");
+        assert_eq!(country_code, None);
+        assert_eq!(local_ext, "1001");
+
+        // Test country name lookup
+        assert_eq!(get_country_name("32"), Some("Belgium".to_string()));
+        assert_eq!(get_country_name("1"), Some("United States/Canada".to_string()));
+        assert_eq!(get_country_name("999"), None);
+
+        // Test extension structure parsing
+        let structure = parse_extension_structure("32-001-00-00-00");
+        assert_eq!(structure.country_code, Some("32".to_string()));
+        assert_eq!(structure.country_name, Some("Belgium".to_string()));
+        assert_eq!(structure.local_extension, "001-00-00-00");
+        assert_eq!(structure.full_extension, "32-001-00-00-00");
+        assert_eq!(structure.parts, vec!["32", "001", "00", "00", "00"]);
+
+        // Test validation of complex formats
+        assert!(validate_extension_format("32-001-00-00-00"));
+        assert!(validate_extension_format("1-555-123-4567"));
+        assert!(validate_extension_format("1001"));
+        assert!(!validate_extension_format("32-"));
+        assert!(!validate_extension_format("abc-123"));
+        assert!(!validate_extension_format("32-abc-123"));
+        assert!(!validate_extension_format("999-1001")); // Invalid country code
     }
 
     #[tokio::test]

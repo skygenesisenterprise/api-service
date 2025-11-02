@@ -16,7 +16,7 @@
 // ============================================================================
 
 use warp::Reply;
-use crate::services::voip_service::{VoipService, VoipCall, VoipRoom, SignalingMessage, CallType, RoomSettings, UserExtension, DeviceRegistration, PresenceStatus, EndpointType, PresenceState};
+use crate::services::voip_service::{VoipService, VoipCall, VoipRoom, SignalingMessage, CallType, RoomSettings, UserExtension, DeviceRegistration, PresenceStatus, EndpointType, PresenceState, FederatedOffice, FederationLink, FederationRoute, FederationLinkType, AsteriskFederationConfig};
 use crate::core::asterisk_client::{AsteriskClient, AriChannel, AriBridge, AriEndpoint};
 use std::sync::Arc;
 use warp::http::StatusCode;
@@ -53,6 +53,55 @@ pub struct AssignExtensionRequest {
 }
 
 /// [REGISTER DEVICE REQUEST] Register VoIP Device
+
+/// [EXTENSION WITH COUNTRY INFO] Extension with country information
+#[derive(Serialize, utoipa::ToSchema)]
+pub struct ExtensionWithCountryInfo {
+    pub user_id: String,
+    pub extension: String,
+    pub display_name: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub enabled: bool,
+    pub country_code: Option<String>,
+    pub country_name: Option<String>,
+}
+
+/// [EXTENSION STRUCTURE INFO] Detailed extension structure breakdown
+#[derive(Serialize, utoipa::ToSchema)]
+pub struct ExtensionStructureInfo {
+    pub country_code: Option<String>,
+    pub country_name: Option<String>,
+    pub local_extension: String,
+    pub full_extension: String,
+    pub parts: Vec<String>,
+}
+
+/// [REGISTER OFFICE REQUEST] Register a new federated office
+#[derive(Deserialize, utoipa::ToSchema)]
+pub struct RegisterOfficeRequest {
+    pub name: String,
+    pub location: String,
+    pub office_prefix: String,
+    pub asterisk_config: AsteriskFederationConfig,
+}
+
+/// [CREATE FEDERATION LINK REQUEST] Create federation link
+#[derive(Deserialize, utoipa::ToSchema)]
+pub struct CreateFederationLinkRequest {
+    pub source_office_id: String,
+    pub target_office_id: String,
+    pub link_type: FederationLinkType,
+    pub priority: u8,
+}
+
+/// [CREATE FEDERATION ROUTE REQUEST] Create federation route
+#[derive(Deserialize, utoipa::ToSchema)]
+pub struct CreateFederationRouteRequest {
+    pub source_office_prefix: String,
+    pub destination_pattern: String,
+    pub target_office_id: String,
+    pub cost_priority: u8,
+}
 #[derive(Deserialize, utoipa::ToSchema)]
 pub struct RegisterDeviceRequest {
     pub device_name: String,
@@ -765,6 +814,288 @@ pub async fn get_user_extension(
             };
             let response = warp::reply::json(&error_response);
             Ok(warp::reply::with_status(response, StatusCode::NOT_FOUND))
+        }
+    }
+}
+
+/// [GET EXTENSIONS BY COUNTRY] Get all extensions for a specific country
+/// @MISSION Administrative function to list extensions by country.
+/// @THREAT Information disclosure.
+/// @COUNTERMEASURE Admin-only access.
+#[utoipa::path(
+    get,
+    path = "/api/v1/voip/extensions/country/{country_code}",
+    params(
+        ("country_code" = String, Path, description = "Country code (e.g., '32' for Belgium)")
+    ),
+    responses(
+        (status = 200, description = "Extensions retrieved", body = Vec<UserExtension>),
+        (status = 400, description = "Invalid country code", body = ErrorResponse)
+    )
+)]
+pub async fn get_extensions_by_country(
+    voip_service: Arc<VoipService>,
+    country_code: String,
+) -> Result<impl Reply, warp::Rejection> {
+    // Validate country code exists
+    if !crate::services::voip_service::COUNTRY_CODES.iter().any(|(code, _)| *code == country_code) {
+        let error_response = ErrorResponse {
+            error: "Invalid country code".to_string(),
+            message: format!("Country code '{}' is not valid", country_code),
+        };
+        let response = warp::reply::json(&error_response);
+        return Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST));
+    }
+
+    let extensions = voip_service.get_extensions_by_country(&country_code).await;
+    let response = warp::reply::json(&extensions);
+    Ok(warp::reply::with_status(response, StatusCode::OK))
+}
+
+/// [GET ALL EXTENSIONS WITH COUNTRY INFO] Get all extensions with country information
+/// @MISSION Administrative function to list all extensions with country details.
+/// @THREAT Information disclosure.
+/// @COUNTERMEASURE Admin-only access.
+#[utoipa::path(
+    get,
+    path = "/api/v1/voip/extensions/with-country-info",
+    responses(
+        (status = 200, description = "Extensions retrieved", body = Vec<ExtensionWithCountryInfo>)
+    )
+)]
+pub async fn get_all_extensions_with_country_info(
+    voip_service: Arc<VoipService>,
+) -> Result<impl Reply, warp::Rejection> {
+    let extensions_with_info = voip_service.get_all_extensions_with_country_info().await;
+    let response_data: Vec<ExtensionWithCountryInfo> = extensions_with_info
+        .into_iter()
+        .map(|(ext, country_code, country_name)| ExtensionWithCountryInfo {
+            user_id: ext.user_id,
+            extension: ext.extension,
+            display_name: ext.display_name,
+            created_at: ext.created_at,
+            enabled: ext.enabled,
+            country_code,
+            country_name,
+        })
+        .collect();
+
+    let response = warp::reply::json(&response_data);
+    Ok(warp::reply::with_status(response, StatusCode::OK))
+}
+
+/// [GET COUNTRY CODES] Get list of supported country codes
+/// @MISSION Provide list of valid country codes for UI/client validation.
+#[utoipa::path(
+    get,
+    path = "/api/v1/voip/country-codes",
+    responses(
+        (status = 200, description = "Country codes retrieved", body = Vec<(String, String)>)
+    )
+)]
+pub async fn get_country_codes() -> Result<impl Reply, warp::Rejection> {
+    let country_codes: Vec<(String, String)> = crate::services::voip_service::COUNTRY_CODES
+        .iter()
+        .map(|(code, name)| (code.to_string(), name.to_string()))
+        .collect();
+
+    let response = warp::reply::json(&country_codes);
+    Ok(warp::reply::with_status(response, StatusCode::OK))
+}
+
+/// [PARSE EXTENSION STRUCTURE] Parse and analyze extension structure
+/// @MISSION Provide detailed breakdown of extension components for validation/debugging.
+#[utoipa::path(
+    get,
+    path = "/api/v1/voip/extensions/parse/{extension}",
+    params(
+        ("extension" = String, Path, description = "Extension to parse (e.g., '32-001-00-00-00')")
+    ),
+    responses(
+        (status = 200, description = "Extension structure parsed", body = ExtensionStructureInfo),
+        (status = 400, description = "Invalid extension format", body = ErrorResponse)
+    )
+)]
+pub async fn parse_extension_structure(
+    extension: String,
+) -> Result<impl Reply, warp::Rejection> {
+    // Validate the extension format first
+    if !crate::services::voip_service::validate_extension_format(&extension) {
+        let error_response = ErrorResponse {
+            error: "Invalid extension format".to_string(),
+            message: format!("Extension '{}' does not follow the expected format", extension),
+        };
+        let response = warp::reply::json(&error_response);
+        return Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST));
+    }
+
+    let structure = crate::services::voip_service::parse_extension_structure(&extension);
+    let response_data = ExtensionStructureInfo {
+        country_code: structure.country_code,
+        country_name: structure.country_name,
+        local_extension: structure.local_extension,
+        full_extension: structure.full_extension,
+        parts: structure.parts,
+    };
+
+    let response = warp::reply::json(&response_data);
+    Ok(warp::reply::with_status(response, StatusCode::OK))
+}
+
+/// [REGISTER FEDERATED OFFICE] Register a new office in the federation
+/// @MISSION Add a new federated office with its Asterisk configuration.
+/// @THREAT Unauthorized office registration.
+/// @COUNTERMEASURE Admin authentication, validation.
+#[utoipa::path(
+    post,
+    path = "/api/v1/voip/federation/offices",
+    request_body = RegisterOfficeRequest,
+    responses(
+        (status = 201, description = "Office registered successfully", body = FederatedOffice),
+        (status = 400, description = "Invalid request", body = ErrorResponse),
+        (status = 409, description = "Office prefix already exists", body = ErrorResponse)
+    )
+)]
+pub async fn register_federated_office(
+    voip_service: Arc<VoipService>,
+    req: RegisterOfficeRequest,
+) -> Result<impl Reply, warp::Rejection> {
+    match voip_service.register_federated_office(
+        &req.name,
+        &req.location,
+        &req.office_prefix,
+        req.asterisk_config,
+    ).await {
+        Ok(office) => {
+            let response = warp::reply::json(&office);
+            Ok(warp::reply::with_status(response, StatusCode::CREATED))
+        }
+        Err(err) => {
+            let status = if err.contains("already exists") {
+                StatusCode::CONFLICT
+            } else {
+                StatusCode::BAD_REQUEST
+            };
+            let error_response = ErrorResponse {
+                error: "Office registration failed".to_string(),
+                message: err,
+            };
+            let response = warp::reply::json(&error_response);
+            Ok(warp::reply::with_status(response, status))
+        }
+    }
+}
+
+/// [GET FEDERATED OFFICES] List all federated offices
+/// @MISSION Provide administrative view of federation offices.
+/// @THREAT Information disclosure.
+/// @COUNTERMEASURE Admin access control.
+#[utoipa::path(
+    get,
+    path = "/api/v1/voip/federation/offices",
+    responses(
+        (status = 200, description = "Offices retrieved", body = Vec<FederatedOffice>)
+    )
+)]
+pub async fn get_federated_offices(
+    voip_service: Arc<VoipService>,
+) -> Result<impl Reply, warp::Rejection> {
+    let offices = voip_service.get_federated_offices().await;
+    let response = warp::reply::json(&offices);
+    Ok(warp::reply::with_status(response, StatusCode::OK))
+}
+
+/// [CREATE FEDERATION LINK] Create secure link between offices
+/// @MISSION Establish VoIP trunk between federated offices.
+/// @THREAT Link configuration errors.
+/// @COUNTERMEASURE Validation, admin access.
+#[utoipa::path(
+    post,
+    path = "/api/v1/voip/federation/links",
+    request_body = CreateFederationLinkRequest,
+    responses(
+        (status = 201, description = "Link created successfully", body = FederationLink),
+        (status = 400, description = "Invalid request", body = ErrorResponse)
+    )
+)]
+pub async fn create_federation_link(
+    voip_service: Arc<VoipService>,
+    req: CreateFederationLinkRequest,
+) -> Result<impl Reply, warp::Rejection> {
+    match voip_service.create_federation_link(
+        &req.source_office_id,
+        &req.target_office_id,
+        req.link_type,
+        req.priority,
+    ).await {
+        Ok(link) => {
+            let response = warp::reply::json(&link);
+            Ok(warp::reply::with_status(response, StatusCode::CREATED))
+        }
+        Err(err) => {
+            let error_response = ErrorResponse {
+                error: "Link creation failed".to_string(),
+                message: err,
+            };
+            let response = warp::reply::json(&error_response);
+            Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST))
+        }
+    }
+}
+
+/// [GET FEDERATION LINKS] List all federation links
+/// @MISSION Provide view of inter-office connections.
+/// @THREAT Information disclosure.
+/// @COUNTERMEASURE Admin access control.
+#[utoipa::path(
+    get,
+    path = "/api/v1/voip/federation/links",
+    responses(
+        (status = 200, description = "Links retrieved", body = Vec<FederationLink>)
+    )
+)]
+pub async fn get_federation_links(
+    voip_service: Arc<VoipService>,
+) -> Result<impl Reply, warp::Rejection> {
+    let links = voip_service.get_federation_links().await;
+    let response = warp::reply::json(&links);
+    Ok(warp::reply::with_status(response, StatusCode::OK))
+}
+
+/// [CREATE FEDERATION ROUTE] Define routing rule for inter-office calls
+/// @MISSION Set up call routing between federated offices.
+/// @THREAT Routing configuration errors.
+/// @COUNTERMEASURE Validation, admin access.
+#[utoipa::path(
+    post,
+    path = "/api/v1/voip/federation/routes",
+    request_body = CreateFederationRouteRequest,
+    responses(
+        (status = 201, description = "Route created successfully", body = FederationRoute),
+        (status = 400, description = "Invalid request", body = ErrorResponse)
+    )
+)]
+pub async fn create_federation_route(
+    voip_service: Arc<VoipService>,
+    req: CreateFederationRouteRequest,
+) -> Result<impl Reply, warp::Rejection> {
+    match voip_service.create_federation_route(
+        &req.source_office_prefix,
+        &req.destination_pattern,
+        &req.target_office_id,
+        req.cost_priority,
+    ).await {
+        Ok(route) => {
+            let response = warp::reply::json(&route);
+            Ok(warp::reply::with_status(response, StatusCode::CREATED))
+        }
+        Err(err) => {
+            let error_response = ErrorResponse {
+                error: "Route creation failed".to_string(),
+                message: err,
+            };
+            let response = warp::reply::json(&error_response);
+            Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST))
         }
     }
 }
