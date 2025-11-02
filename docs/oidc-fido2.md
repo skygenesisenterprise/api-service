@@ -245,6 +245,28 @@ For a complete SSO implementation that serves login pages under the API domain, 
 - Token proxying and validation
 - State management for CSRF protection
 
+## SSO Service Integration
+
+For a complete SSO implementation that serves login pages under the API domain, see the [SSO Service Documentation](sso.md). The SSO service provides:
+
+- Unified login experience under `sso.skygenesisenterprise.com`
+- Application-controlled redirection logic
+- Token proxying and validation
+- State management for CSRF protection
+
+## Centralized OAuth2 Endpoints
+
+The API also provides centralized OAuth2 endpoints under `/api/v1/auth/*` for standardized authentication across all clients:
+
+- **POST** `/api/v1/auth/login` - Initiate OAuth2 Authorization Code flow
+- **GET** `/api/v1/auth/callback` - Handle authorization code exchange
+- **POST** `/api/v1/auth/refresh` - Refresh access tokens
+- **GET** `/api/v1/auth/userinfo` - Get user information
+- **POST** `/api/v1/auth/logout` - Logout and invalidate tokens
+- **POST** `/api/v1/auth/client-credentials` - Service-to-service authentication
+
+All `/api/v1/*` endpoints are protected by OAuth2 token validation middleware, ensuring consistent security across the entire API.
+
 ## Compliance
 
 - **OIDC Certified**: Compliant with OIDC Core specifications

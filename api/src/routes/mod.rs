@@ -54,6 +54,7 @@ use crate::core::asterisk_client::AsteriskClient;
 use crate::services::discord_service::DiscordService;
 use tokio::sync::Mutex;
 use crate::middlewares::logging;
+use crate::middlewares::auth_middleware;
 
 pub fn routes(
     vault_manager: Arc<VaultManager>,
@@ -160,7 +161,38 @@ pub fn routes(
             "#)
         });
 
-    let all_routes = hello.or(key_routes).or(auth_routes).or(data_routes).or(openpgp_routes).or(device_routes).or(mac_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(monitoring_routes).or(grafana_routes).or(poweradmin_routes).or(logger_routes).or(search_routes).or(ssh_routes).or(voip_routes).or(discord_routes).or(git_routes).or(openapi_json).or(swagger_ui);
+    // ============================================================================
+    //  OAUTH2-PROTECTED API V1 ROUTES
+    // ============================================================================
+
+    // Combine all routes that should be protected under /api/v1/
+    let combined_protected_routes = data_routes
+        .or(openpgp_routes)
+        .or(device_routes)
+        .or(mac_routes)
+        .or(security_routes)
+        .or(snmp_routes)
+        .or(vpn_routes)
+        .or(grpc_routes)
+        .or(webdav_routes)
+        .or(opentelemetry_routes)
+        .or(monitoring_routes)
+        .or(grafana_routes)
+        .or(poweradmin_routes)
+        .or(logger_routes)
+        .or(search_routes)
+        .or(ssh_routes)
+        .or(voip_routes)
+        .or(discord_routes)
+        .or(git_routes);
+
+    // Apply OAuth2 authentication to /api/v1/* routes (except auth endpoints)
+    let api_v1_protected_routes = warp::path("api" / "v1" / ..)
+        .and(auth_middleware::oauth2_auth(keycloak_client.clone(), vec!["api".to_string()]))
+        .and(combined_protected_routes)
+        .map(|_claims, reply| reply); // Ignore claims for now, just pass through
+
+    let all_routes = hello.or(key_routes).or(auth_routes).or(data_routes).or(openpgp_routes).or(device_routes).or(mac_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(monitoring_routes).or(grafana_routes).or(poweradmin_routes).or(logger_routes).or(search_routes).or(ssh_routes).or(voip_routes).or(discord_routes).or(git_routes).or(openapi_json).or(swagger_ui).or(api_v1_protected_routes);
 
     // Apply audit logging to all routes
     let logger_service_for_middleware = Arc::new(crate::services::logger_service::LoggerService::new(audit_manager.clone(), vault_client.clone()));

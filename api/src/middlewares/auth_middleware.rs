@@ -153,6 +153,73 @@ pub fn api_key_auth() -> impl Filter<Extract = (String,), Error = Rejection> + C
         })
 }
 
+/// [OAUTH2 AUTH FILTER] OAuth2 Token Validation with Keycloak
+/// @MISSION Validate OAuth2 access tokens and extract claims.
+/// @THREAT Invalid tokens, expired claims, insufficient scopes.
+/// @COUNTERMEASURE OIDC validation, scope checking, role verification.
+/// @INVARIANT Tokens are validated against Keycloak and contain required scopes.
+/// @AUDIT OAuth2 token validation attempts are logged.
+/// @FLOW Extract Bearer token -> Validate with Keycloak -> Check scopes -> Return claims.
+/// @DEPENDENCY Requires KeycloakClient for OIDC validation.
+pub fn oauth2_auth(keycloak: Arc<KeycloakClient>, required_scopes: Vec<String>) -> impl Filter<Extract = (Claims,), Error = Rejection> + Clone {
+    warp::header::<String>("authorization")
+        .and_then(move |auth: String| {
+            let kc = Arc::clone(&keycloak);
+            let scopes = required_scopes.clone();
+            async move {
+                if !auth.starts_with("Bearer ") {
+                    return Err(warp::reject::custom(AuthError::InvalidToken));
+                }
+                let token = auth.trim_start_matches("Bearer ");
+
+                // Validate token with Keycloak
+                match kc.validate_jwt(token) {
+                    Ok(claims) => {
+                        // Check token expiration
+                        let exp = claims["exp"].as_u64().unwrap_or(0);
+                        let now = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs() as usize;
+
+                        if exp < now {
+                            return Err(warp::reject::custom(AuthError::InvalidToken));
+                        }
+
+                        // Check required scopes
+                        let token_scopes: Vec<String> = claims["scope"]
+                            .as_str()
+                            .unwrap_or("")
+                            .split_whitespace()
+                            .map(|s| s.to_string())
+                            .collect();
+
+                        for required_scope in &scopes {
+                            if !token_scopes.contains(required_scope) {
+                                return Err(warp::reject::custom(AuthError::InvalidToken));
+                            }
+                        }
+
+                        // Convert to Claims struct
+                        let sub = claims["sub"].as_str().unwrap_or("").to_string();
+                        let scopes = token_scopes;
+                        let preferred_username = claims["preferred_username"].as_str().map(|s| s.to_string());
+                        let email = claims["email"].as_str().map(|s| s.to_string());
+
+                        Ok(Claims {
+                            sub,
+                            exp,
+                            scopes,
+                            preferred_username,
+                            email,
+                        })
+                    },
+                    Err(_) => Err(warp::reject::custom(AuthError::InvalidToken)),
+                }
+            }
+        })
+}
+
 /// [COMBINED AUTH FILTER] Flexible Multi-Protocol Authentication
 /// @MISSION Support multiple authentication methods with fallback.
 /// @THREAT Authentication bypass, weak method acceptance.

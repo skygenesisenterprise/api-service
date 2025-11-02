@@ -227,6 +227,7 @@ sequenceDiagram
 - **🕒 Forward Secrecy**: Ephemeral keys for perfect forward secrecy
 - **🔐 Encrypted Secrets**: All sensitive data stored in Vault
 - **👥 Multi-Tenant Isolation**: Complete data segregation
+- **🔑 SSO Integration**: Centralized OAuth2 authentication with Keycloak
 - **📊 Audit Logging**: Comprehensive request tracking
 - **🚦 Rate Limiting**: DDoS protection and abuse prevention
 - **🔍 Input Validation**: Strict parameter sanitization

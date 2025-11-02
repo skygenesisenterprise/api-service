@@ -1,47 +1,42 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useMemo } from "react";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 interface IAuthContext {
   token: string | null;
   isAuthenticated: boolean;
-  login: (token: string) => void;
+  user: any;
+  login: () => void;
   logout: () => void;
+  signInWithKeycloak: () => void;
 }
 
 const AuthContext = createContext<IAuthContext | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(null);
+  const { data: session, status } = useSession();
 
-  useEffect(() => {
-    try {
-      const existing = typeof window !== "undefined" ? localStorage.getItem("sge_token") : null;
-      if (existing) setToken(existing);
-    } catch (_) {
-      // ignore
-    }
-  }, []);
+  const login = () => {
+    // For backward compatibility - can be removed if not needed
+  };
 
-  const login = useCallback((newToken: string) => {
-    setToken(newToken);
-    try {
-      localStorage.setItem("sge_token", newToken);
-    } catch (_) {
-      // ignore
-    }
-  }, []);
+  const logout = () => {
+    signOut({ callbackUrl: '/login' });
+  };
 
-  const logout = useCallback(() => {
-    setToken(null);
-    try {
-      localStorage.removeItem("sge_token");
-    } catch (_) {
-      // ignore
-    }
-  }, []);
+  const signInWithKeycloak = () => {
+    signIn('keycloak', { callbackUrl: '/' });
+  };
 
-  const value = useMemo<IAuthContext>(() => ({ token, isAuthenticated: !!token, login, logout }), [token, login, logout]);
+  const value = useMemo<IAuthContext>(() => ({
+    token: session?.accessToken || null,
+    isAuthenticated: !!session,
+    user: session?.user,
+    login,
+    logout,
+    signInWithKeycloak,
+  }), [session]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

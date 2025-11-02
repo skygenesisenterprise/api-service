@@ -163,6 +163,119 @@ X-Signature: MEUCIQDO...base64_signature
   }
   ```
 
+### OAuth2 Central Authentication Endpoints
+
+#### Initiate OAuth2 Login
+- **POST** `/api/v1/auth/login`
+- **Content-Type**: `application/json`
+- **Request Body**:
+  ```json
+  {
+    "redirect_uri": "https://app.example.com/callback",
+    "state": "random_state_string",
+    "client_id": "app-client"
+  }
+  ```
+- **Description**: Initiates OAuth2 Authorization Code flow and returns authorization URL
+- **Response**:
+  ```json
+  {
+    "authorization_url": "https://keycloak.example.com/realms/sge/protocol/openid-connect/auth?...",
+    "state": "random_state_string",
+    "client_id": "app-client"
+  }
+  ```
+
+#### OAuth2 Callback
+- **GET** `/api/v1/auth/callback`
+- **Query Parameters**:
+  - `code`: Authorization code from Keycloak
+  - `state`: State parameter for CSRF protection
+- **Description**: Exchanges authorization code for access and refresh tokens
+- **Response**:
+  ```json
+  {
+    "access_token": "eyJhbGciOiJSUzI1NiIs...",
+    "refresh_token": "refresh_token_here",
+    "expires_in": 3600,
+    "token_type": "Bearer",
+    "state": "random_state_string"
+  }
+  ```
+
+#### Refresh Access Token
+- **POST** `/api/v1/auth/refresh`
+- **Content-Type**: `application/json`
+- **Request Body**:
+  ```json
+  {
+    "refresh_token": "refresh_token_here"
+  }
+  ```
+- **Description**: Refreshes an expired access token using refresh token
+- **Response**:
+  ```json
+  {
+    "access_token": "new_access_token",
+    "refresh_token": "new_refresh_token",
+    "expires_in": 3600,
+    "token_type": "Bearer"
+  }
+  ```
+
+#### Get User Information
+- **GET** `/api/v1/auth/userinfo`
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Description**: Retrieves authenticated user information from access token
+- **Response**:
+  ```json
+  {
+    "sub": "user_id",
+    "email": "user@example.com",
+    "given_name": "John",
+    "family_name": "Doe",
+    "roles": ["employee", "admin"],
+    "email_verified": true
+  }
+  ```
+
+#### Logout
+- **POST** `/api/v1/auth/logout`
+- **Content-Type**: `application/json`
+- **Request Body**:
+  ```json
+  {
+    "refresh_token": "refresh_token_here"
+  }
+  ```
+- **Description**: Invalidates the session and tokens on Keycloak side
+- **Response**:
+  ```json
+  {
+    "message": "Successfully logged out"
+  }
+  ```
+
+#### Client Credentials Token
+- **POST** `/api/v1/auth/client-credentials`
+- **Content-Type**: `application/json`
+- **Request Body**:
+  ```json
+  {
+    "scope": "api:read api:write"
+  }
+  ```
+- **Description**: Obtains access token for service-to-service authentication
+- **Response**:
+  ```json
+  {
+    "access_token": "service_token",
+    "expires_in": 3600,
+    "token_type": "Bearer",
+    "scope": "api:read api:write"
+  }
+  ```
+
 ### Key Management Endpoints
 
 #### Create Standard API Key

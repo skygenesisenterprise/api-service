@@ -10,6 +10,7 @@ use crate::services::application_service::ApplicationAccessRequest;
 use crate::services::two_factor_service::{TwoFactorSetupRequest, TwoFactorVerificationRequest, TwoFactorChallengeValidationRequest};
 use crate::core::keycloak::KeycloakClient;
 use crate::core::fido2::{Fido2Manager, Fido2RegistrationRequest, Fido2AuthenticationRequest};
+use crate::core::opentelemetry::Metrics;
 
 pub fn auth_routes(
     auth_service: Arc<AuthService>,
@@ -580,7 +581,6 @@ pub fn auth_routes(
             let temp_token = body.get("temp_token").and_then(|v| v.as_str()).ok_or("No temp_token")?;
             let state = body.get("state").and_then(|v| v.as_str()).unwrap_or("");
             let client_id = body.get("client_id").and_then(|v| v.as_str()).unwrap_or(&kc.client_id);
-            let redirect_uri = body.get("redirect_uri").and_then(|v| v.as_str()).unwrap_or("http://localhost:8080/api/v1/sso/callback");
 
             // Get user info from temp token
             match kc.get_user_info(temp_token).await {
@@ -606,6 +606,216 @@ pub fn auth_routes(
                         "details": e.to_string()
                     })))
                 }
+            }
+        });
+
+    // ============================================================================
+    //  CENTRALIZED OAUTH2 AUTHENTICATION ENDPOINTS (/api/v1/auth/*)
+    // ============================================================================
+
+    // POST /api/v1/auth/login - Initiate OAuth2 Authorization Code flow
+    let api_v1_auth_login = warp::path!("api" / "v1" / "auth" / "login")
+        .and(warp::post())
+        .and(warp::body::json::<serde_json::Value>())
+        .and(warp::any().map(move || keycloak_client.clone()))
+        .and_then(|body: serde_json::Value, kc: Arc<KeycloakClient>| async move {
+            // Log OAuth2 login initiation
+            let _span = crate::core::opentelemetry::trace_request("oauth2_login_initiate");
+
+            let redirect_uri = body.get("redirect_uri")
+                .and_then(|v| v.as_str())
+                .unwrap_or("http://localhost:8080/api/v1/auth/callback");
+            let state = body.get("state")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let client_id = body.get("client_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or(&kc.client_id);
+
+            match kc.get_authorization_url(redirect_uri, state).await {
+                Ok(auth_url) => {
+                    // Log successful authorization URL generation
+                    crate::core::opentelemetry::log_event("oauth2_login_url_generated", &serde_json::json!({
+                        "client_id": client_id,
+                        "has_state": !state.is_empty()
+                    }));
+                    Ok(warp::reply::json(&serde_json::json!({
+                        "authorization_url": auth_url,
+                        "state": state,
+                        "client_id": client_id
+                    })))
+                },
+                Err(e) => {
+                    // Log authorization URL generation failure
+                    crate::core::opentelemetry::log_error("oauth2_login_url_failed", &e.to_string());
+                    Ok(warp::reply::with_status(
+                        warp::reply::json(&serde_json::json!({"error": e.to_string()})),
+                        warp::http::StatusCode::INTERNAL_SERVER_ERROR
+                    ))
+                },
+            }
+        });
+
+    // GET /api/v1/auth/callback - OAuth2 Authorization Code callback
+    let api_v1_auth_callback = warp::path!("api" / "v1" / "auth" / "callback")
+        .and(warp::get())
+        .and(warp::query::<std::collections::HashMap<String, String>>())
+        .and(warp::any().map(move || keycloak_client.clone()))
+        .and_then(|query: std::collections::HashMap<String, String>, kc: Arc<KeycloakClient>| async move {
+            let code = query.get("code").ok_or("No authorization code")?;
+            let state = query.get("state").unwrap_or(&"".to_string()).clone();
+            let redirect_uri = "http://localhost:8080/api/v1/auth/callback";
+
+            match kc.exchange_code_for_token(code, redirect_uri).await {
+                Ok(token_response) => Ok(warp::reply::json(&serde_json::json!({
+                    "access_token": token_response.access_token,
+                    "refresh_token": token_response.refresh_token,
+                    "expires_in": token_response.expires_in,
+                    "token_type": "Bearer",
+                    "state": state
+                }))),
+                Err(e) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"error": e.to_string()})),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR
+                )),
+            }
+        });
+
+    // POST /api/v1/auth/refresh - Refresh OAuth2 access token
+    let api_v1_auth_refresh = warp::path!("api" / "v1" / "auth" / "refresh")
+        .and(warp::post())
+        .and(warp::body::json::<serde_json::Value>())
+        .and(warp::any().map(move || keycloak_client.clone()))
+        .and_then(|body: serde_json::Value, kc: Arc<KeycloakClient>| async move {
+            let refresh_token = body.get("refresh_token")
+                .and_then(|v| v.as_str())
+                .ok_or("No refresh_token provided")?;
+
+            // Use Keycloak's token refresh endpoint
+            let url = format!("{}/realms/{}/protocol/openid-connect/token",
+                kc.base_url, kc.realm);
+
+            let params = [
+                ("grant_type", "refresh_token"),
+                ("client_id", &kc.client_id),
+                ("client_secret", &kc.client_secret),
+                ("refresh_token", refresh_token),
+            ];
+
+            let client = reqwest::Client::new();
+            match client.post(&url).form(&params).send().await {
+                Ok(response) => {
+                    if response.status().is_success() {
+                        match response.json::<serde_json::Value>().await {
+                            Ok(token_data) => Ok(warp::reply::json(&serde_json::json!({
+                                "access_token": token_data["access_token"],
+                                "refresh_token": token_data["refresh_token"],
+                                "expires_in": token_data["expires_in"],
+                                "token_type": "Bearer"
+                            }))),
+                            Err(e) => Ok(warp::reply::with_status(
+                                warp::reply::json(&serde_json::json!({"error": format!("Failed to parse token response: {}", e)})),
+                                warp::http::StatusCode::INTERNAL_SERVER_ERROR
+                            )),
+                        }
+                    } else {
+                        Ok(warp::reply::with_status(
+                            warp::reply::json(&serde_json::json!({"error": "Token refresh failed"})),
+                            warp::http::StatusCode::UNAUTHORIZED
+                        ))
+                    }
+                },
+                Err(e) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"error": format!("Request failed: {}", e)})),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR
+                )),
+            }
+        });
+
+    // GET /api/v1/auth/userinfo - Get authenticated user information
+    let api_v1_auth_userinfo = warp::path!("api" / "v1" / "auth" / "userinfo")
+        .and(warp::get())
+        .and(warp::header::<String>("authorization"))
+        .and(warp::any().map(move || keycloak_client.clone()))
+        .and_then(|auth_header: String, kc: Arc<KeycloakClient>| async move {
+            if !auth_header.starts_with("Bearer ") {
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"error": "Invalid authorization header"})),
+                    warp::http::StatusCode::UNAUTHORIZED
+                ));
+            }
+
+            let access_token = auth_header.trim_start_matches("Bearer ");
+
+            match kc.get_user_info(access_token).await {
+                Ok(user_info) => Ok(warp::reply::json(&user_info)),
+                Err(e) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"error": format!("Failed to get user info: {}", e)})),
+                    warp::http::StatusCode::UNAUTHORIZED
+                )),
+            }
+        });
+
+    // POST /api/v1/auth/logout - Logout and invalidate tokens
+    let api_v1_auth_logout = warp::path!("api" / "v1" / "auth" / "logout")
+        .and(warp::post())
+        .and(warp::body::json::<serde_json::Value>())
+        .and(warp::any().map(move || keycloak_client.clone()))
+        .and_then(|body: serde_json::Value, kc: Arc<KeycloakClient>| async move {
+            let refresh_token = body.get("refresh_token")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+
+            // Call Keycloak logout endpoint
+            let url = format!("{}/realms/{}/protocol/openid-connect/logout",
+                kc.base_url, kc.realm);
+
+            let params = [
+                ("client_id", &kc.client_id),
+                ("client_secret", &kc.client_secret),
+                ("refresh_token", refresh_token),
+            ];
+
+            let client = reqwest::Client::new();
+            match client.post(&url).form(&params).send().await {
+                Ok(response) => {
+                    if response.status().is_success() {
+                        Ok(warp::reply::json(&serde_json::json!({
+                            "message": "Successfully logged out"
+                        })))
+                    } else {
+                        // Even if Keycloak logout fails, we consider it successful from client perspective
+                        Ok(warp::reply::json(&serde_json::json!({
+                            "message": "Logged out (local session cleared)"
+                        })))
+                    }
+                },
+                Err(_) => Ok(warp::reply::json(&serde_json::json!({
+                    "message": "Logged out (local session cleared)"
+                }))),
+            }
+        });
+
+    // POST /api/v1/auth/client-credentials - Client Credentials flow for services
+    let api_v1_auth_client_credentials = warp::path!("api" / "v1" / "auth" / "client-credentials")
+        .and(warp::post())
+        .and(warp::body::json::<serde_json::Value>())
+        .and(warp::any().map(move || keycloak_client.clone()))
+        .and_then(|body: serde_json::Value, kc: Arc<KeycloakClient>| async move {
+            let scope = body.get("scope")
+                .and_then(|v| v.as_str());
+
+            match kc.client_credentials_token(scope).await {
+                Ok(token_response) => Ok(warp::reply::json(&serde_json::json!({
+                    "access_token": token_response.access_token,
+                    "expires_in": token_response.expires_in,
+                    "token_type": "Bearer",
+                    "scope": scope.unwrap_or("")
+                }))),
+                Err(e) => Ok(warp::reply::with_status(
+                    warp::reply::json(&serde_json::json!({"error": e.to_string()})),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR
+                )),
             }
         });
 
@@ -765,5 +975,5 @@ pub fn auth_routes(
             }
         });
 
-    login.or(session_login).or(register).or(recover).or(me).or(logout).or(logout_all).or(sessions).or(applications).or(application_access).or(two_factor_setup).or(two_factor_verify).or(two_factor_methods).or(two_factor_remove).or(validate_2fa_challenge).or(complete_sso_auth).or(login_page).or(login_html).or(login_css).or(oidc_login).or(oidc_callback).or(api_sso).or(api_sso_auth).or(api_sso_resources).or(api_sso_callback).or(sso_login).or(sso_auth).or(sso_resources).or(sso_callback).or(fido2_register_start).or(fido2_register_finish).or(fido2_auth_start).or(fido2_auth_finish)
+    login.or(session_login).or(register).or(recover).or(me).or(logout).or(logout_all).or(sessions).or(applications).or(application_access).or(two_factor_setup).or(two_factor_verify).or(two_factor_methods).or(two_factor_remove).or(validate_2fa_challenge).or(complete_sso_auth).or(login_page).or(login_html).or(login_css).or(oidc_login).or(oidc_callback).or(api_sso).or(api_sso_auth).or(api_sso_resources).or(api_sso_callback).or(sso_login).or(sso_auth).or(sso_resources).or(sso_callback).or(fido2_register_start).or(fido2_register_finish).or(fido2_auth_start).or(fido2_auth_finish).or(api_v1_auth_login).or(api_v1_auth_callback).or(api_v1_auth_refresh).or(api_v1_auth_userinfo).or(api_v1_auth_logout).or(api_v1_auth_client_credentials)
 }

@@ -464,6 +464,35 @@ pub fn log_with_trace(level: &str, message: &str, attributes: Vec<KeyValue>) {
     span.end();
 }
 
+/// [EVENT LOGGING] Structured Event Logging with Tracing
+/// @MISSION Log security and authentication events with trace correlation.
+/// @THREAT Missing audit context for security events.
+/// @COUNTERMEASURE Automatic span creation with event details.
+/// @DEPENDENCY JSON serialization for event data.
+/// @PERFORMANCE ~10μs event logging with JSON serialization.
+/// @AUDIT Events linked to traces for security investigation.
+pub fn log_event(event_name: &str, data: &serde_json::Value) {
+    let mut span = create_span(event_name);
+    span.set_attribute(KeyValue::new("event.type", "security"));
+    span.set_attribute(KeyValue::new("event.data", data.to_string()));
+    span.end();
+}
+
+/// [ERROR LOGGING] Structured Error Logging with Tracing
+/// @MISSION Log authentication errors with trace correlation.
+/// @THREAT Missing error context in security investigations.
+/// @COUNTERMEASURE Automatic span creation with error details.
+/// @DEPENDENCY Error string formatting.
+/// @PERFORMANCE ~10μs error logging with string formatting.
+/// @AUDIT Errors linked to traces for security analysis.
+pub fn log_error(event_name: &str, error: &str) {
+    let mut span = create_span(event_name);
+    span.set_attribute(KeyValue::new("error", error.to_string()));
+    span.set_attribute(KeyValue::new("error.type", "authentication"));
+    span.set_attribute(KeyValue::new("event.type", "error"));
+    span.end();
+}
+
 /// [OPENTELEMETRY SHUTDOWN] Graceful Observability Cleanup
 /// @MISSION Properly shutdown telemetry providers and flush data.
 /// @THREAT Data loss during application shutdown.
