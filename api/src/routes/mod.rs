@@ -22,6 +22,7 @@ pub mod discord_routes;
 pub mod git_routes;
 pub mod logger_routes;
 pub mod poweradmin_routes;
+pub mod oauth2_routes;
 
 use warp::Filter;
 use std::sync::Arc;
@@ -115,6 +116,7 @@ pub fn routes(
     let voip_routes = crate::routes::voip_routes::voip_routes(voip_service, asterisk_client);
     let discord_routes = crate::routes::discord_routes::discord_routes(discord_service);
     let git_routes = crate::routes::git_routes::git_routes();
+    let oauth2_routes = crate::routes::oauth2_routes::oauth2_routes();
 
     // OpenAPI JSON endpoint
     let openapi_json = warp::path!("api-docs" / "openapi.json")
@@ -184,7 +186,8 @@ pub fn routes(
         .or(ssh_routes)
         .or(voip_routes)
         .or(discord_routes)
-        .or(git_routes);
+        .or(git_routes)
+        .or(oauth2_routes);
 
     // Apply OAuth2 authentication to /api/v1/* routes (except auth endpoints)
     let api_v1_protected_routes = warp::path("api" / "v1" / ..)
@@ -192,7 +195,7 @@ pub fn routes(
         .and(combined_protected_routes)
         .map(|_claims, reply| reply); // Ignore claims for now, just pass through
 
-    let all_routes = hello.or(key_routes).or(auth_routes).or(data_routes).or(openpgp_routes).or(device_routes).or(mac_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(monitoring_routes).or(grafana_routes).or(poweradmin_routes).or(logger_routes).or(search_routes).or(ssh_routes).or(voip_routes).or(discord_routes).or(git_routes).or(openapi_json).or(swagger_ui).or(api_v1_protected_routes);
+    let all_routes = hello.or(key_routes).or(auth_routes).or(data_routes).or(openpgp_routes).or(device_routes).or(mac_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(monitoring_routes).or(grafana_routes).or(poweradmin_routes).or(logger_routes).or(search_routes).or(ssh_routes).or(voip_routes).or(discord_routes).or(git_routes).or(oauth2_routes).or(openapi_json).or(swagger_ui).or(api_v1_protected_routes);
 
     // Apply audit logging to all routes
     let logger_service_for_middleware = Arc::new(crate::services::logger_service::LoggerService::new(audit_manager.clone(), vault_client.clone()));

@@ -41,3 +41,5 @@ pub mod logger_controller;
 pub mod grafana_controller;
 /// [POWERADMIN CONTROLLER MODULE] PowerAdmin DNS management operations
 pub mod poweradmin_controller;
+/// [OAUTH2 CONTROLLER MODULE] OAuth2 integration operations
+pub mod oauth2_controller;
