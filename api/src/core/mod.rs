@@ -186,3 +186,17 @@ pub mod voip;
 /// @COUNTERMEASURE Signature validation, rate limiting, access controls.
 /// @DEPENDENCY Discord API, Vault for secrets, AuditManager for logging.
 pub mod discord_core;
+
+/// [MAC CERTIFICATES CORE] MAC Certificate Management Operations
+/// @MISSION Provide X.509 certificate operations for MAC identity security.
+/// @THREAT Certificate compromise or weak cryptography.
+/// @COUNTERMEASURE X.509 certificates with CA signing and revocation.
+/// @DEPENDENCY Vault for key storage, ring for cryptography.
+pub mod mac_certificates;
+
+/// [MAC IDENTITY CORE] MAC Identity Cryptographic Operations
+/// @MISSION Provide core cryptographic operations for MAC identity management.
+/// @THREAT MAC spoofing or weak generation.
+/// @COUNTERMEASURE Cryptographic generation with entropy validation.
+/// @DEPENDENCY Vault for secure random generation.
+pub mod mac_core;

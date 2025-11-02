@@ -789,3 +789,115 @@ pub struct NetworkStats {
     /// Transmit errors
     pub tx_errors: u64,
 }
+
+/// [MAC STATUS ENUM] Status of MAC Identity
+/// @MISSION Track MAC identity lifecycle.
+/// @THREAT Unauthorized or compromised MAC identities.
+/// @COUNTERMEASURE Status tracking and revocation.
+/// @AUDIT Status changes are logged.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum MacStatus {
+    Active,
+    Inactive,
+    Revoked,
+}
+
+/// [MAC CERTIFICATE INFO MODEL] Cryptographic Certificate Information for MAC
+/// @MISSION Store certificate details for MAC identity verification.
+/// @THREAT Certificate compromise or expiration.
+/// @COUNTERMEASURE Certificate lifecycle management and validation.
+/// @AUDIT Certificate operations are logged.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MacCertificateInfo {
+    /// Certificate serial number
+    pub serial_number: String,
+    /// Certificate fingerprint (SHA256)
+    pub fingerprint: String,
+    /// Certificate issuer
+    pub issuer: String,
+    /// Certificate subject
+    pub subject: String,
+    /// Certificate validity start
+    pub not_before: DateTime<Utc>,
+    /// Certificate validity end
+    pub not_after: DateTime<Utc>,
+    /// Certificate status
+    pub status: CertificateStatus,
+    /// Certificate revocation reason (if revoked)
+    pub revocation_reason: Option<String>,
+    /// Certificate revocation date (if revoked)
+    pub revoked_at: Option<DateTime<Utc>>,
+    /// OCSP responder URL
+    pub ocsp_url: Option<String>,
+    /// CRL distribution point
+    pub crl_url: Option<String>,
+}
+
+/// [CERTIFICATE STATUS ENUM] Status of MAC Certificate
+/// @MISSION Track certificate lifecycle.
+/// @THREAT Expired or revoked certificates.
+/// @COUNTERMEASURE Status tracking and renewal.
+/// @AUDIT Status changes are logged.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum CertificateStatus {
+    Active,
+    Expired,
+    Revoked,
+    Suspended,
+}
+
+/// [MAC SIGNATURE INFO MODEL] Cryptographic Signature for MAC Integrity
+/// @MISSION Store signature details for MAC address integrity.
+/// @THREAT MAC tampering or spoofing.
+/// @COUNTERMEASURE Cryptographic signatures and verification.
+/// @AUDIT Signature operations are logged.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MacSignatureInfo {
+    /// Signature algorithm used
+    pub algorithm: String,
+    /// Signature value (base64 encoded)
+    pub signature: String,
+    /// Signing key identifier
+    pub key_id: String,
+    /// Signature timestamp
+    pub signed_at: DateTime<Utc>,
+    /// Signature validity period
+    pub valid_until: Option<DateTime<Utc>>,
+}
+
+/// [MAC IDENTITY MODEL] Sovereign MAC Address Identity Management
+/// @MISSION Manage physical device identities with SGE-MAC format.
+/// @THREAT MAC spoofing or identity theft.
+/// @COUNTERMEASURE Cryptographic MAC generation and validation.
+/// @AUDIT All MAC operations are logged with full context.
+/// @FLOW Generate -> Register -> Validate -> Audit
+/// @DEPENDENCY Vault for secure MAC generation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MacIdentity {
+    /// Unique identifier for the MAC identity
+    pub id: Uuid,
+    /// SGE-MAC address (internal sovereign format)
+    pub sge_mac: String,
+    /// Standard IEEE 802 MAC address (optional mapping)
+    pub standard_mac: Option<String>,
+    /// Associated IP address
+    pub ip_address: Option<String>,
+    /// Owner identifier (user or device UUID)
+    pub owner: String,
+    /// Hardware fingerprint UUID
+    pub fingerprint: String,
+    /// Current status
+    pub status: MacStatus,
+    /// Associated organization
+    pub organization_id: Uuid,
+    /// Certificate information for this MAC
+    pub certificate: Option<MacCertificateInfo>,
+    /// Signature information for MAC integrity
+    pub signature: Option<MacSignatureInfo>,
+    /// Additional metadata
+    pub metadata: std::collections::HashMap<String, String>,
+    /// Created timestamp
+    pub created_at: DateTime<Utc>,
+    /// Last modified timestamp
+    pub updated_at: DateTime<Utc>,
+}

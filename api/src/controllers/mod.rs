@@ -27,6 +27,8 @@ pub mod data_controller;
 pub mod openpgp_controller;
 /// [DEVICE CONTROLLER MODULE] Remote device management operations
 pub mod device_controller;
+/// [MAC CONTROLLER MODULE] MAC identity management operations
+pub mod mac_controller;
 /// [VOIP CONTROLLER MODULE] Voice over IP and video conferencing operations
 pub mod voip_controller;
 /// [DISCORD CONTROLLER MODULE] Discord bot integration operations

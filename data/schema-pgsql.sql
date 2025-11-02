@@ -286,6 +286,26 @@ CREATE TABLE device_metrics (
 );
 
 -- ======================================
+-- MAC IDENTITY MANAGEMENT
+-- ======================================
+
+CREATE TABLE mac_identities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sge_mac VARCHAR(23) NOT NULL UNIQUE, -- SGE-XX:XX:XX:XX:XX:XX format
+    standard_mac VARCHAR(17), -- Optional IEEE 802 MAC mapping
+    ip_address INET,
+    owner VARCHAR(255) NOT NULL, -- User or device identifier
+    fingerprint VARCHAR(64) NOT NULL UNIQUE, -- Hardware fingerprint UUID
+    status VARCHAR(50) DEFAULT 'active',
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    certificate JSONB, -- Certificate information
+    signature JSONB, -- Digital signature information
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
+);
+
+-- ======================================
 -- TRIGGERS
 -- ======================================
 
@@ -334,6 +354,11 @@ EXECUTE FUNCTION update_timestamp();
 
 CREATE TRIGGER update_devices_timestamp
 BEFORE UPDATE ON devices
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+CREATE TRIGGER update_mac_identities_timestamp
+BEFORE UPDATE ON mac_identities
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 

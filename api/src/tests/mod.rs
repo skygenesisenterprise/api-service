@@ -7,3 +7,4 @@ pub mod snmp_tests;
 pub mod protocol_tests;
 pub mod voip_tests;
 pub mod discord_tests;
+pub mod mac_tests;

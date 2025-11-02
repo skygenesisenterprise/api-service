@@ -151,11 +151,34 @@ async fn main() {
       /// @MISSION Enable secure remote management of network devices.
       /// @THREAT Unauthorized device access or configuration changes.
       /// @COUNTERMEASURE Authentication, authorization, and audit logging.
-       let device_service = Arc::new(crate::services::device_service::DeviceService::new(
-           db_pool.clone(),
-           vault_client.clone(),
-           snmp_manager.clone(),
-       ));
+        let device_service = Arc::new(crate::services::device_service::DeviceService::new(
+            db_pool.clone(),
+            vault_client.clone(),
+            snmp_manager.clone(),
+        ));
+
+        /// [MAC SERVICE] MAC identity management service
+        /// @MISSION Provide secure MAC identity operations with cryptographic generation.
+        /// @THREAT MAC spoofing or identity compromise.
+        /// @COUNTERMEASURE Cryptographic MAC generation and validation.
+        /// [MAC CERTIFICATES CORE] Certificate management for MAC identities
+        /// @MISSION Provide X.509 certificate operations for MAC security.
+        /// @THREAT Certificate compromise or weak cryptography.
+        /// @COUNTERMEASURE X.509 certificates with CA signing.
+        let ca_certificate = std::env::var("CA_CERTIFICATE").unwrap_or_else(|_| "dummy-ca-cert".to_string());
+        let ca_private_key = std::env::var("CA_PRIVATE_KEY").unwrap_or_else(|_| "dummy-ca-key".to_string());
+        let mac_certificates_core = Arc::new(crate::core::mac_certificates::MacCertificatesCore::new(
+            vault_client.clone(),
+            audit_manager.clone(),
+            ca_certificate,
+            ca_private_key,
+        ));
+
+        let mac_service = Arc::new(crate::services::mac_service::MacService::new(
+            db_pool.clone(),
+            vault_client.clone(),
+            mac_certificates_core.clone(),
+        ));
 
         /// [VOIP SERVICE] Voice over IP and video conferencing service
         /// @MISSION Provide VoIP functionality with secure signaling.
@@ -365,16 +388,18 @@ async fn main() {
      /// @MISSION Expose all service endpoints with unified security controls.
      /// @THREAT API abuse or unauthorized access.
      /// @COUNTERMEASURE Implement rate limiting, input validation, and audit logging.
-         let routes = routes::routes(
-             vault_manager,
-             key_service,
-             auth_service,
-             session_service,
-             application_service,
-             two_factor_service,
-             data_service,
-             openpgp_service.clone(),
-             device_service,
+          let routes = routes::routes(
+              vault_manager,
+              key_service,
+              auth_service,
+              session_service,
+              application_service,
+              two_factor_service,
+              data_service,
+              openpgp_service.clone(),
+              device_service,
+              mac_service.clone(),
+              ws_server,
             ws_server,
             snmp_manager,
             snmp_agent,
@@ -436,6 +461,9 @@ async fn main() {
         two_factor_service,
         data_service,
         openpgp_service,
+        device_service,
+        mac_service,
+        ws_server,
         ws_server,
         snmp_manager,
         snmp_agent,

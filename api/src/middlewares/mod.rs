@@ -30,3 +30,5 @@ pub mod openpgp_middleware;
 pub mod voip_middleware;
 /// [DISCORD MIDDLEWARE MODULE] Discord webhook validation, rate limiting, and security
 pub mod discord_middleware;
+/// [MAC MIDDLEWARE MODULE] MAC identity validation, security enforcement, and request processing
+pub mod mac_middleware;
