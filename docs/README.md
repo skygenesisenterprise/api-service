@@ -202,7 +202,7 @@ Certificate-coupled API keys provide enhanced security through cryptographic pro
                                                         │
                                                         ▼
                                                ┌──────────────┐
-                                               │  Vault Client │
+                                               │ Vault Client │
                                                └──────────────┘
 ```
 

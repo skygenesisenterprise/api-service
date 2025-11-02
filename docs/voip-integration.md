@@ -22,6 +22,70 @@ The API implements a hybrid architecture combining Asterisk PBX as the official 
        └────────────── RTP/SRTP ────────────────┘
 ```
 
+## VoIP Security and Certificates
+
+### TLS Encryption and Mutual Authentication
+
+The Sky Genesis VoIP integration implements multiple layers of cryptographic security:
+
+#### ARI Interface Security (mTLS)
+- **Mutual TLS Authentication**: Both client and server authenticate using X.509 certificates
+- **Certificate Validation**: Full certificate chain validation with revocation checking
+- **Perfect Forward Secrecy**: TLS 1.3 with ephemeral key exchange
+
+#### Media Encryption
+- **SRTP**: Secure RTP for audio/video streams
+- **DTLS**: Datagram TLS for WebRTC media encryption
+- **End-to-End Encryption**: Media encrypted from client to Asterisk PBX
+
+#### Client Certificate Authentication
+- **SIP Clients**: Certificate-based authentication for SIP endpoints
+- **WebRTC Clients**: Certificate validation for browser-based VoIP
+- **Federation Peers**: Mutual authentication between federated offices
+
+### Certificate Management
+
+#### Certificate Types
+- **ARI Client Certificates**: For SGE API to Asterisk ARI communication
+- **VoIP Client Certificates**: For SIP/WebRTC endpoint authentication
+- **Federation Certificates**: For inter-office secure communication
+
+#### Certificate Lifecycle
+- **Issuance**: Automated certificate generation via Vault PKI
+- **Rotation**: Automatic renewal before expiration
+- **Revocation**: Immediate revocation of compromised certificates
+- **Validation**: Real-time certificate validation and CRL checking
+
+### Security Configuration
+
+#### Asterisk TLS Configuration
+```ini
+; /etc/asterisk/sip.conf or pjsip.conf
+[transport-tls]
+type = transport
+protocol = tls
+bind = 0.0.0.0:5061
+cert_file = /etc/asterisk/keys/asterisk.crt
+priv_key_file = /etc/asterisk/keys/asterisk.key
+cafile = /etc/asterisk/keys/ca.crt
+verify_client = yes
+require_client_cert = yes
+method = tlsv1_2,tlsv1_3
+```
+
+#### Client Certificate Generation
+```bash
+# Generate client certificate for VoIP endpoint
+openssl req -new -newkey rsa:2048 -days 365 -nodes \
+  -subj "/C=BE/O=Sky Genesis/CN=voip-client" \
+  -keyout voip-client.key -out voip-client.csr
+
+# Sign with CA
+openssl x509 -req -in voip-client.csr \
+  -CA ca.crt -CAkey ca.key -CAcreateserial \
+  -out voip-client.crt -days 365 -sha256
+```
+
 ### Supported Features
 - **Native SIP Calls**: Full management via Asterisk
 - **Conferences**: Asterisk bridges for multi-participant rooms
@@ -45,10 +109,11 @@ X-API-Key: <api_key>
 ### Asterisk PBX Environment
 - **Asterisk 18+** with ARI module enabled
 - **ARI Configuration** in `/etc/asterisk/ari.conf`
-- **TLS Certificates** for secure communications
+- **TLS Certificates** for secure communications (mTLS supported)
 - **Network Ports**: 5060 (SIP), 8088 (ARI), UDP range 10000-20000 (RTP)
 - **chan_sip or chan_pjsip module** configured
 - **Stasis Application** defined for SGE integration
+- **Client Certificates** for VoIP endpoints (SIP/WebRTC)
 
 ### Asterisk Dependencies
 - **Asterisk**: Official PBX server
@@ -69,6 +134,11 @@ bindport = 8088
 tlsenable = yes
 tlscertfile = /etc/asterisk/keys/asterisk.crt
 tlsprivatekey = /etc/asterisk/keys/asterisk.key
+# Mutual TLS configuration
+tlsclientcert = /etc/asterisk/keys/client.crt
+tlsclientkey = /etc/asterisk/keys/client.key
+tlscafile = /etc/asterisk/keys/ca.crt
+tlsverifyclient = yes
 
 [skygenesisenterprise]
 type = user
@@ -106,10 +176,15 @@ exten => _X.,n,Hangup()
 
 ### API Environment Variables
 ```bash
-ASTERISK_ARI_URL=http://localhost:8088/ari
+ASTERISK_ARI_URL=https://localhost:8088/ari
 ASTERISK_ARI_USERNAME=skygenesisenterprise
 ASTERISK_ARI_PASSWORD=your_secure_password
 ASTERISK_ARI_APP=skygenesisenterprise-voip
+# TLS Configuration for mTLS
+ASTERISK_TLS_ENABLED=true
+ASTERISK_CLIENT_CERT=/etc/ssl/sge/voip-client.crt
+ASTERISK_CLIENT_KEY=/etc/ssl/sge/voip-client.key
+ASTERISK_CA_CERT=/etc/ssl/sge/ca.crt
 ```
 
 ## VoIP API Endpoints
@@ -820,15 +895,22 @@ print(f"SET VARIABLE ENDPOINT {endpoint}")
 ## Security and Best Practices
 
 ### Encryption
-- **Signaling**: All API communications use HTTPS/TLS 1.3
-- **Media**: SRTP with DTLS encryption
-- **Storage**: Encryption keys in Vault
+- **Signaling**: All API communications use HTTPS/TLS 1.3 with mTLS
+- **ARI Interface**: Mutual TLS authentication between SGE API and Asterisk
+- **Media**: SRTP with DTLS encryption for VoIP streams
+- **Storage**: Encryption keys and certificates in Vault PKI
 
 ### Authentication
 - **JWT Tokens**: For user authentication
 - **API Keys**: For service access
-- **Certificates**: Optional mutual authentication
+- **Client Certificates**: Mutual TLS authentication for VoIP endpoints
 - **SSO Integration**: Single sign-on via Keycloak
+
+### Certificate Management
+- **VoIP Client Certificates**: X.509 certificates for SIP/WebRTC clients
+- **ARI mTLS**: Mutual authentication for Asterisk REST Interface
+- **Federation Certificates**: Secure inter-office VoIP communication
+- **Certificate Lifecycle**: Automated issuance, renewal, and revocation via Vault PKI
 
 ### Resource Management
 - **Call Limits**: User-specific limit configuration

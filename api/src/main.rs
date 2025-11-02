@@ -368,6 +368,10 @@ async fn main() {
         username: asterisk_username,
         password: asterisk_password,
         app_name: asterisk_app_name,
+        tls_enabled: std::env::var("ASTERISK_TLS_ENABLED").unwrap_or_else(|_| "true".to_string()) == "true",
+        client_cert_path: std::env::var("ASTERISK_CLIENT_CERT").ok(),
+        client_key_path: std::env::var("ASTERISK_CLIENT_KEY").ok(),
+        ca_cert_path: std::env::var("ASTERISK_CA_CERT").ok(),
     };
     let asterisk_client = Arc::new(crate::core::asterisk_client::AsteriskClient::new(asterisk_config));
     let metrics = Arc::new(crate::core::opentelemetry::Metrics::new().unwrap());

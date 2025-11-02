@@ -194,6 +194,13 @@ pub mod discord_core;
 /// @DEPENDENCY Vault for key storage, ring for cryptography.
 pub mod mac_certificates;
 
+/// [VOIP CERTIFICATES CORE] VoIP Certificate Management Operations
+/// @MISSION Provide X.509 certificate operations for VoIP security.
+/// @THREAT SIP/WebRTC interception, unauthorized VoIP access.
+/// @COUNTERMEASURE TLS encryption, mutual authentication, certificate validation.
+/// @DEPENDENCY Vault PKI for certificate lifecycle management.
+pub mod voip_certificates;
+
 /// [MAC IDENTITY CORE] MAC Identity Cryptographic Operations
 /// @MISSION Provide core cryptographic operations for MAC identity management.
 /// @THREAT MAC spoofing or weak generation.
