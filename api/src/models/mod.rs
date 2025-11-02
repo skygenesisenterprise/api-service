@@ -36,3 +36,5 @@ pub mod git_model;
 pub mod logger_model;
 /// [GRAFANA MODEL MODULE] Grafana dashboard, datasource, and alert data structures
 pub mod grafana_models;
+/// [POWERADMIN MODEL MODULE] PowerAdmin DNS zone, record, and DNSSEC data structures
+pub mod poweradmin_models;

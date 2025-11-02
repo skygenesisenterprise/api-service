@@ -56,6 +56,11 @@ The Sky Genesis API provides direct integration with Grafana through dedicated e
 ##### Alert Management
 - **Create Alert Rule**: `POST /api/v1/grafana/alerts`
 
+##### Template Management
+- **List Templates**: `GET /api/v1/grafana/templates`
+- **Get Template**: `GET /api/v1/grafana/templates/{name}`
+- **Apply Template**: `POST /api/v1/grafana/templates/{name}/apply`
+
 #### Example: Create Prometheus Datasource
 
 ```bash
@@ -171,6 +176,96 @@ curl -X POST http://your-api-server:8080/api/v1/grafana/alerts \
     "no_data_state": "NoData",
     "exec_err_state": "Error",
     "for_duration": "5m"
+   }'
+```
+
+#### Example: Apply Dashboard Template
+
+```bash
+curl -X POST http://your-api-server:8080/api/v1/grafana/templates/system-health/apply \
+  -H "Content-Type: application/json" \
+  -d '{
+    "parameters": {
+      "service": "api",
+      "environment": "production",
+      "title": "Production API Health"
+    },
+    "folder_id": 1,
+    "overwrite": false
+  }'
+```
+
+### Grafana Templates
+
+The Sky Genesis API provides pre-built Grafana dashboard and alert templates for common monitoring scenarios. Templates can be applied with custom parameters to quickly set up monitoring infrastructure.
+
+#### Available Templates
+
+##### Dashboard Templates
+- **system-health**: Comprehensive system monitoring dashboard with panels for active connections, response times, error rates, and resource usage
+- **security-monitoring**: Threat detection and security alerts dashboard with authentication failures and access patterns
+- **performance-overview**: Application performance metrics dashboard with throughput and latency monitoring
+- **infrastructure-monitoring**: Server and infrastructure health dashboard with CPU, memory, and disk monitoring
+
+##### Alert Templates
+- **high-error-rate**: Alert for elevated error rates (>5% threshold)
+- **high-response-time**: Alert for slow response times (>1000ms threshold)
+- **service-down**: Alert for service unavailability (up == 0)
+- **resource-exhaustion**: Alert for high resource usage (CPU >90%, Memory >90%)
+
+#### Template Parameters
+
+Templates accept parameters for customization:
+
+```json
+{
+  "service": "api",
+  "environment": "production",
+  "title": "Custom Dashboard Title",
+  "time_range": "1h",
+  "refresh_interval": "30s",
+  "prometheus_url": "http://prometheus.skygenesisenterprise.com:9090",
+  "loki_url": "http://loki.skygenesisenterprise.com:3100"
+}
+```
+
+#### Template API Usage
+
+##### List Available Templates
+```bash
+curl http://your-api-server:8080/api/v1/grafana/templates
+```
+
+##### Get Template Details
+```bash
+curl http://your-api-server:8080/api/v1/grafana/templates/system-health
+```
+
+##### Apply Dashboard Template
+```bash
+curl -X POST http://your-api-server:8080/api/v1/grafana/templates/system-health/apply \
+  -H "Content-Type: application/json" \
+  -d '{
+    "parameters": {
+      "service": "api",
+      "environment": "production",
+      "title": "Production API Health Dashboard"
+    },
+    "folder_id": 1,
+    "overwrite": false
+  }'
+```
+
+##### Apply Alert Template
+```bash
+curl -X POST http://your-api-server:8080/api/v1/grafana/templates/high-error-rate/apply \
+  -H "Content-Type: application/json" \
+  -d '{
+    "parameters": {
+      "service": "api",
+      "threshold": "5",
+      "duration": "5m"
+    }
   }'
 ```
 
@@ -363,12 +458,7 @@ spec:
 
 ## Monitoring Best Practices
 
-### 1. End
-        let call = VoipCall {
-            id: call_id.clone(),
-            caller_id: caller_id.to_string(),
-            participants,
-            call_type,point Selection
+### 1. Endpoint Selection
 - Use `/api/v1/health` for basic health checks
 - Use `/api/v1/metrics/prometheus` for detailed metrics
 - Use `/api/v1/status` for operational dashboards
@@ -424,17 +514,45 @@ curl -s http://localhost:8080/api/v1/status | jq .health
 curl -s http://localhost:8080/api/v1/health/vault | jq
 ```
 
+## Grafana API Best Practices
+
+### Authentication and Security
+- Store Grafana API keys securely in Vault
+- Use HTTPS for all Grafana API communications
+- Implement proper access controls and audit logging
+- Rotate API keys regularly for security
+
+### Dashboard Management
+- Use templates for consistent dashboard creation
+- Organize dashboards in folders for better management
+- Implement versioning for critical dashboards
+- Document dashboard purposes and data sources
+
+### Alert Configuration
+- Set appropriate alert thresholds based on your environment
+- Use descriptive alert names and descriptions
+- Configure alert routing to appropriate teams
+- Regularly review and tune alert rules
+
+### Performance Optimization
+- Cache template results when possible
+- Use batch operations for bulk dashboard creation
+- Monitor API rate limits and implement backoff strategies
+- Optimize dashboard refresh intervals based on data freshness needs
+
 ## Security Considerations
 
 - All monitoring endpoints are publicly accessible (by design for monitoring)
 - Consider network-level restrictions for production environments
 - Use HTTPS for all monitoring traffic
 - Implement authentication for sensitive monitoring data if required
+- Grafana API keys should be stored securely and rotated regularly
 
 ## Performance Impact
 
 - Health checks are designed to be lightweight (< 100ms)
 - Metrics collection is optimized for frequent polling
 - Component health checks run in parallel where possible
-- Consider caching for high-traffic monitoring scenarios</content>
+- Consider caching for high-traffic monitoring scenarios
+- Grafana API operations may have rate limits depending on your Grafana configuration</content>
 </xai:function_call<parameter name="filePath">docs/monitoring-grafana-integration.md

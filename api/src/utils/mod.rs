@@ -34,3 +34,5 @@ pub mod mac_cert_utils;
 pub mod logger_utils;
 /// [GRAFANA UTILITIES] Grafana-specific utility functions for UID generation, validation, and formatting
 pub mod grafana_utils;
+/// [POWERADMIN UTILITIES] PowerAdmin DNS-specific utility functions for UID generation, validation, and formatting
+pub mod poweradmin_utils;

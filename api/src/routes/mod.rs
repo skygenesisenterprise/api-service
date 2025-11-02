@@ -21,6 +21,7 @@ pub mod voip_routes;
 pub mod discord_routes;
 pub mod git_routes;
 pub mod logger_routes;
+pub mod poweradmin_routes;
 
 use warp::Filter;
 use std::sync::Arc;
@@ -47,6 +48,7 @@ use crate::core::grpc::GrpcClient;
 use crate::core::webdav::{WebDavHandler, CalDavHandler, CardDavHandler};
 use crate::core::opentelemetry::Metrics;
 use crate::ssh::SshServer;
+use crate::services::poweradmin_service::PowerAdminService;
 use crate::services::voip_service::VoipService;
 use crate::core::asterisk_client::AsteriskClient;
 use crate::services::discord_service::DiscordService;
@@ -80,6 +82,7 @@ pub fn routes(
     metrics: Arc<Metrics>,
     monitoring_service: Arc<crate::services::monitoring_service::MonitoringService>,
     grafana_service: Arc<crate::services::grafana_service::GrafanaService>,
+    poweradmin_service: Arc<PowerAdminService>,
     ssh_server: Arc<SshServer>,
     voip_service: Arc<VoipService>,
     asterisk_client: Arc<AsteriskClient>,
@@ -103,6 +106,7 @@ pub fn routes(
     let opentelemetry_routes = crate::routes::opentelemetry_routes::opentelemetry_routes(metrics, monitoring_service.clone());
     let monitoring_routes = crate::routes::monitoring_routes::monitoring_routes(monitoring_service);
     let grafana_routes = crate::routes::grafana_routes::grafana_routes(grafana_service);
+    let poweradmin_routes = crate::routes::poweradmin_routes::poweradmin_routes(poweradmin_service, vault_manager.clone());
     let logger_service = Arc::new(crate::services::logger_service::LoggerService::new(audit_manager.clone(), vault_client.clone()));
     let logger_routes = crate::routes::logger_routes::logger_routes(logger_service);
     let search_routes = crate::routes::search_routes::search_routes(auth_service.clone(), vault_client.clone(), metrics.clone());
@@ -156,7 +160,7 @@ pub fn routes(
             "#)
         });
 
-    let all_routes = hello.or(key_routes).or(auth_routes).or(data_routes).or(openpgp_routes).or(device_routes).or(mac_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(monitoring_routes).or(grafana_routes).or(logger_routes).or(search_routes).or(ssh_routes).or(voip_routes).or(discord_routes).or(git_routes).or(openapi_json).or(swagger_ui);
+    let all_routes = hello.or(key_routes).or(auth_routes).or(data_routes).or(openpgp_routes).or(device_routes).or(mac_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(monitoring_routes).or(grafana_routes).or(poweradmin_routes).or(logger_routes).or(search_routes).or(ssh_routes).or(voip_routes).or(discord_routes).or(git_routes).or(openapi_json).or(swagger_ui);
 
     // Apply audit logging to all routes
     let logger_service_for_middleware = Arc::new(crate::services::logger_service::LoggerService::new(audit_manager.clone(), vault_client.clone()));

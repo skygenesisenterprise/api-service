@@ -31,3 +31,5 @@ pub mod mac_queries;
 pub mod logger_queries;
 /// [GRAFANA QUERIES MODULE] Grafana dashboard and datasource database operations
 pub mod grafana_queries;
+/// [POWERADMIN QUERIES MODULE] PowerAdmin DNS zone and record database operations
+pub mod poweradmin_queries;

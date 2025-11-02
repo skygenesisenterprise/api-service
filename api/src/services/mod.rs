@@ -19,3 +19,4 @@ pub mod voip_service;
 pub mod discord_service;
 pub mod git_service;
 pub mod logger_service;
+pub mod poweradmin_service;

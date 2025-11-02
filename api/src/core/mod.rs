@@ -225,3 +225,12 @@ pub mod mac_core;
 /// @PERFORMANCE Template caching and efficient operations.
 /// @AUDIT Grafana operations logged for compliance.
 pub mod grafana_core;
+
+/// [POWERADMIN CORE] PowerAdmin DNS Management Core Operations
+/// @MISSION Provide core operations for DNS zone and record management.
+/// @THREAT Manual DNS configuration overhead and errors.
+/// @COUNTERMEASURE Automated configuration with templates and validation.
+/// @DEPENDENCY Vault for secure credential storage.
+/// @PERFORMANCE Template caching and efficient operations.
+/// @AUDIT DNS operations logged for compliance.
+pub mod poweradmin_core;

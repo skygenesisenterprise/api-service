@@ -395,11 +395,22 @@ async fn main() {
     /// @DEPENDENCY Vault for secure API key storage.
     /// @PERFORMANCE Grafana service initialized with connection validation.
     /// @AUDIT Grafana operations logged for compliance.
-    let grafana_service = Arc::new(crate::services::grafana_service::GrafanaService::new(
-        vault_client.clone(),
-    ).await.expect("Failed to initialize Grafana service"));
+     let grafana_service = Arc::new(crate::services::grafana_service::GrafanaService::new(
+         vault_client.clone(),
+     ).await.expect("Failed to initialize Grafana service"));
 
-     /// [API GATEWAY] Route Aggregation and Security Enforcement
+     /// [POWERADMIN SERVICE INITIALIZATION] PowerAdmin DNS Management Setup
+     /// @MISSION Initialize PowerAdmin service for DNS zone and record management.
+     /// @THREAT Manual DNS configuration overhead.
+     /// @COUNTERMEASURE Automated PowerAdmin API integration.
+     /// @DEPENDENCY Vault for secure API credentials storage.
+     /// @PERFORMANCE PowerAdmin service initialized with connection validation.
+     /// @AUDIT PowerAdmin operations logged for compliance.
+     let poweradmin_service = Arc::new(crate::services::poweradmin_service::PowerAdminService::new(
+         vault_client.clone(),
+     ).await.expect("Failed to initialize PowerAdmin service"));
+
+      /// [API GATEWAY] Route Aggregation and Security Enforcement
      /// @MISSION Expose all service endpoints with unified security controls.
      /// @THREAT API abuse or unauthorized access.
      /// @COUNTERMEASURE Implement rate limiting, input validation, and audit logging.
@@ -422,9 +433,10 @@ async fn main() {
             audit_manager,
              keycloak_client,
              fido2_manager,
-             monitoring_service,
-             grafana_service,
-            vpn_manager,
+              monitoring_service,
+              grafana_service,
+              poweradmin_service,
+             vpn_manager,
            tailscale_manager,
            grpc_client,
            webdav_handler,

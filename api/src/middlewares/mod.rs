@@ -36,3 +36,5 @@ pub mod git_middleware;
 pub mod mac_middleware;
 /// [GRAFANA MIDDLEWARE MODULE] Grafana API access control, authentication, and security enforcement
 pub mod grafana_middleware;
+/// [POWERADMIN MIDDLEWARE MODULE] PowerAdmin DNS access control, authentication, and security enforcement
+pub mod poweradmin_middleware;

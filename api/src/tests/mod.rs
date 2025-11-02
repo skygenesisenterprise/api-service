@@ -11,3 +11,4 @@ pub mod git_tests;
 pub mod mac_tests;
 pub mod logger_tests;
 pub mod grafana_tests;
+pub mod poweradmin_tests;

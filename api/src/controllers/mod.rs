@@ -39,3 +39,5 @@ pub mod git_controller;
 pub mod logger_controller;
 /// [GRAFANA CONTROLLER MODULE] Grafana API management operations
 pub mod grafana_controller;
+/// [POWERADMIN CONTROLLER MODULE] PowerAdmin DNS management operations
+pub mod poweradmin_controller;
