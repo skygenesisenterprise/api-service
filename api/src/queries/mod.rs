@@ -27,3 +27,5 @@ pub mod discord_queries;
 pub mod git_queries;
 /// [MAC QUERIES MODULE] MAC identity database operations
 pub mod mac_queries;
+/// [LOGGER QUERIES MODULE] Logger database operations
+pub mod logger_queries;

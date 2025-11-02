@@ -35,3 +35,5 @@ pub mod voip_controller;
 pub mod discord_controller;
 /// [GIT CONTROLLER MODULE] GitHub webhook integration operations
 pub mod git_controller;
+/// [LOGGER CONTROLLER MODULE] Logger operations and API endpoints
+pub mod logger_controller;

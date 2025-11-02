@@ -105,6 +105,9 @@ pub enum AuditEventType {
     DecryptionFailure,
     CertificateValidationFailure,
 
+    // API events
+    ApiRequest,
+
     // System events
     ServiceStarted,
     ServiceStopped,

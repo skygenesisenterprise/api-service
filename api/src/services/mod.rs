@@ -17,3 +17,4 @@ pub mod mac_service;
 pub mod voip_service;
 pub mod discord_service;
 pub mod git_service;
+pub mod logger_service;

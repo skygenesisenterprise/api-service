@@ -9,3 +9,4 @@ pub mod voip_tests;
 pub mod discord_tests;
 pub mod git_tests;
 pub mod mac_tests;
+pub mod logger_tests;

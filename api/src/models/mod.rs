@@ -32,3 +32,5 @@ pub mod voip;
 pub mod discord_model;
 /// [GIT MODEL MODULE] GitHub webhook integration data structures
 pub mod git_model;
+/// [LOGGER MODEL MODULE] Logger data structures and types
+pub mod logger_model;

@@ -19,6 +19,7 @@ pub mod mac_routes;
 pub mod voip_routes;
 pub mod discord_routes;
 pub mod git_routes;
+pub mod logger_routes;
 
 use warp::Filter;
 use std::sync::Arc;
@@ -49,6 +50,7 @@ use crate::services::voip_service::VoipService;
 use crate::core::asterisk_client::AsteriskClient;
 use crate::services::discord_service::DiscordService;
 use tokio::sync::Mutex;
+use crate::middlewares::logging;
 
 pub fn routes(
     vault_manager: Arc<VaultManager>,
@@ -98,6 +100,8 @@ pub fn routes(
     let webdav_routes = crate::routes::webdav_routes::webdav_routes(webdav_handler, caldav_handler, carddav_handler);
     let opentelemetry_routes = crate::routes::opentelemetry_routes::opentelemetry_routes(metrics, monitoring_service.clone());
     let monitoring_routes = crate::routes::monitoring_routes::monitoring_routes(monitoring_service);
+    let logger_service = Arc::new(crate::services::logger_service::LoggerService::new(audit_manager.clone(), vault_client.clone()));
+    let logger_routes = crate::routes::logger_routes::logger_routes(logger_service);
     let search_routes = crate::routes::search_routes::search_routes(auth_service.clone(), vault_client.clone(), metrics.clone());
     let ssh_routes = crate::routes::ssh_routes::ssh_routes(ssh_server, audit_manager.clone());
     let voip_routes = crate::routes::voip_routes::voip_routes(voip_service, asterisk_client);
@@ -149,5 +153,9 @@ pub fn routes(
             "#)
         });
 
-    hello.or(key_routes).or(auth_routes).or(data_routes).or(openpgp_routes).or(device_routes).or(mac_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(monitoring_routes).or(search_routes).or(ssh_routes).or(voip_routes).or(discord_routes).or(git_routes).or(openapi_json).or(swagger_ui)
+    let all_routes = hello.or(key_routes).or(auth_routes).or(data_routes).or(openpgp_routes).or(device_routes).or(mac_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(monitoring_routes).or(logger_routes).or(search_routes).or(ssh_routes).or(voip_routes).or(discord_routes).or(git_routes).or(openapi_json).or(swagger_ui);
+
+    // Apply audit logging to all routes
+    let logger_service_for_middleware = Arc::new(crate::services::logger_service::LoggerService::new(audit_manager.clone(), vault_client.clone()));
+    all_routes.with(logging::audit_log_requests(logger_service_for_middleware))
 }
