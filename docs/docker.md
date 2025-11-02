@@ -53,6 +53,29 @@ This launches all services:
 - Vault on http://localhost:8200
 - Keycloak on http://localhost:8081
 
+### Database Initialization
+
+The PostgreSQL container is configured with multiple databases and automatic schema initialization:
+
+#### Database Setup Process
+1. **Container Start**: PostgreSQL starts with multiple database support
+2. **API Schema**: `schema-pgsql.sql` is automatically applied to `api_service` database
+3. **Keycloak Database**: Separate `keycloak` database is created with proper user
+4. **Verification**: Scripts verify that all schemas are properly initialized
+5. **Health Checks**: Services wait for database readiness before starting
+
+#### Database Verification
+After starting the services, you can verify database initialization:
+
+```bash
+# Run the verification script
+./infrastructure/docker/verify-databases.sh
+
+# Or check manually
+docker exec sky-genesis-postgres pg_isready -U postgres -d api_service
+docker exec sky-genesis-postgres pg_isready -U postgres -d keycloak
+```
+
 ### Included Services
 
 The `docker-compose.yml` file defines the following services:
@@ -78,11 +101,15 @@ The `docker-compose.yml` file defines the following services:
 #### Database (PostgreSQL)
 - **Image**: postgres:15-alpine
 - **Port**: 5432
-- **Database**: api_service
+- **Databases**: api_service, keycloak
 - **User**: postgres
 - **Password**: password (change in production)
 - **Volume**: Data persistence
-- **Initialization**: SQL script `schema-pgsql.sql`
+- **Initialization**:
+  - API schema: `schema-pgsql.sql`
+  - Keycloak database setup
+  - Schema verification scripts
+- **Health Check**: Multi-database readiness check
 
 #### Cache (Redis)
 - **Image**: redis:7-alpine
@@ -709,6 +736,56 @@ logging:
 For Prometheus metrics export, expose port 9090 and configure node_exporter.
 
 ## Troubleshooting
+
+### Database Issues
+
+#### PostgreSQL Won't Start
+```bash
+# Check PostgreSQL logs
+docker logs sky-genesis-postgres
+
+# Check if port 5432 is available
+netstat -tlnp | grep 5432
+
+# Reset PostgreSQL data (WARNING: This will delete all data)
+docker-compose down
+docker volume rm sky-genesis_postgres_data
+docker-compose up -d postgres
+```
+
+#### Schema Not Applied
+```bash
+# Check if schema file exists
+ls -la data/schema-pgsql.sql
+
+# Check PostgreSQL logs for initialization errors
+docker logs sky-genesis-postgres
+
+# Manually verify schema
+docker exec -it sky-genesis-postgres psql -U postgres -d api_service -c "\dn"
+```
+
+#### Keycloak Database Issues
+```bash
+# Check Keycloak database
+docker exec -it sky-genesis-postgres psql -U postgres -d keycloak -c "\l"
+
+# Recreate Keycloak database
+docker exec -it sky-genesis-postgres psql -U postgres -c "DROP DATABASE IF EXISTS keycloak;"
+docker exec -it sky-genesis-postgres psql -U postgres -c "CREATE DATABASE keycloak OWNER keycloak;"
+```
+
+#### Connection Issues
+```bash
+# Test database connectivity
+docker exec sky-genesis-postgres pg_isready -U postgres -d api_service
+
+# Check API service logs
+docker logs sky-genesis-api
+
+# Verify environment variables
+docker exec sky-genesis-api env | grep DATABASE
+```
 
 ### Common Issues
 
