@@ -30,3 +30,5 @@ pub mod openpgp_model;
 pub mod voip;
 /// [DISCORD MODEL MODULE] Discord bot integration data structures
 pub mod discord_model;
+/// [GIT MODEL MODULE] GitHub webhook integration data structures
+pub mod git_model;

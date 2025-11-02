@@ -18,6 +18,7 @@ pub mod device_routes;
 pub mod mac_routes;
 pub mod voip_routes;
 pub mod discord_routes;
+pub mod git_routes;
 
 use warp::Filter;
 use std::sync::Arc;
@@ -101,6 +102,7 @@ pub fn routes(
     let ssh_routes = crate::routes::ssh_routes::ssh_routes(ssh_server, audit_manager.clone());
     let voip_routes = crate::routes::voip_routes::voip_routes(voip_service, asterisk_client);
     let discord_routes = crate::routes::discord_routes::discord_routes(discord_service);
+    let git_routes = crate::routes::git_routes::git_routes();
 
     // OpenAPI JSON endpoint
     let openapi_json = warp::path!("api-docs" / "openapi.json")
@@ -147,5 +149,5 @@ pub fn routes(
             "#)
         });
 
-    hello.or(key_routes).or(auth_routes).or(data_routes).or(openpgp_routes).or(device_routes).or(mac_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(monitoring_routes).or(search_routes).or(ssh_routes).or(voip_routes).or(discord_routes).or(openapi_json).or(swagger_ui)
+    hello.or(key_routes).or(auth_routes).or(data_routes).or(openpgp_routes).or(device_routes).or(mac_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(monitoring_routes).or(search_routes).or(ssh_routes).or(voip_routes).or(discord_routes).or(git_routes).or(openapi_json).or(swagger_ui)
 }

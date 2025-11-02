@@ -33,3 +33,5 @@ pub mod mac_controller;
 pub mod voip_controller;
 /// [DISCORD CONTROLLER MODULE] Discord bot integration operations
 pub mod discord_controller;
+/// [GIT CONTROLLER MODULE] GitHub webhook integration operations
+pub mod git_controller;

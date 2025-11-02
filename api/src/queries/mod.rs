@@ -23,5 +23,7 @@ pub mod key_queries;
 pub mod voip_queries;
 /// [DISCORD QUERIES MODULE] Discord bot database operations
 pub mod discord_queries;
+/// [GIT QUERIES MODULE] GitHub integration database operations
+pub mod git_queries;
 /// [MAC QUERIES MODULE] MAC identity database operations
 pub mod mac_queries;

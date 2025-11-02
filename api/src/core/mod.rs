@@ -187,6 +187,13 @@ pub mod voip;
 /// @DEPENDENCY Discord API, Vault for secrets, AuditManager for logging.
 pub mod discord_core;
 
+/// [GITHUB INTEGRATION] GitHub App Core Operations
+/// @MISSION Provide secure GitHub webhook and API interactions.
+/// @THREAT Webhook spoofing, API abuse, unauthorized access.
+/// @COUNTERMEASURE Signature validation, rate limiting, access controls.
+/// @DEPENDENCY GitHub API, Vault for secrets, AuditManager for logging.
+pub mod git_core;
+
 /// [MAC CERTIFICATES CORE] MAC Certificate Management Operations
 /// @MISSION Provide X.509 certificate operations for MAC identity security.
 /// @THREAT Certificate compromise or weak cryptography.

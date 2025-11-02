@@ -24,6 +24,8 @@ pub mod tokens;
 pub mod voip_utils;
 /// [DISCORD UTILITIES] Discord-specific utility functions for formatting and validation
 pub mod discord_utils;
+/// [GIT UTILITIES] GitHub-specific utility functions for formatting and validation
+pub mod git_utils;
 /// [MAC UTILITIES] MAC identity utility functions for formatting, conversion, and validation
 pub mod mac_utils;
 /// [MAC CERTIFICATE UTILITIES] MAC certificate utility functions for validation and management
