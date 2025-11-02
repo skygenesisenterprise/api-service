@@ -179,3 +179,10 @@ pub mod snmp_trap_listener;
 /// @COUNTERMEASURE End-to-end encryption, secure signaling, access control.
 /// @DEPENDENCY WebRTC, RTP, SRTP protocols.
 pub mod voip;
+
+/// [DISCORD INTEGRATION] Discord Bot Core Operations
+/// @MISSION Provide secure Discord webhook and API interactions.
+/// @THREAT Webhook spoofing, API abuse, unauthorized access.
+/// @COUNTERMEASURE Signature validation, rate limiting, access controls.
+/// @DEPENDENCY Discord API, Vault for secrets, AuditManager for logging.
+pub mod discord_core;

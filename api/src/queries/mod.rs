@@ -21,3 +21,5 @@ pub mod query;
 pub mod key_queries;
 /// [VOIP QUERIES MODULE] VoIP call and conference database operations
 pub mod voip_queries;
+/// [DISCORD QUERIES MODULE] Discord bot database operations
+pub mod discord_queries;

@@ -22,3 +22,5 @@ pub mod key_utils;
 pub mod tokens;
 /// [VOIP UTILITIES] VoIP-specific utility functions and helpers
 pub mod voip_utils;
+/// [DISCORD UTILITIES] Discord-specific utility functions for formatting and validation
+pub mod discord_utils;

@@ -6,3 +6,4 @@ pub mod auth_tests;
 pub mod snmp_tests;
 pub mod protocol_tests;
 pub mod voip_tests;
+pub mod discord_tests;

@@ -16,6 +16,7 @@ pub mod data_routes;
 pub mod openpgp_routes;
 pub mod device_routes;
 pub mod voip_routes;
+pub mod discord_routes;
 
 use warp::Filter;
 use std::sync::Arc;
@@ -43,6 +44,7 @@ use crate::core::opentelemetry::Metrics;
 use crate::ssh::SshServer;
 use crate::services::voip_service::VoipService;
 use crate::core::asterisk_client::AsteriskClient;
+use crate::services::discord_service::DiscordService;
 use tokio::sync::Mutex;
 
 pub fn routes(
@@ -73,6 +75,7 @@ pub fn routes(
     ssh_server: Arc<SshServer>,
     voip_service: Arc<VoipService>,
     asterisk_client: Arc<AsteriskClient>,
+    discord_service: Arc<DiscordService>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let hello = warp::path!("hello")
         .map(|| "Hello, World!");
@@ -93,6 +96,7 @@ pub fn routes(
     let search_routes = crate::routes::search_routes::search_routes(auth_service.clone(), vault_client.clone(), metrics.clone());
     let ssh_routes = crate::routes::ssh_routes::ssh_routes(ssh_server, audit_manager.clone());
     let voip_routes = crate::routes::voip_routes::voip_routes(voip_service, asterisk_client);
+    let discord_routes = crate::routes::discord_routes::discord_routes(discord_service);
 
     // OpenAPI JSON endpoint
     let openapi_json = warp::path!("api-docs" / "openapi.json")
@@ -139,5 +143,5 @@ pub fn routes(
             "#)
         });
 
-    hello.or(key_routes).or(auth_routes).or(data_routes).or(openpgp_routes).or(device_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(monitoring_routes).or(search_routes).or(ssh_routes).or(voip_routes).or(openapi_json).or(swagger_ui)
+    hello.or(key_routes).or(auth_routes).or(data_routes).or(openpgp_routes).or(device_routes).or(websocket_routes).or(security_routes).or(snmp_routes).or(vpn_routes).or(grpc_routes).or(webdav_routes).or(opentelemetry_routes).or(monitoring_routes).or(search_routes).or(ssh_routes).or(voip_routes).or(discord_routes).or(openapi_json).or(swagger_ui)
 }

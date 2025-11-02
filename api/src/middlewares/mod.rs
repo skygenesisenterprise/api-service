@@ -28,3 +28,5 @@ pub mod cert_auth_middleware;
 pub mod openpgp_middleware;
 /// [VOIP MIDDLEWARE MODULE] VoIP call validation, rate limiting, and security
 pub mod voip_middleware;
+/// [DISCORD MIDDLEWARE MODULE] Discord webhook validation, rate limiting, and security
+pub mod discord_middleware;

@@ -28,3 +28,5 @@ pub mod search_models;
 pub mod openpgp_model;
 /// [VOIP MODEL MODULE] Voice over IP call and conference data structures
 pub mod voip;
+/// [DISCORD MODEL MODULE] Discord bot integration data structures
+pub mod discord_model;

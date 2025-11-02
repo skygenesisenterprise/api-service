@@ -29,3 +29,5 @@ pub mod openpgp_controller;
 pub mod device_controller;
 /// [VOIP CONTROLLER MODULE] Voice over IP and video conferencing operations
 pub mod voip_controller;
+/// [DISCORD CONTROLLER MODULE] Discord bot integration operations
+pub mod discord_controller;

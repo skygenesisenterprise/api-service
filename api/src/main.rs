@@ -157,11 +157,43 @@ async fn main() {
            snmp_manager.clone(),
        ));
 
-       /// [VOIP SERVICE] Voice over IP and video conferencing service
-       /// @MISSION Provide VoIP functionality with secure signaling.
-       /// @THREAT Unauthorized calls, eavesdropping.
-       /// @COUNTERMEASURE Authentication, encryption, audit logging.
-       let voip_service = Arc::new(crate::services::voip_service::VoipService::new(asterisk_config));
+        /// [VOIP SERVICE] Voice over IP and video conferencing service
+        /// @MISSION Provide VoIP functionality with secure signaling.
+        /// @THREAT Unauthorized calls, eavesdropping.
+        /// @COUNTERMEASURE Authentication, encryption, audit logging.
+        let voip_service = Arc::new(crate::services::voip_service::VoipService::new(asterisk_config));
+
+        /// [MAIL SERVICE] Email service integration (mock for now)
+        /// @MISSION Provide email functionality for Discord notifications.
+        let mail_service = Arc::new(crate::services::mail_service::MailService::new()); // Mock
+
+        /// [SEARCH SERVICE] Search service integration (mock for now)
+        /// @MISSION Provide search functionality for Discord commands.
+        let search_service = Arc::new(crate::services::search_service::SearchService::new()); // Mock
+
+        /// [DISCORD SERVICE] Discord bot integration service
+        /// @MISSION Provide secure Discord bot operations and command execution.
+        /// @THREAT Unauthorized bot access, command injection.
+        /// @COUNTERMEASURE Authentication, validation, audit logging.
+        let discord_config = crate::models::discord_model::DiscordConfig {
+            channels: vec![], // Empty for now
+            roles: vec![],
+            permissions: vec![],
+            commands: vec![],
+            webhooks: vec![],
+            vpn_required: true,
+            audit_enabled: true,
+        };
+        let discord_service = Arc::new(crate::services::discord_service::DiscordService::new(
+            vault_client.clone(),
+            audit_manager.clone(),
+            metrics.clone(),
+            vpn_manager.clone(),
+            tailscale_manager.clone(),
+            mail_service.clone(),
+            search_service.clone(),
+            discord_config,
+        ));
 
     let vault_token = std::env::var("VAULT_TOKEN").unwrap_or_default();
     let vault_manager = Arc::new(crate::services::vault_manager::VaultManager::new("dummy".to_string(), vault_token));
@@ -359,10 +391,10 @@ async fn main() {
            carddav_handler,
            metrics,
            ssh_server,
-        voip_service,
-        asterisk_client,
-           asterisk_client,
-       );
+         voip_service,
+         asterisk_client,
+         discord_service,
+        );
 
     /// [NETWORK PERIMETER] Service Binding Configuration
     /// @MISSION Establish secure network listening post.
