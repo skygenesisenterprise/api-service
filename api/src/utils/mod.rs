@@ -32,3 +32,5 @@ pub mod mac_utils;
 pub mod mac_cert_utils;
 /// [LOGGER UTILITIES] Logger utility functions for data processing and validation
 pub mod logger_utils;
+/// [GRAFANA UTILITIES] Grafana-specific utility functions for UID generation, validation, and formatting
+pub mod grafana_utils;

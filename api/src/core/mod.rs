@@ -213,4 +213,15 @@ pub mod voip_certificates;
 /// @THREAT MAC spoofing or weak generation.
 /// @COUNTERMEASURE Cryptographic generation with entropy validation.
 /// @DEPENDENCY Vault for secure random generation.
+/// @PERFORMANCE O(1) hash map lookup.
+/// @AUDIT MAC operations logged for tracking.
 pub mod mac_core;
+
+/// [GRAFANA CORE] Grafana Integration Core Operations
+/// @MISSION Provide core operations for Grafana dashboard and datasource management.
+/// @THREAT Manual Grafana configuration overhead and errors.
+/// @COUNTERMEASURE Automated configuration with templates and validation.
+/// @DEPENDENCY Vault for secure credential storage.
+/// @PERFORMANCE Template caching and efficient operations.
+/// @AUDIT Grafana operations logged for compliance.
+pub mod grafana_core;

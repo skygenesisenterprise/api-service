@@ -388,6 +388,17 @@ async fn main() {
         metrics.clone(),
     ));
 
+    /// [GRAFANA SERVICE INITIALIZATION] Grafana API Integration Setup
+    /// @MISSION Initialize Grafana service for dashboard management.
+    /// @THREAT Manual Grafana configuration overhead.
+    /// @COUNTERMEASURE Automated Grafana API integration.
+    /// @DEPENDENCY Vault for secure API key storage.
+    /// @PERFORMANCE Grafana service initialized with connection validation.
+    /// @AUDIT Grafana operations logged for compliance.
+    let grafana_service = Arc::new(crate::services::grafana_service::GrafanaService::new(
+        vault_client.clone(),
+    ).await.expect("Failed to initialize Grafana service"));
+
      /// [API GATEWAY] Route Aggregation and Security Enforcement
      /// @MISSION Expose all service endpoints with unified security controls.
      /// @THREAT API abuse or unauthorized access.
@@ -409,10 +420,11 @@ async fn main() {
             snmp_agent,
             trap_listener,
             audit_manager,
-            keycloak_client,
-            fido2_manager,
-            monitoring_service,
-           vpn_manager,
+             keycloak_client,
+             fido2_manager,
+             monitoring_service,
+             grafana_service,
+            vpn_manager,
            tailscale_manager,
            grpc_client,
            webdav_handler,

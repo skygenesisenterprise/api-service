@@ -32,6 +32,171 @@ The Sky Genesis Enterprise API provides comprehensive monitoring endpoints desig
 
 ## Grafana Integration
 
+### Sky Genesis Grafana API
+
+The Sky Genesis API provides direct integration with Grafana through dedicated endpoints that allow programmatic management of dashboards, datasources, and alert rules. This enables automated monitoring setup and configuration.
+
+#### Available Grafana API Endpoints
+
+##### Health Check
+- **Endpoint**: `GET /api/v1/grafana/health`
+- **Purpose**: Verify Grafana service connectivity
+- **Response**: JSON with health status and timestamp
+
+##### Dashboard Management
+- **Create Dashboard**: `POST /api/v1/grafana/dashboards`
+- **List Dashboards**: `GET /api/v1/grafana/dashboards`
+- **Get Dashboard**: `GET /api/v1/grafana/dashboards/{uid}`
+- **Update Dashboard**: `PUT /api/v1/grafana/dashboards/{uid}`
+- **Delete Dashboard**: `DELETE /api/v1/grafana/dashboards/{uid}`
+
+##### Datasource Management
+- **Create Datasource**: `POST /api/v1/grafana/datasources`
+
+##### Alert Management
+- **Create Alert Rule**: `POST /api/v1/grafana/alerts`
+
+#### Example: Create Prometheus Datasource
+
+```bash
+curl -X POST http://your-api-server:8080/api/v1/grafana/datasources \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Sky Genesis Prometheus",
+    "type": "prometheus",
+    "url": "http://prometheus:9090",
+    "access": "proxy"
+  }'
+```
+
+#### Example: Create System Health Dashboard
+
+```bash
+curl -X POST http://your-api-server:8080/api/v1/grafana/dashboards \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dashboard": {
+      "title": "Sky Genesis System Health",
+      "tags": ["sky-genesis", "health"],
+      "timezone": "browser",
+      "panels": [
+        {
+          "title": "Active Connections",
+          "type": "graph",
+          "targets": [{
+            "expr": "sky_genesis_active_connections{service=\"api\"}",
+            "legendFormat": "Active Connections"
+          }]
+        }
+      ],
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "refresh": "30s"
+    },
+    "overwrite": false
+  }'
+```
+
+#### Example: Create Alert Rule
+
+```bash
+curl -X POST http://your-api-server:8080/api/v1/grafana/alerts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "High Error Rate",
+    "condition": "C",
+    "data": [
+      {
+        "refId": "A",
+        "queryType": "",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        },
+        "datasourceUid": "prometheus",
+        "model": {
+          "expr": "sky_genesis_error_rate_percent{service=\"api\"}",
+          "legendFormat": "__auto"
+        }
+      },
+      {
+        "refId": "B",
+        "queryType": "",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        },
+        "datasourceUid": "__expr__",
+        "model": {
+          "type": "reduce",
+          "expression": "A",
+          "reducer": "mean"
+        }
+      },
+      {
+        "refId": "C",
+        "queryType": "",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        },
+        "datasourceUid": "__expr__",
+        "model": {
+          "type": "threshold",
+          "expression": "B",
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [5],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["C"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "last"
+              },
+              "type": "query"
+            }
+          ]
+        }
+      }
+    ],
+    "no_data_state": "NoData",
+    "exec_err_state": "Error",
+    "for_duration": "5m"
+  }'
+```
+
+### Configuration Requirements
+
+#### Environment Variables
+- `GRAFANA_URL`: Base URL of your Grafana instance (default: `https://grafana.skygenesisenterprise.com`)
+- `GRAFANA_API_KEY_PATH`: Vault path to store Grafana API key (default: `grafana/api_key`)
+
+#### Grafana API Key Setup
+1. **Create API Key in Grafana**:
+   - Go to Grafana Settings > API Keys
+   - Create a new API key with Editor or Admin permissions
+   - Copy the generated key
+
+2. **Store API Key in Vault**:
+   ```bash
+   vault kv put secret/grafana/api_key key="your-grafana-api-key"
+   ```
+
+#### Permissions Required
+The Grafana API key must have permissions for:
+- Creating/reading/updating/deleting dashboards
+- Creating/reading datasources
+- Creating/reading alert rules
+
 ### Prometheus Data Source Setup
 
 1. **Add Prometheus Data Source in Grafana**:

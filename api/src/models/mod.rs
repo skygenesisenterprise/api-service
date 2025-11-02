@@ -34,3 +34,5 @@ pub mod discord_model;
 pub mod git_model;
 /// [LOGGER MODEL MODULE] Logger data structures and types
 pub mod logger_model;
+/// [GRAFANA MODEL MODULE] Grafana dashboard, datasource, and alert data structures
+pub mod grafana_models;

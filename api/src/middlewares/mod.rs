@@ -34,3 +34,5 @@ pub mod discord_middleware;
 pub mod git_middleware;
 /// [MAC MIDDLEWARE MODULE] MAC identity validation, security enforcement, and request processing
 pub mod mac_middleware;
+/// [GRAFANA MIDDLEWARE MODULE] Grafana API access control, authentication, and security enforcement
+pub mod grafana_middleware;

@@ -37,3 +37,5 @@ pub mod discord_controller;
 pub mod git_controller;
 /// [LOGGER CONTROLLER MODULE] Logger operations and API endpoints
 pub mod logger_controller;
+/// [GRAFANA CONTROLLER MODULE] Grafana API management operations
+pub mod grafana_controller;

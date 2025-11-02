@@ -29,3 +29,5 @@ pub mod git_queries;
 pub mod mac_queries;
 /// [LOGGER QUERIES MODULE] Logger database operations
 pub mod logger_queries;
+/// [GRAFANA QUERIES MODULE] Grafana dashboard and datasource database operations
+pub mod grafana_queries;
