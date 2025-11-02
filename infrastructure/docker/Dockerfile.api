@@ -1,5 +1,14 @@
 # ================================
-# Sky Genesis API - Production Build
+# Sky Genesis Enterprise API - Production Build
+# ================================
+#
+# This Dockerfile builds a production-ready API container with:
+# - Multi-stage build for optimized image size
+# - Security hardening (non-root user, minimal dependencies)
+# - Pre-flight checks for operational readiness
+# - Dependency waiting and validation
+# - SSH server for secure access
+# - Health checks for monitoring
 # ================================
 
 # ------------------------------
@@ -45,7 +54,7 @@ RUN cargo build --release --locked
 # ------------------------------
 # Runtime Stage
 # ------------------------------
-FROM debian:12-slim AS runtime
+FROM debian:testing-slim AS runtime
 
 # Install minimal runtime dependencies with security updates
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
@@ -53,6 +62,8 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     libssl3 \
     curl \
     openssh-server \
+    postgresql-client \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -75,37 +86,66 @@ RUN mkdir -p /var/run/sshd && \
 # Copy binary from builder with correct ownership
 COPY --from=builder --chown=apiuser:apiuser /build/target/release/api /usr/local/bin/api
 
-# Ensure binary has correct permissions
-RUN chmod 755 /usr/local/bin/api
+# Copy utility scripts
+COPY --chown=apiuser:apiuser infrastructure/docker/wait-for-dependencies.sh /usr/local/bin/wait-for-dependencies.sh
+COPY --chown=apiuser:apiuser infrastructure/docker/validate-env.sh /usr/local/bin/validate-env.sh
+COPY --chown=apiuser:apiuser infrastructure/docker/validate-db-schema.sh /usr/local/bin/validate-db-schema.sh
+COPY --chown=apiuser:apiuser infrastructure/docker/preflight-check.sh /usr/local/bin/preflight-check.sh
+
+# Ensure scripts have correct permissions
+RUN chmod 755 /usr/local/bin/api \
+    && chmod 755 /usr/local/bin/wait-for-dependencies.sh \
+    && chmod 755 /usr/local/bin/validate-env.sh \
+    && chmod 755 /usr/local/bin/validate-db-schema.sh \
+    && chmod 755 /usr/local/bin/preflight-check.sh
 
 # Create secure startup script
 RUN echo '#!/bin/bash\n\
 set -e\n\
 \n\
+echo "========================================"\n\
+echo "Starting Sky Genesis Enterprise API Server"\n\
+echo "========================================"\n\
+\n\
 # Generate SSH host keys if they do not exist\n\
+echo "Setting up SSH..."\n\
 if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then\n\
-    ssh-keygen -f /etc/ssh/ssh_host_rsa_key -N "" -t rsa -b 4096\n\
+    ssh-keygen -f /etc/ssh/ssh_host_rsa_key -N "" -t rsa -b 4096 >/dev/null 2>&1\n\
 fi\n\
 if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then\n\
-    ssh-keygen -f /etc/ssh/ssh_host_ed25519_key -N "" -t ed25519\n\
+    ssh-keygen -f /etc/ssh/ssh_host_ed25519_key -N "" -t ed25519 >/dev/null 2>&1\n\
 fi\n\
 \n\
 # Ensure proper permissions\n\
-chmod 600 /etc/ssh/ssh_host_*_key\n\
-chmod 644 /etc/ssh/ssh_host_*.pub\n\
+chmod 600 /etc/ssh/ssh_host_*_key 2>/dev/null || true\n\
+chmod 644 /etc/ssh/ssh_host_*.pub 2>/dev/null || true\n\
 \n\
 # Start SSH daemon in background\n\
+echo "Starting SSH daemon..."\n\
 /usr/sbin/sshd -D &\n\
 SSH_PID=$!\n\
 \n\
 # Function to cleanup on exit\n\
 cleanup() {\n\
+    echo "Shutting down services..."\n\
     kill $SSH_PID 2>/dev/null || true\n\
     exit 0\n\
 }\n\
 \n\
 # Trap signals for graceful shutdown\n\
 trap cleanup SIGTERM SIGINT\n\
+\n\
+# Run pre-flight checks\n\
+echo "Running pre-flight checks..."\n\
+if ! /usr/local/bin/preflight-check.sh; then\n\
+    echo "ERROR: Pre-flight checks failed! Aborting startup."\n\
+    cleanup\n\
+    exit 1\n\
+fi\n\
+\n\
+echo "========================================"\n\
+echo "Starting API server..."\n\
+echo "========================================"\n\
 \n\
 # Start API server\n\
 exec /usr/local/bin/api\n\
@@ -121,7 +161,7 @@ USER apiuser
 EXPOSE 8080 2222
 
 # Health check with improved configuration
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f --max-time 10 http://localhost:8080/api/v1/health || exit 1
 
 # Default environment with security settings
