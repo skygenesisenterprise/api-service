@@ -6,7 +6,7 @@
 # ------------------------------
 # API Builder Stage
 # ------------------------------
-FROM rust:1.75-slim AS api-builder
+FROM rust:1.91-slim AS api-builder
 
 # Install build dependencies with security updates
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
@@ -82,7 +82,7 @@ RUN npm run build
 # ------------------------------
 # CLI Builder Stage
 # ------------------------------
-FROM rust:1.75-slim AS cli-builder
+FROM rust:1.91-slim AS cli-builder
 
 # Install build dependencies with security updates
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
