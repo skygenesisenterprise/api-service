@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useMemo, useEffect, useState } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { authService, LoginCredentials, AuthResult, User } from "@/app/lib/services/backend-auth-service";
+import { authEnvironmentService } from "@/app/lib/services/auth-environment-service";
 
 interface IAuthContext {
   token: string | null;
@@ -20,7 +21,7 @@ interface IAuthContext {
 const AuthContext = createContext<IAuthContext | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -69,6 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithKeycloak = () => {
+    // Use NextAuth signIn for Keycloak SSO
     signIn('keycloak', { callbackUrl: '/' });
   };
 
