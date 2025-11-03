@@ -48,3 +48,5 @@ next-env.d.ts
 target
 
 /app/generated/prisma
+
+gh*
