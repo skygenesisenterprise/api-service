@@ -19,8 +19,10 @@ use ring::rand::{SecureRandom, SystemRandom};
 use std::num::NonZeroU32;
 
 /// Cryptographic utilities
+#[allow(dead_code)]
 pub struct CryptoUtils;
 
+#[allow(dead_code)]
 impl CryptoUtils {
     /// Generate a random nonce for AES-GCM
     pub fn generate_nonce() -> Result<[u8; 12]> {

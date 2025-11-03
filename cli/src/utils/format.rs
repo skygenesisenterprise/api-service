@@ -15,8 +15,10 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 
 /// Formatting utilities for CLI output
+#[allow(dead_code)]
 pub struct FormatUtils;
 
+#[allow(dead_code)]
 impl FormatUtils {
     /// Format timestamp to human readable string
     pub fn format_timestamp(timestamp: &str) -> String {

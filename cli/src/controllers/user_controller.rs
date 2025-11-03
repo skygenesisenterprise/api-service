@@ -14,7 +14,6 @@
 // ============================================================================
 
 use clap::{Args, Subcommand};
-use crate::core::api_client::SshApiClient;
 use crate::controllers::auth_controller::TokenStore;
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};

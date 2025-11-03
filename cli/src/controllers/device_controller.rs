@@ -16,7 +16,7 @@
 use clap::{Args, Subcommand};
 use crate::core::api_client::SshApiClient;
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use uuid::Uuid;
 
 /// [DEVICE ARGS] Device command arguments
@@ -177,7 +177,9 @@ pub enum DeviceCommands {
 struct DeviceListResponse {
     devices: Vec<Device>,
     total_count: i64,
+    #[allow(dead_code)]
     page: u32,
+    #[allow(dead_code)]
     per_page: u32,
 }
 

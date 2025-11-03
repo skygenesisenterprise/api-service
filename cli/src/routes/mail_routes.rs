@@ -12,8 +12,10 @@
 // ============================================================================
 
 /// Mail service API routes
+#[allow(dead_code)]
 pub struct MailRoutes;
 
+#[allow(dead_code)]
 impl MailRoutes {
     /// Base path for mail service
     pub const BASE: &str = "/api/v1/mail";

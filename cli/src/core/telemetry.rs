@@ -20,6 +20,7 @@ use tokio::sync::RwLock;
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct CommandMetrics {
     pub command: String,
     pub execution_count: u64,
@@ -33,6 +34,7 @@ pub struct CommandMetrics {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct ApiMetrics {
     pub endpoint: String,
     pub method: String,
@@ -44,6 +46,7 @@ pub struct ApiMetrics {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct UserMetrics {
     pub user_id: Option<String>,
     pub session_start: DateTime<Utc>,
@@ -54,6 +57,7 @@ pub struct UserMetrics {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct SystemMetrics {
     pub memory_usage_mb: f64,
     pub cpu_usage_percent: f64,
@@ -64,6 +68,7 @@ pub struct SystemMetrics {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct TelemetryCollector {
     command_metrics: Arc<RwLock<HashMap<String, CommandMetrics>>>,
     api_metrics: Arc<RwLock<HashMap<String, ApiMetrics>>>,
@@ -72,7 +77,9 @@ pub struct TelemetryCollector {
     start_time: Instant,
 }
 
+#[allow(dead_code)]
 impl TelemetryCollector {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         let system_metrics = SystemMetrics {
             memory_usage_mb: 0.0,
@@ -92,6 +99,7 @@ impl TelemetryCollector {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn record_command_execution(&self, command: &str, duration: Duration, success: bool) {
         let mut metrics = self.command_metrics.write().await;
         let entry = metrics.entry(command.to_string()).or_insert_with(|| CommandMetrics {
@@ -130,6 +138,7 @@ impl TelemetryCollector {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn record_api_call(&self, endpoint: &str, method: &str, status_code: Option<u16>, duration: Duration) {
         let key = format!("{} {}", method, endpoint);
         let mut metrics = self.api_metrics.write().await;
@@ -159,6 +168,7 @@ impl TelemetryCollector {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn start_user_session(&self, user_id: Option<String>) {
         let mut user_metrics = self.user_metrics.write().await;
         *user_metrics = Some(UserMetrics {
@@ -171,6 +181,7 @@ impl TelemetryCollector {
         });
     }
 
+    #[allow(dead_code)]
     pub async fn end_user_session(&self) {
         let mut user_metrics = self.user_metrics.write().await;
         if let Some(metrics) = user_metrics.as_mut() {
@@ -180,6 +191,7 @@ impl TelemetryCollector {
         *user_metrics = None;
     }
 
+    #[allow(dead_code)]
     pub async fn update_system_metrics(&self) {
         let mut sys_metrics = self.system_metrics.write().await;
         sys_metrics.uptime_seconds = self.start_time.elapsed().as_secs();
@@ -189,22 +201,27 @@ impl TelemetryCollector {
         sys_metrics.cpu_usage_percent = get_cpu_usage_percent();
     }
 
+    #[allow(dead_code)]
     pub async fn get_command_metrics(&self) -> HashMap<String, CommandMetrics> {
         self.command_metrics.read().await.clone()
     }
 
+    #[allow(dead_code)]
     pub async fn get_api_metrics(&self) -> HashMap<String, ApiMetrics> {
         self.api_metrics.read().await.clone()
     }
 
+    #[allow(dead_code)]
     pub async fn get_user_metrics(&self) -> Option<UserMetrics> {
         self.user_metrics.read().await.clone()
     }
 
+    #[allow(dead_code)]
     pub async fn get_system_metrics(&self) -> SystemMetrics {
         self.system_metrics.read().await.clone()
     }
 
+    #[allow(dead_code)]
     pub async fn get_summary_report(&self) -> TelemetryReport {
         let command_metrics = self.get_command_metrics().await;
         let api_metrics = self.get_api_metrics().await;
@@ -227,6 +244,7 @@ impl TelemetryCollector {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn export_metrics(&self, format: ExportFormat) -> Result<String, serde_json::Error> {
         let report = self.get_summary_report().await;
 
@@ -238,6 +256,7 @@ impl TelemetryCollector {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct TelemetryReport {
     pub session_duration: Duration,
     pub total_commands: u64,
@@ -250,26 +269,31 @@ pub struct TelemetryReport {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum ExportFormat {
     Json,
     JsonCompact,
 }
 
 // Helper functions for system metrics
+#[allow(dead_code)]
 fn get_rust_version() -> String {
     env!("CARGO_PKG_RUST_VERSION").to_string()
 }
 
+#[allow(dead_code)]
 fn get_os_info() -> String {
     format!("{} {}", std::env::consts::OS, std::env::consts::ARCH)
 }
 
+#[allow(dead_code)]
 fn get_memory_usage_mb() -> f64 {
     // Simplified memory usage - in a real implementation,
     // you would use system APIs to get actual memory usage
     50.0 // Placeholder
 }
 
+#[allow(dead_code)]
 fn get_cpu_usage_percent() -> f64 {
     // Simplified CPU usage - in a real implementation,
     // you would use system APIs to get actual CPU usage
@@ -282,26 +306,32 @@ lazy_static::lazy_static! {
 }
 
 // Convenience functions
+#[allow(dead_code)]
 pub async fn record_command(command: &str, duration: Duration, success: bool) {
     TELEMETRY.record_command_execution(command, duration, success).await;
 }
 
+#[allow(dead_code)]
 pub async fn record_api_call(endpoint: &str, method: &str, status: Option<u16>, duration: Duration) {
     TELEMETRY.record_api_call(endpoint, method, status, duration).await;
 }
 
+#[allow(dead_code)]
 pub async fn start_session(user_id: Option<String>) {
     TELEMETRY.start_user_session(user_id).await;
 }
 
+#[allow(dead_code)]
 pub async fn end_session() {
     TELEMETRY.end_user_session().await;
 }
 
+#[allow(dead_code)]
 pub async fn update_system_metrics() {
     TELEMETRY.update_system_metrics().await;
 }
 
+#[allow(dead_code)]
 pub async fn get_report() -> TelemetryReport {
     TELEMETRY.get_summary_report().await
 }

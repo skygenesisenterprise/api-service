@@ -12,8 +12,10 @@
 // ============================================================================
 
 /// Network service API routes
+#[allow(dead_code)]
 pub struct NetworkRoutes;
 
+#[allow(dead_code)]
 impl NetworkRoutes {
     /// Base path for network service
     pub const BASE: &str = "/api/v1/network";

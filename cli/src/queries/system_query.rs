@@ -14,10 +14,13 @@
 use serde_json::{json, Value};
 
 /// System query builders for API requests
+#[allow(dead_code)]
 pub struct SystemQuery;
 
+#[allow(dead_code)]
 impl SystemQuery {
     /// Build query for system status
+    #[allow(dead_code)]
     pub fn status() -> Value {
         json!({
             "action": "status"
@@ -25,6 +28,7 @@ impl SystemQuery {
     }
 
     /// Build query for system metrics
+    #[allow(dead_code)]
     pub fn metrics() -> Value {
         json!({
             "action": "metrics"
@@ -32,6 +36,7 @@ impl SystemQuery {
     }
 
     /// Build query for system information
+    #[allow(dead_code)]
     pub fn info() -> Value {
         json!({
             "action": "info"
@@ -39,6 +44,7 @@ impl SystemQuery {
     }
 
     /// Build query for service status
+    #[allow(dead_code)]
     pub fn service_status(service_name: &str) -> Value {
         json!({
             "action": "service_status",
@@ -47,6 +53,7 @@ impl SystemQuery {
     }
 
     /// Build query for service control (start/stop/restart)
+    #[allow(dead_code)]
     pub fn service_control(service_name: &str, action: &str) -> Value {
         json!({
             "action": "service_control",
@@ -56,6 +63,7 @@ impl SystemQuery {
     }
 
     /// Build query for system logs
+    #[allow(dead_code)]
     pub fn logs(limit: Option<u64>, level: Option<&str>) -> Value {
         let mut params = json!({
             "action": "logs",
@@ -70,6 +78,7 @@ impl SystemQuery {
     }
 
     /// Build query for system configuration
+    #[allow(dead_code)]
     pub fn config() -> Value {
         json!({
             "action": "config"
@@ -77,6 +86,7 @@ impl SystemQuery {
     }
 
     /// Build query for system health check
+    #[allow(dead_code)]
     pub fn health() -> Value {
         json!({
             "action": "health"

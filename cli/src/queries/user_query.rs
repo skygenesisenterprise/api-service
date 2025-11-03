@@ -14,10 +14,13 @@
 use serde_json::{json, Value};
 
 /// User query builders for API requests
+#[allow(dead_code)]
 pub struct UserQuery;
 
+#[allow(dead_code)]
 impl UserQuery {
     /// Build query for listing users
+    #[allow(dead_code)]
     pub fn list(limit: Option<u64>, offset: Option<u64>) -> Value {
         json!({
             "action": "list",
@@ -27,6 +30,7 @@ impl UserQuery {
     }
 
     /// Build query for getting user details
+    #[allow(dead_code)]
     pub fn get(username: &str) -> Value {
         json!({
             "action": "get",
@@ -35,6 +39,7 @@ impl UserQuery {
     }
 
     /// Build query for creating a user
+    #[allow(dead_code)]
     pub fn create(username: &str, email: &str, role: &str) -> Value {
         json!({
             "action": "create",
@@ -45,6 +50,7 @@ impl UserQuery {
     }
 
     /// Build query for updating a user
+    #[allow(dead_code)]
     pub fn update(username: &str, email: Option<&str>, role: Option<&str>, status: Option<&str>) -> Value {
         let mut params = json!({
             "action": "update",
@@ -65,6 +71,7 @@ impl UserQuery {
     }
 
     /// Build query for deleting a user
+    #[allow(dead_code)]
     pub fn delete(username: &str) -> Value {
         json!({
             "action": "delete",
@@ -73,6 +80,7 @@ impl UserQuery {
     }
 
     /// Build query for user authentication
+    #[allow(dead_code)]
     pub fn authenticate(username: &str, password: &str) -> Value {
         json!({
             "action": "authenticate",
@@ -82,6 +90,7 @@ impl UserQuery {
     }
 
     /// Build query for changing password
+    #[allow(dead_code)]
     pub fn change_password(username: &str, old_password: &str, new_password: &str) -> Value {
         json!({
             "action": "change_password",
@@ -92,6 +101,7 @@ impl UserQuery {
     }
 
     /// Build query for user permissions
+    #[allow(dead_code)]
     pub fn permissions(username: &str) -> Value {
         json!({
             "action": "permissions",

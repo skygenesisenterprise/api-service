@@ -14,7 +14,6 @@
 // ============================================================================
 
 use clap::{Args, Subcommand};
-use crate::core::api_client::SshApiClient;
 use crate::controllers::auth_controller::TokenStore;
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
@@ -221,7 +220,7 @@ pub async fn handle_telemetry(args: TelemetryArgs, state: &crate::core::AppState
         }
 
         TelemetryCommands::Metrics => {
-            let token = token_store.as_ref()
+            let _token = token_store.as_ref()
                 .ok_or_else(|| anyhow!("Authentication required for metrics"))?
                 .access_token.clone();
 
@@ -294,7 +293,7 @@ pub async fn handle_telemetry(args: TelemetryArgs, state: &crate::core::AppState
         }
 
         TelemetryCommands::Logs { pattern, limit } => {
-            let token = token_store.as_ref()
+            let _token = token_store.as_ref()
                 .ok_or_else(|| anyhow!("Authentication required for log search"))?
                 .access_token.clone();
 
@@ -320,7 +319,7 @@ pub async fn handle_telemetry(args: TelemetryArgs, state: &crate::core::AppState
         }
 
         TelemetryCommands::Alerts => {
-            let token = token_store.as_ref()
+            let _token = token_store.as_ref()
                 .ok_or_else(|| anyhow!("Authentication required for security alerts"))?
                 .access_token.clone();
 

@@ -12,15 +12,15 @@
 //  License: MIT (Open Source for Strategic Transparency)
 // ============================================================================
 
-use tracing::{Level, Subscriber};
-use tracing_subscriber::{Layer, Registry, layer::SubscriberExt, fmt};
-use tracing_subscriber::filter::{LevelFilter, Targets};
-use std::fs::OpenOptions;
+use tracing::Level;
+use tracing_subscriber::{Registry, layer::SubscriberExt, fmt};
+use tracing_subscriber::filter::Targets;
 use std::path::PathBuf;
 use dirs;
 use anyhow::Result;
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum LogFormat {
     Json,
     Pretty,
@@ -28,6 +28,7 @@ pub enum LogFormat {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum LogOutput {
     Stdout,
     Stderr,
@@ -35,6 +36,7 @@ pub enum LogOutput {
     Both(PathBuf),
 }
 
+#[allow(dead_code)]
 pub struct LoggerConfig {
     pub level: Level,
     pub format: LogFormat,
@@ -55,8 +57,10 @@ impl Default for LoggerConfig {
     }
 }
 
+#[allow(dead_code)]
 pub struct SgeLogger;
 
+#[allow(dead_code)]
 impl SgeLogger {
     pub fn init(config: LoggerConfig) -> Result<()> {
         let log_directory = config.log_directory.unwrap_or_else(|| {

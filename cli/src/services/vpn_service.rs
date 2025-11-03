@@ -16,10 +16,12 @@ use anyhow::Result;
 use serde_json::Value;
 
 /// VPN service for CLI operations
+#[allow(dead_code)]
 pub struct VpnService<'a> {
     client: &'a SshApiClient,
 }
 
+#[allow(dead_code)]
 impl<'a> VpnService<'a> {
     /// Create new VPN service
     pub fn new(client: &'a SshApiClient) -> Self {

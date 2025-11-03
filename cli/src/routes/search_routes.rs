@@ -12,8 +12,10 @@
 // ============================================================================
 
 /// Search service API routes
+#[allow(dead_code)]
 pub struct SearchRoutes;
 
+#[allow(dead_code)]
 impl SearchRoutes {
     /// Base path for search service
     pub const BASE: &str = "/api/v1/search";

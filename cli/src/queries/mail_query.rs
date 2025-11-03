@@ -14,10 +14,13 @@
 use serde_json::{json, Value};
 
 /// Mail query builders for API requests
+#[allow(dead_code)]
 pub struct MailQuery;
 
+#[allow(dead_code)]
 impl MailQuery {
     /// Build query for mail service status
+    #[allow(dead_code)]
     pub fn status() -> Value {
         json!({
             "action": "status"
@@ -25,6 +28,7 @@ impl MailQuery {
     }
 
     /// Build query for sending test email
+    #[allow(dead_code)]
     pub fn send_test(to: &str) -> Value {
         json!({
             "action": "send_test",
@@ -33,6 +37,7 @@ impl MailQuery {
     }
 
     /// Build query for sending email
+    #[allow(dead_code)]
     pub fn send_email(to: &str, subject: &str, body: &str) -> Value {
         json!({
             "action": "send",
@@ -43,6 +48,7 @@ impl MailQuery {
     }
 
     /// Build query for mail configuration
+    #[allow(dead_code)]
     pub fn get_config() -> Value {
         json!({
             "action": "get_config"
@@ -50,6 +56,7 @@ impl MailQuery {
     }
 
     /// Build query for updating mail configuration
+    #[allow(dead_code)]
     pub fn update_config(smtp_host: &str, smtp_port: u16, username: &str) -> Value {
         json!({
             "action": "update_config",

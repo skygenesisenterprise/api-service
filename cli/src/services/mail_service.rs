@@ -17,10 +17,12 @@ use anyhow::Result;
 use serde_json::Value;
 
 /// Mail service for CLI operations
+#[allow(dead_code)]
 pub struct MailService<'a> {
     client: &'a SshApiClient,
 }
 
+#[allow(dead_code)]
 impl<'a> MailService<'a> {
     /// Create new mail service
     pub fn new(client: &'a SshApiClient) -> Self {

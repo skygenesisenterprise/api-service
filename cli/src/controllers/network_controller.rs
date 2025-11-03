@@ -14,7 +14,6 @@
 // ============================================================================
 
 use clap::{Args, Subcommand};
-use crate::core::api_client::SshApiClient;
 use anyhow::Result;
 
 /// [NETWORK ARGS] Network command arguments

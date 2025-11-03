@@ -17,10 +17,12 @@ use anyhow::Result;
 use serde_json::Value;
 
 /// Search service for CLI operations
+#[allow(dead_code)]
 pub struct SearchService<'a> {
     client: &'a SshApiClient,
 }
 
+#[allow(dead_code)]
 impl<'a> SearchService<'a> {
     /// Create new search service
     pub fn new(client: &'a SshApiClient) -> Self {

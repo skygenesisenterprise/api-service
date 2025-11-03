@@ -9,6 +9,7 @@ use crate::config::Config;
 pub use api_client::SshApiClient;
 
 pub struct AppState {
+    #[allow(dead_code)]
     pub config: Config,
     pub client: SshApiClient,
 }

@@ -17,10 +17,12 @@ use anyhow::Result;
 use serde_json::Value;
 
 /// Authentication service for CLI operations
+#[allow(dead_code)]
 pub struct AuthService<'a> {
     client: &'a SshApiClient,
 }
 
+#[allow(dead_code)]
 impl<'a> AuthService<'a> {
     /// Create new authentication service
     pub fn new(client: &'a SshApiClient) -> Self {

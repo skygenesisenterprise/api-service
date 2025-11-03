@@ -12,8 +12,10 @@
 // ============================================================================
 
 /// VPN service API routes
+#[allow(dead_code)]
 pub struct VpnRoutes;
 
+#[allow(dead_code)]
 impl VpnRoutes {
     /// Base path for VPN service
     pub const BASE: &str = "/api/v1/vpn";

@@ -1,7 +1,3 @@
-use clap::{Args, Subcommand};
-use crate::core::api_client::SshApiClient;
-use anyhow::Result;
-
 // Re-export controller args and handlers
 pub use auth_controller::{AuthArgs, handle_auth};
 pub use user_controller::{UserArgs, handle_user};

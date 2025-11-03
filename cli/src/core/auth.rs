@@ -20,6 +20,7 @@ use anyhow::{Result, anyhow};
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct UserSession {
     pub user_id: String,
     pub email: String,
@@ -33,6 +34,7 @@ pub struct UserSession {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct AuthState {
     pub current_session: Option<UserSession>,
     pub last_login: Option<DateTime<Utc>>,
@@ -51,6 +53,7 @@ impl Default for AuthState {
     }
 }
 
+#[allow(dead_code)]
 impl AuthState {
     pub fn is_authenticated(&self) -> bool {
         if let Some(session) = &self.current_session {
@@ -60,6 +63,7 @@ impl AuthState {
         }
     }
 
+    #[allow(dead_code)]
     pub fn has_permission(&self, permission: &str) -> bool {
         if let Some(session) = &self.current_session {
             session.permissions.contains(&permission.to_string()) ||
@@ -69,6 +73,7 @@ impl AuthState {
         }
     }
 
+    #[allow(dead_code)]
     pub fn has_role(&self, role: &str) -> bool {
         if let Some(session) = &self.current_session {
             session.roles.contains(&role.to_string())
@@ -77,35 +82,43 @@ impl AuthState {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_current_user(&self) -> Option<&UserSession> {
         self.current_session.as_ref()
     }
 
+    #[allow(dead_code)]
     pub fn update_session(&mut self, session: UserSession) {
         self.current_session = Some(session);
         self.last_login = Some(Utc::now());
         self.session_count += 1;
     }
 
+    #[allow(dead_code)]
     pub fn clear_session(&mut self) {
         self.current_session = None;
     }
 
+    #[allow(dead_code)]
     pub fn increment_login_attempts(&mut self) {
         self.login_attempts += 1;
     }
 
+    #[allow(dead_code)]
     pub fn reset_login_attempts(&mut self) {
         self.login_attempts = 0;
     }
 }
 
+#[allow(dead_code)]
 pub struct AuthManager {
     state: AuthState,
     store_path: PathBuf,
 }
 
+#[allow(dead_code)]
 impl AuthManager {
+    #[allow(dead_code)]
     pub fn new() -> Result<Self> {
         let store_path = Self::get_store_path()?;
         let state = Self::load_state(&store_path).unwrap_or_default();
@@ -113,6 +126,7 @@ impl AuthManager {
         Ok(Self { state, store_path })
     }
 
+    #[allow(dead_code)]
     fn get_store_path() -> Result<PathBuf> {
         let mut path = dirs::home_dir()
             .ok_or_else(|| anyhow!("Could not find home directory"))?;
@@ -122,6 +136,7 @@ impl AuthManager {
         Ok(path)
     }
 
+    #[allow(dead_code)]
     fn load_state(path: &PathBuf) -> Result<AuthState> {
         if !path.exists() {
             return Ok(AuthState::default());
@@ -132,24 +147,29 @@ impl AuthManager {
         Ok(state)
     }
 
+    #[allow(dead_code)]
     fn save_state(&self) -> Result<()> {
         let content = serde_json::to_string_pretty(&self.state)?;
         fs::write(&self.store_path, content)?;
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn get_state(&self) -> &AuthState {
         &self.state
     }
 
+    #[allow(dead_code)]
     pub fn get_state_mut(&mut self) -> &mut AuthState {
         &mut self.state
     }
 
+    #[allow(dead_code)]
     pub fn save(&self) -> Result<()> {
         self.save_state()
     }
 
+    #[allow(dead_code)]
     pub fn authenticate_session(&mut self, session: UserSession) -> Result<()> {
         self.state.update_session(session);
         self.state.reset_login_attempts();
@@ -158,6 +178,7 @@ impl AuthManager {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn logout(&mut self) -> Result<()> {
         self.state.clear_session();
         self.save()?;
@@ -165,6 +186,7 @@ impl AuthManager {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn validate_token(&self, token: &str) -> Result<bool> {
         if let Some(session) = &self.state.current_session {
             if session.access_token == token && session.expires_at > Utc::now() {
@@ -177,6 +199,7 @@ impl AuthManager {
         }
     }
 
+    #[allow(dead_code)]
     pub fn refresh_token(&mut self, new_session: UserSession) -> Result<()> {
         self.state.update_session(new_session);
         self.save()?;
@@ -184,6 +207,7 @@ impl AuthManager {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn check_rate_limit(&self) -> Result<()> {
         if self.state.login_attempts >= 5 {
             return Err(anyhow!("Too many login attempts. Please wait before retrying."));
@@ -191,6 +215,7 @@ impl AuthManager {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn record_failed_attempt(&mut self) -> Result<()> {
         self.state.increment_login_attempts();
         self.save()
@@ -198,12 +223,14 @@ impl AuthManager {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct LoginCredentials {
     pub email: String,
     pub password: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct TokenResponse {
     pub access_token: String,
     pub refresh_token: String,
@@ -213,6 +240,7 @@ pub struct TokenResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct UserInfo {
     pub id: String,
     pub email: String,

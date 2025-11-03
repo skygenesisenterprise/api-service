@@ -30,7 +30,9 @@ use anyhow::{Result, anyhow};
 pub struct SshApiClient {
     session: Session,
     host: String,
+    #[allow(dead_code)]
     port: u16,
+    #[allow(dead_code)]
     username: String,
 }
 
@@ -152,12 +154,14 @@ impl SshApiClient {
     // ============================================================================
 
     /// [SNMP STATUS] Get SNMP status
+    #[allow(dead_code)]
     pub fn get_snmp_status(&self) -> Result<SnmpStatus> {
         let result = self.call_method("snmp.status", serde_json::json!({}))?;
         Ok(serde_json::from_value(result)?)
     }
 
     /// [SNMP TRAPS] Get recent SNMP traps
+    #[allow(dead_code)]
     pub fn get_snmp_traps(&self, limit: Option<u64>) -> Result<Vec<SnmpTrap>> {
         let params = serde_json::json!({ "limit": limit.unwrap_or(10) });
         let result = self.call_method("snmp.traps", params)?;
@@ -169,12 +173,14 @@ impl SshApiClient {
     // ============================================================================
 
     /// [USERS LIST] List all users
+    #[allow(dead_code)]
     pub fn list_users(&self) -> Result<Vec<User>> {
         let result = self.call_method("users.list", serde_json::json!({}))?;
         Ok(serde_json::from_value(result)?)
     }
 
     /// [USER INFO] Get user information
+    #[allow(dead_code)]
     pub fn get_user_info(&self, username: &str) -> Result<UserInfo> {
         let params = serde_json::json!({ "username": username });
         let result = self.call_method("users.info", params)?;
@@ -186,12 +192,14 @@ impl SshApiClient {
     // ============================================================================
 
     /// [SERVICES LIST] List all services
+    #[allow(dead_code)]
     pub fn list_services(&self) -> Result<Vec<Service>> {
         let result = self.call_method("services.list", serde_json::json!({}))?;
         Ok(serde_json::from_value(result)?)
     }
 
     /// [SERVICE STATUS] Get service status
+    #[allow(dead_code)]
     pub fn get_service_status(&self, service_name: &str) -> Result<ServiceStatus> {
         let params = serde_json::json!({ "name": service_name });
         let result = self.call_method("services.status", params)?;
@@ -213,12 +221,14 @@ impl SshApiClient {
     }
 
     /// [MONITORING METRICS] Get monitoring metrics
+    #[allow(dead_code)]
     pub fn get_monitoring_metrics(&self) -> Result<SystemMetrics> {
         let result = self.call_method("monitoring.metrics", serde_json::json!({}))?;
         Ok(serde_json::from_value(result)?)
     }
 
     /// [SECURITY ALERTS] Get security alerts
+    #[allow(dead_code)]
     pub fn get_security_alerts(&self) -> Result<SecurityAlerts> {
         let result = self.call_method("security.alerts", serde_json::json!({}))?;
         Ok(serde_json::from_value(result)?)
@@ -435,6 +445,7 @@ pub struct VpnConnectionResult {
 
 /// [SNMP STATUS] SNMP status information
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct SnmpStatus {
     pub agent: SnmpAgent,
     pub trap_listener: SnmpTrapListener,
@@ -442,6 +453,7 @@ pub struct SnmpStatus {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct SnmpAgent {
     pub status: String,
     pub port: u16,
@@ -449,6 +461,7 @@ pub struct SnmpAgent {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct SnmpTrapListener {
     pub status: String,
     pub traps_received: u32,
@@ -457,6 +470,7 @@ pub struct SnmpTrapListener {
 
 /// [SNMP TRAP] SNMP trap information
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct SnmpTrap {
     pub timestamp: String,
     pub device: String,
@@ -467,6 +481,7 @@ pub struct SnmpTrap {
 
 /// [USER] User information
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct User {
     pub username: String,
     pub role: String,
@@ -476,6 +491,7 @@ pub struct User {
 
 /// [USER INFO] Detailed user information
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct UserInfo {
     pub username: String,
     pub role: String,
@@ -487,6 +503,7 @@ pub struct UserInfo {
 
 /// [SERVICE] Service information
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct Service {
     pub name: String,
     pub status: String,
@@ -497,6 +514,7 @@ pub struct Service {
 
 /// [SERVICE STATUS] Detailed service status
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct ServiceStatus {
     pub name: String,
     pub status: String,
@@ -525,6 +543,7 @@ pub struct LogEntry {
 
 /// [SYSTEM METRICS] System monitoring metrics
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct SystemMetrics {
     pub cpu: CpuMetrics,
     pub memory: MemoryMetrics,
@@ -533,12 +552,14 @@ pub struct SystemMetrics {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct CpuMetrics {
     pub usage_percent: f64,
     pub load_average: Vec<f64>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct MemoryMetrics {
     pub used_gb: f64,
     pub total_gb: f64,
@@ -546,12 +567,14 @@ pub struct MemoryMetrics {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct NetworkMetrics {
     pub rx_mbps: f64,
     pub tx_mbps: f64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct DiskMetrics {
     pub used_gb: f64,
     pub total_gb: f64,
@@ -560,6 +583,7 @@ pub struct DiskMetrics {
 
 /// [SECURITY ALERTS] Security alerts information
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct SecurityAlerts {
     pub active_alerts: u32,
     pub critical: u32,
@@ -569,6 +593,7 @@ pub struct SecurityAlerts {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct SecurityAlert {
     pub id: String,
     pub severity: String,

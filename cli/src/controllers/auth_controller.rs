@@ -14,7 +14,6 @@
 // ============================================================================
 
 use clap::{Args, Subcommand};
-use crate::core::api_client::SshApiClient;
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -48,12 +47,14 @@ pub enum AuthCommands {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct LoginRequest {
     pub email: String,
     pub password: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct LoginResponse {
     pub access_token: String,
     pub refresh_token: String,
@@ -129,7 +130,7 @@ pub async fn handle_auth(args: AuthArgs, state: &crate::core::AppState) -> Resul
     let client = &state.client;
     match args.command {
         AuthCommands::Login { email, password } => {
-            let password = match password {
+            let _password = match password {
                 Some(p) => p,
                 None => {
                     use std::io::{self, Write};

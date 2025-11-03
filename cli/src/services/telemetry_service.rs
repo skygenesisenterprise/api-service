@@ -16,10 +16,12 @@ use anyhow::Result;
 use serde_json::Value;
 
 /// Telemetry service for CLI operations
+#[allow(dead_code)]
 pub struct TelemetryService<'a> {
     client: &'a SshApiClient,
 }
 
+#[allow(dead_code)]
 impl<'a> TelemetryService<'a> {
     /// Create new telemetry service
     pub fn new(client: &'a SshApiClient) -> Self {

@@ -16,8 +16,10 @@ use std::fs;
 use std::path::Path;
 
 /// I/O utilities for CLI operations
+#[allow(dead_code)]
 pub struct IoUtils;
 
+#[allow(dead_code)]
 impl IoUtils {
     /// Read file content safely
     pub fn read_file(path: &str) -> Result<String> {
@@ -111,12 +113,14 @@ impl IoUtils {
 }
 
 // Extension trait for Result
+#[allow(dead_code)]
 trait Pipe<T> {
     fn pipe<F, U>(self, f: F) -> U
     where
         F: FnOnce(T) -> U;
 }
 
+#[allow(dead_code)]
 impl<T> Pipe<T> for T {
     fn pipe<F, U>(self, f: F) -> U
     where

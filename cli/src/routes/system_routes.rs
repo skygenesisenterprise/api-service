@@ -12,8 +12,10 @@
 // ============================================================================
 
 /// System service API routes
+#[allow(dead_code)]
 pub struct SystemRoutes;
 
+#[allow(dead_code)]
 impl SystemRoutes {
     /// Base path for system service
     pub const BASE: &str = "/api/v1/system";
