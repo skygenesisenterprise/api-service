@@ -18,6 +18,9 @@ const nextConfig: NextConfig = {
     unoptimized: false,
   },
 
+  // Turbopack configuration (empty to silence webpack warning)
+  turbopack: {},
+
   // Security headers
   async headers() {
     return [

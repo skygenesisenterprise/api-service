@@ -5,6 +5,7 @@ mod queries;
 mod routes;
 mod services;
 mod utils;
+mod ssh_shell;
 
 use clap::{Parser, Subcommand};
 use tracing::{info, Level};
@@ -42,6 +43,8 @@ enum Commands {
     Telemetry(controllers::TelemetryArgs),
     /// Device management commands
     Device(controllers::DeviceArgs),
+    /// Interactive SSH shell
+    Shell,
 }
 
 #[tokio::main]
@@ -68,5 +71,10 @@ async fn main() -> anyhow::Result<()> {
         Commands::Search(args) => controllers::handle_search(args, &state).await,
         Commands::Telemetry(args) => controllers::handle_telemetry(args, &state).await,
         Commands::Device(args) => controllers::handle_device(args, &state).await,
+        Commands::Shell => {
+            let mut shell = ssh_shell::SshShell::new("admin".to_string());
+            shell.run()?;
+            Ok(())
+        }
     }
 }

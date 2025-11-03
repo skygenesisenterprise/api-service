@@ -1,0 +1,460 @@
+// ======================================
+// SKY GENESIS ENTERPRISE - OFFICIAL API
+// Prisma Schema v1.0
+// ======================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ======================================
+// CORE STRUCTURE
+// ======================================
+
+model Organization {
+  id           String   @id @default(cuid())
+  name         String   @unique @db.VarChar(255)
+  countryCode  String?  @map("country_code") @db.Char(2)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users           User[]
+  apiKeys         ApiKey[]
+  conversations   Conversation[]
+  dataSources     DataSource[]
+  devices         Device[]
+  macIdentities   MacIdentity[]
+  auditEvents     AuditEvent[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  organizationId String?  @map("organization_id") @db.Uuid
+  email        String   @unique @db.VarChar(255)
+  fullName     String?  @map("full_name") @db.VarChar(255)
+  passwordHash String   @map("password_hash")
+  role         String   @default("user") @db.VarChar(50)
+  status       String   @default("active") @db.VarChar(50)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  organization         Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userSessions         UserSession[]
+  apiAccessLogs        ApiAccessLog[] @relation("ApiAccessLogUser")
+  aiModels             AiModel[]
+  aiInferenceLogs      AiInferenceLog[]
+  auditEvents          AuditEvent[]
+  conversations        Conversation[] @relation("ConversationCreator")
+  conversationParticipants ConversationParticipant[]
+  messages             Message[]
+  messageReactions     MessageReaction[]
+  messageReads         MessageRead[]
+  deviceCommands       DeviceCommand[]
+
+  @@map("users")
+}
+
+model UserSession {
+  id          String   @id @default(cuid())
+  user        String   @map("user_id") @db.Uuid
+  accessToken String   @map("access_token")
+  refreshToken String? @map("refresh_token")
+  expiresAt   DateTime @map("expires_at")
+  ipAddress   String?  @map("ip_address") @db.Inet
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  userRelation User @relation(fields: [user], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+// ======================================
+// API MANAGEMENT
+// ======================================
+
+model ApiKey {
+  id                     String   @id @default(cuid())
+  organizationId         String   @map("organization_id") @db.Uuid
+  keyValue               String   @unique @map("key_value")
+  label                  String?  @db.VarChar(255)
+  permissions            String[] @map("permissions")
+  quotaLimit             Int      @default(100000) @map("quota_limit")
+  usageCount             Int      @default(0) @map("usage_count")
+  status                 String   @default("active") @db.VarChar(50)
+  publicKey              String?  @map("public_key")
+  privateKey             String?  @map("private_key")
+  certificateType        String?  @map("certificate_type") @db.VarChar(50)
+  certificateFingerprint String?  @map("certificate_fingerprint") @db.VarChar(128)
+  privateKeyPath         String?  @map("private_key_path")
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  // Relations
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  apiAccessLogs  ApiAccessLog[] @relation("ApiAccessLogApiKey")
+
+  @@map("api_keys")
+}
+
+model ApiRoute {
+  id          String   @id @default(cuid())
+  name        String   @db.VarChar(255)
+  method      String   @db.VarChar(10)
+  path        String   @db.VarChar(255)
+  serviceName String?  @map("service_name") @db.VarChar(100)
+  isPublic    Boolean  @default(false) @map("is_public")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  apiAccessLogs ApiAccessLog[] @relation("ApiAccessLogRoute")
+
+  @@map("api_routes")
+}
+
+model ApiAccessLog {
+  id            String   @id @default(cuid())
+  apiKeyId      String?  @map("api_key_id") @db.Uuid
+  routeId       String?  @map("route_id") @db.Uuid
+  userId        String?  @map("user_id") @db.Uuid
+  ipAddress     String?  @map("ip_address") @db.Inet
+  responseStatus Int?    @map("response_status")
+  latencyMs     Int?     @map("latency_ms")
+  timestamp     DateTime @default(now())
+
+  // Relations
+  apiKeyRelation ApiKey?  @relation("ApiAccessLogApiKey", fields: [apiKeyId], references: [id], onDelete: SetNull)
+  routeRelation  ApiRoute? @relation("ApiAccessLogRoute", fields: [routeId], references: [id], onDelete: SetNull)
+  userRelation   User?    @relation("ApiAccessLogUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("api_access_log")
+}
+
+// ======================================
+// INFRASTRUCTURE (OPTIONAL)
+// ======================================
+
+model InfraNode {
+  id            String    @id @default(cuid())
+  name          String    @db.VarChar(255)
+  region        String?   @db.VarChar(50)
+  ipAddress     String?   @map("ip_address") @db.Inet
+  status        String    @default("online") @db.VarChar(50)
+  capacityScore Decimal  @default(100.0) @map("capacity_score") @db.Decimal(5, 2)
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  serviceRegistry ServiceRegistry[]
+
+  @@map("infra_nodes")
+}
+
+model ServiceRegistry {
+  id           String   @id @default(cuid())
+  name         String   @unique @db.VarChar(255)
+  version      String?  @db.VarChar(50)
+  baseUrl      String   @map("base_url")
+  status       String   @default("active") @db.VarChar(50)
+  node         String?  @map("node_id") @db.Uuid
+  registeredAt DateTime @default(now()) @map("registered_at")
+
+  // Relations
+  nodeRelation InfraNode? @relation(fields: [node], references: [id], onDelete: SetNull)
+
+  @@map("service_registry")
+}
+
+model DataSource {
+  id           String   @id @default(cuid())
+  name         String   @db.VarChar(255)
+  dbType       String   @map("db_type") @db.VarChar(50)
+  host         String   @db.VarChar(255)
+  port         Int      @default(5432)
+  databaseName String   @map("database_name") @db.VarChar(255)
+  username     String   @db.VarChar(255)
+  passwordHash String   @map("password_hash")
+  organizationId String   @map("organization_id") @db.Uuid
+  status       String   @default("active") @db.VarChar(50)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  organizationRelation Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("data_sources")
+}
+
+// ======================================
+// AI & ANALYTICS (OPTIONAL)
+// ======================================
+
+model AiModel {
+  id        String   @id @default(cuid())
+  name      String   @db.VarChar(255)
+  version   String?  @db.VarChar(50)
+  owner     String?  @map("owner_id") @db.Uuid
+  repoUrl   String?  @map("repo_url")
+  framework String?  @db.VarChar(50)
+  status    String   @default("training") @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  ownerRelation     User?           @relation(fields: [owner], references: [id])
+  aiInferenceLogs   AiInferenceLog[]
+
+  @@map("ai_models")
+}
+
+model AiInferenceLog {
+  id         String   @id @default(cuid())
+  model      String   @map("model_id") @db.Uuid
+  user       String?  @map("user_id") @db.Uuid
+  inputSize  Int?     @map("input_size")
+  outputSize Int?     @map("output_size")
+  latencyMs  Int?     @map("latency_ms")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  modelRelation AiModel? @relation(fields: [model], references: [id])
+  userRelation  User?    @relation(fields: [user], references: [id])
+
+  @@map("ai_inference_log")
+}
+
+// ======================================
+// AUDIT & MONITORING
+// ======================================
+
+model AuditEvent {
+  id            String   @id @default(cuid())
+  actorId       String?  @map("actor_id") @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  eventType     String?  @map("event_type") @db.VarChar(255)
+  eventData     Json?    @map("event_data")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  actorRelation      User?         @relation(fields: [actorId], references: [id])
+  organizationRelation Organization? @relation(fields: [organizationId], references: [id])
+
+  @@map("audit_events")
+}
+
+// ======================================
+// MESSAGING SYSTEM
+// ======================================
+
+model Conversation {
+  id             String    @id @default(cuid())
+  organizationId String    @map("organization_id") @db.Uuid
+  title          String?   @db.VarChar(255)
+  type           String    @default("direct") @db.VarChar(50)
+  createdBy      String?   @map("created_by") @db.Uuid
+  isArchived     Boolean   @default(false) @map("is_archived")
+  lastMessageAt  DateTime? @map("last_message_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  organizationRelation Organization?             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creatorRelation     User?                     @relation("ConversationCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  participants        ConversationParticipant[]
+  messages            Message[]
+  
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id         String    @id @default(cuid())
+  conversation String   @map("conversation_id") @db.Uuid
+  user       String    @map("user_id") @db.Uuid
+  role       String    @default("member") @db.VarChar(50)
+  joinedAt   DateTime  @default(now()) @map("joined_at")
+  lastReadAt DateTime? @map("last_read_at")
+  isMuted    Boolean   @default(false) @map("is_muted")
+
+  // Relations
+  conversationRelation Conversation @relation(fields: [conversation], references: [id], onDelete: Cascade)
+  userRelation         User        @relation(fields: [user], references: [id], onDelete: Cascade)
+
+  @@unique([conversation, user])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id         String    @id @default(cuid())
+  conversation String   @map("conversation_id") @db.Uuid
+  sender     String?   @map("sender_id") @db.Uuid
+  content    String?
+  messageType String   @default("text") @map("message_type") @db.VarChar(50)
+  replyTo    String?   @map("reply_to_id") @db.Uuid
+  isEdited   Boolean   @default(false) @map("is_edited")
+  editedAt   DateTime? @map("edited_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  conversationRelation Conversation       @relation(fields: [conversation], references: [id], onDelete: Cascade)
+  senderRelation      User?              @relation(fields: [sender], references: [id], onDelete: SetNull)
+  replyToRelation     Message?           @relation("MessageReply", fields: [replyTo], references: [id])
+  replies             Message[]          @relation("MessageReply")
+  attachments         MessageAttachment[] @relation("MessageAttachments")
+  reactions           MessageReaction[]
+  reads               MessageRead[]
+
+  @@map("messages")
+}
+
+model MessageAttachment {
+  id               String   @id @default(cuid())
+  messageId        String   @map("message_id") @db.Uuid
+  filename         String   @db.VarChar(255)
+  originalFilename String   @map("original_filename") @db.VarChar(255)
+  mimeType         String?  @map("mime_type") @db.VarChar(100)
+  fileSize         Int?     @map("file_size")
+  fileUrl          String?  @map("file_url")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  messageRelation Message @relation("MessageAttachments", fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("message_attachments")
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  message   String   @map("message_id") @db.Uuid
+  user      String   @map("user_id") @db.Uuid
+  reaction  String   @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  messageRelation Message @relation(fields: [message], references: [id], onDelete: Cascade)
+  userRelation     User    @relation(fields: [user], references: [id], onDelete: Cascade)
+
+  @@unique([message, user, reaction])
+  @@map("message_reactions")
+}
+
+model MessageRead {
+  id       String   @id @default(cuid())
+  message  String   @map("message_id") @db.Uuid
+  user     String   @map("user_id") @db.Uuid
+  readAt   DateTime @default(now()) @map("read_at")
+
+  // Relations
+  messageRelation Message @relation(fields: [message], references: [id], onDelete: Cascade)
+  userRelation     User    @relation(fields: [user], references: [id], onDelete: Cascade)
+
+  @@unique([message, user])
+  @@map("message_reads")
+}
+
+// ======================================
+// DEVICE MANAGEMENT
+// ======================================
+
+model Device {
+  id             String    @id @default(cuid())
+  name           String    @db.VarChar(255)
+  hostname       String    @db.VarChar(255)
+  ipAddress      String?   @map("ip_address") @db.Inet
+  deviceType     String    @map("device_type") @db.VarChar(50)
+  connectionType String    @map("connection_type") @db.VarChar(50)
+  vendor         String?   @db.VarChar(255)
+  model          String?   @db.VarChar(255)
+  osVersion      String?   @map("os_version") @db.VarChar(255)
+  status         String    @default("unknown") @db.VarChar(50)
+  organizationId String    @map("organization_id") @db.Uuid
+  location       String?   @db.VarChar(255)
+  tags           String[]
+  managementPort Int?      @map("management_port")
+  credentialsRef String?   @map("credentials_ref") @db.VarChar(255)
+  lastSeen       DateTime? @map("last_seen")
+  uptime         BigInt?   @db.BigInt
+  cpuUsage       Float?    @map("cpu_usage") @db.Real
+  memoryUsage    Float?    @map("memory_usage") @db.Real
+  metadata       Json      @default("{}")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  organizationRelation Organization?   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  commands           DeviceCommand[]
+  metrics            DeviceMetric[]
+
+  @@map("devices")
+}
+
+model DeviceCommand {
+  id          String    @id @default(cuid())
+  device      String    @map("device_id") @db.Uuid
+  user        String    @map("user_id") @db.Uuid
+  command     String
+  parameters  Json?
+  status      String    @default("pending") @db.VarChar(50)
+  output      String?
+  exitCode    Int?      @map("exit_code")
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  deviceRelation Device @relation(fields: [device], references: [id], onDelete: Cascade)
+  userRelation  User   @relation(fields: [user], references: [id], onDelete: Cascade)
+
+  @@map("device_commands")
+}
+
+model DeviceMetric {
+  id            String   @id @default(cuid())
+  device        String   @map("device_id") @db.Uuid
+  timestamp     DateTime @default(now())
+  cpuUsage      Float?   @map("cpu_usage") @db.Real
+  memoryUsage   Float?   @map("memory_usage") @db.Real
+  diskUsage     Float?   @map("disk_usage") @db.Real
+  networkStats  Json?    @map("network_stats")
+  temperature   Float?   @db.Real
+  powerUsage    Float?   @map("power_usage") @db.Real
+  customMetrics Json     @default("{}") @map("custom_metrics")
+
+  // Relations
+  deviceRelation Device @relation(fields: [device], references: [id], onDelete: Cascade)
+
+  @@map("device_metrics")
+}
+
+// ======================================
+// MAC IDENTITY MANAGEMENT
+// ======================================
+
+model MacIdentity {
+  id                     String    @id @default(cuid())
+  sgeMac                 String    @unique @map("sge_mac") @db.VarChar(23)
+  standardMac            String?   @map("standard_mac") @db.VarChar(17)
+  ipAddress              String?   @map("ip_address") @db.Inet
+  owner                  String    @db.VarChar(255)
+  fingerprint            String    @unique @db.VarChar(64)
+  status                 String    @default("active") @db.VarChar(50)
+  organizationId         String    @map("organization_id") @db.Uuid
+  certificate            Json?
+  signature              Json?
+  metadata               Json      @default("{}")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  organizationRelation Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("mac_identities")
+}

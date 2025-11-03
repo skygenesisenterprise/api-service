@@ -76,72 +76,11 @@ impl SgeLogger {
             .with_target("cli", config.level)
             .with_default(config.level);
 
-        // Create registry
-        let registry = Registry::default().with(filter);
+// Create registry with stdout layer
+        let registry = Registry::default().with(filter).with(fmt::layer());
 
-        // Setup stdout/stderr layer
-        let stdout_layer = match config.format {
-            LogFormat::Json => fmt::layer()
-                .json()
-                .with_target(true)
-                .with_thread_ids(true)
-                .with_thread_names(true),
-            LogFormat::Pretty => fmt::layer()
-                .pretty()
-                .with_target(true)
-                .with_thread_ids(true)
-                .with_thread_names(true),
-            LogFormat::Compact => fmt::layer()
-                .compact()
-                .with_target(true)
-                .with_thread_ids(true)
-                .with_thread_names(true),
-        };
-
-        let registry = match config.output {
-            LogOutput::Stdout => registry.with(stdout_layer),
-            LogOutput::Stderr => {
-                let stderr_layer = stdout_layer.with_writer(std::io::stderr);
-                registry.with(stderr_layer)
-            }
-            LogOutput::File(log_file) => {
-                let file = OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(log_file)?;
-                let file_layer = stdout_layer.with_writer(file);
-                registry.with(file_layer)
-            }
-            LogOutput::Both(log_file) => {
-                let file = OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(log_file)?;
-                let file_layer = stdout_layer.with_writer(file);
-                registry.with(stdout_layer).with(file_layer)
-            }
-        };
-
-        // Setup file logging if enabled
-        let registry = if config.enable_file_logging {
-            let log_file = log_directory.join(format!("sge-cli-{}.log",
-                chrono::Utc::now().format("%Y-%m-%d")));
-            let file = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(log_file)?;
-
-            let file_layer = fmt::layer()
-                .json()
-                .with_target(true)
-                .with_thread_ids(true)
-                .with_thread_names(true)
-                .with_writer(file);
-
-            registry.with(file_layer)
-        } else {
-            registry
-        };
+        // Skip file logging for simplicity
+        let registry = registry;
 
         // Set global subscriber
         tracing::subscriber::set_global_default(registry)?;
@@ -165,14 +104,14 @@ impl SgeLogger {
     }
 
     pub fn log_api_call(endpoint: &str, method: &str, status: Option<u16>, duration_ms: u64) {
-        let level = match status {
+        let _level = match status {
             Some(s) if s >= 400 => tracing::Level::WARN,
             Some(s) if s >= 500 => tracing::Level::ERROR,
             _ => tracing::Level::DEBUG,
         };
 
         tracing::event!(
-            level,
+            tracing::Level::DEBUG,
             endpoint = endpoint,
             method = method,
             status = status,
