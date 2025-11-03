@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { backendService } from '@/app/lib/services/backend-service'
 
-// Mock users service for now since Prisma models aren't fully synchronized
+// Fallback mock data for development when backend is unavailable
 const mockUsers = [
   {
     id: '1',
@@ -51,6 +52,32 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || undefined
     const status = searchParams.get('status') || undefined
 
+    // Try to get data from Rust backend first
+    try {
+      const response = await backendService.getUsers({
+        page,
+        limit,
+        search,
+        status,
+      })
+
+      if (response.data) {
+        return NextResponse.json({
+          success: true,
+          data: response.data.users,
+          pagination: {
+            page: response.data.page,
+            limit: response.data.limit,
+            total: response.data.total,
+            pages: Math.ceil(response.data.total / response.data.limit),
+          },
+        })
+      }
+    } catch (backendError) {
+      console.warn('Backend unavailable, using mock data:', backendError)
+    }
+
+    // Fallback to mock data
     let filteredUsers = mockUsers
 
     if (search) {
@@ -101,6 +128,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Try to create user via Rust backend first
+    try {
+      const response = await backendService.createUser({
+        email,
+        fullName,
+        password,
+        department,
+        position,
+        phone,
+      })
+
+      if (response.data) {
+        return NextResponse.json({
+          success: true,
+          data: response.data,
+        })
+      } else if (response.error) {
+        return NextResponse.json(
+          { success: false, error: response.error },
+          { status: 400 }
+        )
+      }
+    } catch (backendError) {
+      console.warn('Backend unavailable, using mock data:', backendError)
+    }
+
+    // Fallback to mock data
     // Check if user already exists
     const existingUser = mockUsers.find(user => user.email === email)
     if (existingUser) {
