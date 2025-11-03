@@ -46,7 +46,7 @@ RUN cargo build --release --locked
 # ------------------------------
 # Runtime Stage
 # ------------------------------
-FROM debian:12-slim AS runtime
+FROM debian:13-slim AS runtime
 
 # Install minimal runtime dependencies with security updates
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
