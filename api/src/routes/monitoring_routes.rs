@@ -183,5 +183,4 @@ pub fn monitoring_routes(
         });
 
     health_check.or(status_endpoint).or(prometheus_metrics).or(component_health).or(readiness_probe).or(liveness_probe)
-}</content>
-</xai:function_call<parameter name="filePath">api/src/routes/monitoring_routes.rs
+}

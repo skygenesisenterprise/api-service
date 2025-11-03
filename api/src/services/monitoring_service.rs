@@ -419,5 +419,4 @@ sky_genesis_cache_hit_rate_percent {{service="api"}} {}
 
         Ok(status)
     }
-}</content>
-</xai:function_call<parameter name="filePath">api/src/services/monitoring_service.rs
+}

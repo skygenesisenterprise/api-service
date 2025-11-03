@@ -488,5 +488,4 @@ pub async fn cleanup_logs(
             ))
         }
     }
-}</content>
-</xai:function_call">api/src/controllers/logger_controller.rs
+}

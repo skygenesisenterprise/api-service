@@ -14,7 +14,7 @@
 
 use warp::{Filter, Reply};
 use std::convert::Infallible;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use dotenv::dotenv;
 use std::collections::HashMap;
 
@@ -49,14 +49,6 @@ fn load_defaults_from_env_example() -> HashMap<String, String> {
             if line.is_empty() || line.starts_with('#') {
                 continue;
             }
-            if let Some((key, value)) = line.split_once('=') {
-                defaults.insert(key.to_string(), value.to_string());
-            }
-        }
-    }
-
-    defaults
-}
             if let Some((key, value)) = line.split_once('=') {
                 defaults.insert(key.to_string(), value.to_string());
             }
@@ -147,15 +139,29 @@ async fn main() {
       /// @COUNTERMEASURE Use Sequoia OpenPGP with secure key management.
       let openpgp_service = Arc::new(crate::services::openpgp_service::OpenPGPService::new());
 
-      /// [DEVICE MANAGEMENT LAYER] Remote Device Management Service
-      /// @MISSION Enable secure remote management of network devices.
-      /// @THREAT Unauthorized device access or configuration changes.
-      /// @COUNTERMEASURE Authentication, authorization, and audit logging.
-        let device_service = Arc::new(crate::services::device_service::DeviceService::new(
-            db_pool.clone(),
-            vault_client.clone(),
-            snmp_manager.clone(),
-        ));
+/// [MONITORING LAYER] SNMP Management and Audit
+    /// @MISSION Provide network monitoring and security auditing.
+    /// @THREAT Undetected network anomalies.
+    /// @COUNTERMEASURE Implement comprehensive SNMP traps and audit logging.
+    let snmp_manager = Arc::new(crate::core::snmp_manager::SnmpManager::new(vault_client.clone()));
+    let audit_manager = Arc::new(crate::core::audit_manager::AuditManager::new(vault_client.clone()));
+    let metrics = Arc::new(crate::core::opentelemetry::Metrics::new().unwrap());
+
+    /// [DATABASE LAYER] Database Connection Pool
+    /// @MISSION Provide secure database connections.
+    /// @THREAT Unauthorized database access.
+    /// @COUNTERMEASURE Encrypted credentials and connection pooling.
+    let db_pool = Arc::new(crate::data::database::DatabasePool::new().await.unwrap());
+
+       /// [DEVICE MANAGEMENT LAYER] Remote Device Management Service
+       /// @MISSION Enable secure remote management of network devices.
+       /// @THREAT Unauthorized device access or configuration changes.
+       /// @COUNTERMEASURE Authentication, authorization, and audit logging.
+         let device_service = Arc::new(crate::services::device_service::DeviceService::new(
+             db_pool.clone(),
+             vault_client.clone(),
+             snmp_manager.clone(),
+         ));
 
         /// [MAC SERVICE] MAC identity management service
         /// @MISSION Provide secure MAC identity operations with cryptographic generation.
@@ -180,11 +186,31 @@ async fn main() {
             mac_certificates_core.clone(),
         ));
 
-        /// [VOIP SERVICE] Voice over IP and video conferencing service
-        /// @MISSION Provide VoIP functionality with secure signaling.
-        /// @THREAT Unauthorized calls, eavesdropping.
-        /// @COUNTERMEASURE Authentication, encryption, audit logging.
-        let voip_service = Arc::new(crate::services::voip_service::VoipService::new(asterisk_config));
+        /// [VOIP LAYER] Asterisk PBX Integration
+    /// @MISSION Provide native VoIP capabilities through Asterisk PBX.
+    /// @THREAT PBX compromise or call interception.
+    /// @COUNTERMEASURE Secure ARI communication and audit all VoIP operations.
+    let asterisk_base_url = std::env::var("ASTERISK_ARI_URL").unwrap_or("http://localhost:8088/ari".to_string());
+    let asterisk_username = std::env::var("ASTERISK_ARI_USERNAME").unwrap_or("skygenesis".to_string());
+    let asterisk_password = vault_client.get_secret("asterisk/ari_password").await.unwrap_or("password".to_string());
+    let asterisk_app_name = std::env::var("ASTERISK_ARI_APP").unwrap_or("sky-genesis-voip".to_string());
+
+    let asterisk_config = crate::core::asterisk_client::AsteriskConfig {
+        base_url: asterisk_base_url,
+        username: asterisk_username,
+        password: asterisk_password,
+        app_name: asterisk_app_name,
+        tls_enabled: std::env::var("ASTERISK_TLS_ENABLED").unwrap_or_else(|_| "true".to_string()) == "true",
+        client_cert_path: std::env::var("ASTERISK_CLIENT_CERT").ok(),
+        client_key_path: std::env::var("ASTERISK_CLIENT_KEY").ok(),
+        ca_cert_path: std::env::var("ASTERISK_CA_CERT").ok(),
+    };
+
+    /// [VOIP SERVICE] Voice over IP and video conferencing service
+    /// @MISSION Provide VoIP functionality with secure signaling.
+    /// @THREAT Unauthorized calls, eavesdropping.
+    /// @COUNTERMEASURE Authentication, encryption, audit logging.
+    let voip_service = Arc::new(crate::services::voip_service::VoipService::new(asterisk_config));
 
         /// [MAIL SERVICE] Email service integration (mock for now)
         /// @MISSION Provide email functionality for Discord notifications.
@@ -254,12 +280,6 @@ async fn main() {
           audit_manager.clone(),
       ).await.unwrap());
 
-    /// [MONITORING LAYER] SNMP Management and Audit
-    /// @MISSION Provide network monitoring and security auditing.
-    /// @THREAT Undetected network anomalies.
-    /// @COUNTERMEASURE Implement comprehensive SNMP traps and audit logging.
-    let snmp_manager = Arc::new(crate::core::snmp_manager::SnmpManager::new(vault_client.clone()));
-    let audit_manager = Arc::new(crate::core::audit_manager::AuditManager::new(vault_client.clone()));
     let snmp_agent = Arc::new(crate::core::snmp_agent::SnmpAgent::new(vault_client.clone(), audit_manager.clone()));
     let trap_listener = Arc::new(crate::core::snmp_trap_listener::SnmpTrapListener::new(
         vault_client.clone(),
@@ -354,27 +374,7 @@ async fn main() {
     /// @COUNTERMEASURE Export all telemetry with cryptographic integrity.
     let _otel_components = crate::core::opentelemetry::init_opentelemetry("sky-genesis-api", "1.0.0").await.unwrap();
 
-    /// [VOIP LAYER] Asterisk PBX Integration
-    /// @MISSION Provide native VoIP capabilities through Asterisk PBX.
-    /// @THREAT PBX compromise or call interception.
-    /// @COUNTERMEASURE Secure ARI communication and audit all VoIP operations.
-    let asterisk_base_url = std::env::var("ASTERISK_ARI_URL").unwrap_or("http://localhost:8088/ari".to_string());
-    let asterisk_username = std::env::var("ASTERISK_ARI_USERNAME").unwrap_or("skygenesis".to_string());
-    let asterisk_password = vault_client.get_secret("asterisk/ari_password").await.unwrap_or("password".to_string());
-    let asterisk_app_name = std::env::var("ASTERISK_ARI_APP").unwrap_or("sky-genesis-voip".to_string());
-
-    let asterisk_config = crate::core::asterisk_client::AsteriskConfig {
-        base_url: asterisk_base_url,
-        username: asterisk_username,
-        password: asterisk_password,
-        app_name: asterisk_app_name,
-        tls_enabled: std::env::var("ASTERISK_TLS_ENABLED").unwrap_or_else(|_| "true".to_string()) == "true",
-        client_cert_path: std::env::var("ASTERISK_CLIENT_CERT").ok(),
-        client_key_path: std::env::var("ASTERISK_CLIENT_KEY").ok(),
-        ca_cert_path: std::env::var("ASTERISK_CA_CERT").ok(),
-    };
     let asterisk_client = Arc::new(crate::core::asterisk_client::AsteriskClient::new(asterisk_config));
-    let metrics = Arc::new(crate::core::opentelemetry::Metrics::new().unwrap());
 
     /// [MONITORING SERVICE] System Health and Status Monitoring
     /// @MISSION Provide comprehensive monitoring capabilities for Grafana.
@@ -453,65 +453,6 @@ async fn main() {
     /// @MISSION Establish secure network listening post.
     /// @THREAT Port scanning or service discovery.
     /// @COUNTERMEASURE Bind to localhost and use reverse proxy for external access.
-    let port = std::env::var("PORT")
-        .unwrap_or_else(|_| "8080".to_string())
-        .parse::<u16>()
-        .expect("PORT must be a valid port number");
-
-    println!("Server started at http://localhost:{}", port);
-
-    warp::serve(routes)
-        .run(([127, 0, 0, 1], port))
-        .await;
-}
-    });
-
-    // Start trap listener
-    let trap_listener_clone = Arc::clone(&trap_listener);
-    tokio::spawn(async move {
-        let mut listener = Arc::try_unwrap(trap_listener_clone).unwrap();
-        if let Err(e) = listener.start().await {
-            eprintln!("Failed to start SNMP trap listener: {}", e);
-            return;
-        }
-        if let Err(e) = listener.listen().await {
-            eprintln!("SNMP trap listener error: {}", e);
-        }
-    });
-
-    let openpgp_service = Arc::new(crate::services::openpgp_service::OpenPGPService::new());
-    let routes = routes::routes(
-        vault_manager,
-        key_service,
-        auth_service,
-        session_service,
-        application_service,
-        two_factor_service,
-        data_service,
-        openpgp_service,
-        device_service,
-        mac_service,
-        ws_server,
-        ws_server,
-        snmp_manager,
-        snmp_agent,
-        trap_listener,
-        audit_manager,
-        keycloak_client,
-        fido2_manager,
-        vpn_manager,
-        tailscale_manager,
-        grpc_client,
-        webdav_handler,
-        caldav_handler,
-        carddav_handler,
-        metrics,
-        monitoring_service,
-        ssh_server,
-        voip_service,
-    );
-
-    // Get port from environment variable or default to 8080
     let port = std::env::var("PORT")
         .unwrap_or_else(|_| "8080".to_string())
         .parse::<u16>()

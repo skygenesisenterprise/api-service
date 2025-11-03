@@ -1,23 +1,23 @@
 [package]
 name = "api"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 
 [dependencies]
 tokio = { version = "1.0", features = ["full"] }
-warp = "0.3"
+warp = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-reqwest = { version = "0.11", features = ["json"] }
-diesel = { version = "2.0", features = ["postgres", "mysql", "sqlite", "r2d2", "chrono"] }
-diesel_migrations = "2.0"
+reqwest = { version = "0.12", features = ["json"] }
+diesel = { version = "2.1", features = ["postgres", "sqlite", "r2d2", "chrono"] }
+diesel_migrations = "2.1"
 chrono = { version = "0.4", features = ["serde"] }
 dotenv = "0.15"
 uuid = { version = "1.0", features = ["v4"] }
-jsonwebtoken = "8.0"
+jsonwebtoken = { version = "10.1", features = ["rust_crypto"] }
 
-# Cryptographic primitives - Modern algorithms
+# Cryptography - Modern algorithms
 aes-gcm = "0.10"
 chacha20poly1305 = "0.10"
 x25519-dalek = { version = "2.0.1", features = ["getrandom"] }
@@ -28,86 +28,84 @@ hkdf = "0.12"
 argon2 = { version = "0.5", features = ["std"] }
 zeroize = { version = "1.6", features = ["zeroize_derive"] }
 
-# Legacy algorithms (for backward compatibility)
+# Legacy algorithms
 rsa = { version = "0.9", features = ["sha2", "pem", "pkcs5"] }
 p256 = { version = "0.13", features = ["ecdsa", "pem"] }
 ecdsa = { version = "0.16", features = ["signing", "verifying", "pem"] }
 sha2 = "0.10"
 
 # Utilities
-rand = "0.8"
-base64 = "0.21"
+rand = "0.9"
+base64 = "0.22"
 hex = "0.4"
 tokio-stream = "0.1"
 futures-util = "0.3"
 lazy_static = "1.4"
-redis = { version = "0.23", features = ["tokio-comp"] }
-base32 = "0.4"
+redis = { version = "0.32", features = ["tokio-comp"] }
+base32 = "0.5"
 urlencoding = "2.1"
 sha1 = "0.10"
 
-# OpenAPI/Swagger
-utoipa = { version = "4.0", features = ["chrono"] }
-utoipa-swagger-ui = "6.0"
+# OpenAPI / Swagger
+utoipa = { version = "5.4", features = ["chrono"] }
+utoipa-swagger-ui = "9.0"
 
 # SNMP Integration
 snmp = "0.2"
-snmp-parser = "0.9"
-thiserror = "1.0"
+snmp-parser = "0.11"
+thiserror = "2.0"
 
- # Protocol Integrations
- # WebSocket/XMPP
- tokio-tungstenite = "0.20"
- xmpp = "0.5"
+# Protocol Integrations
+tokio-tungstenite = "0.28"
+xmpp = "0.6"
 
 # SSH
-russh = "0.40"
-russh-keys = "0.40"
+russh = "0.54"
+russh-keys = "0.49"
 
- # gRPC/QUIC
- tonic = "0.10"
- prost = "0.12"
- quinn = "0.10"
- h3 = "0.0.2"
+# gRPC / QUIC
+tonic = "0.14"
+prost = "0.14"
+quinn = "0.11"
+h3 = "0.0.8"
+prost-build = "0.14"
 
-# WebDAV/CalDAV/CardDAV
+# WebDAV / CalDAV / CardDAV
 webdav-handler = "0.2"
-icalendar = "0.16"
+icalendar = "0.17"
 vcard = "0.4"
 
-# OAuth2/OIDC + FIDO2
-openidconnect = "3.0"
-webauthn-rs = "0.4"
-webauthn-authenticator-rs = "0.4"
+# OAuth2 / OIDC + FIDO2
+openidconnect = "4.0"
+webauthn-rs = "0.5"
+webauthn-authenticator-rs = "0.5"
 
 # OpenTelemetry
-opentelemetry = "0.21"
-opentelemetry-otlp = { version = "0.14", features = ["grpc-sys"] }
-opentelemetry-prometheus = "0.14"
-
-# IPSec/WireGuard/Tailscale
-# wireguard-control = "1.7"
-# boringtun = "0.6"
+opentelemetry = "0.31"
+opentelemetry-otlp = { version = "0.31", features = ["tonic"] }
+opentelemetry-prometheus = "0.29"
 
 # Additional utilities
 async-trait = "0.1"
-tower = "0.4"
-tower-http = "0.4"
+tower = "0.5"
+tower-http = "0.6"
 
 # OpenPGP
-sequoia-openpgp = "1.21"
-
-# Multi-database support will be implemented with diesel
+sequoia-openpgp = "2.0"
 
 # Search indexing
-tantivy = "0.21"
+tantivy = "0.25"
 
 # Regular expressions
 regex = "1.0"
+
+# Compression (Zstandard)
+zstd = "0.13.2"
+zstd-safe = "6.0.6"
 
 [[bin]]
 name = "api"
 path = "src/main.rs"
 
 [build-dependencies]
-tonic-build = "0.10"
+tonic-build = "0.12.3"

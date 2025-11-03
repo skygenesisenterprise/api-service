@@ -12,6 +12,20 @@ use crate::core::keycloak::KeycloakClient;
 use crate::core::fido2::{Fido2Manager, Fido2RegistrationRequest, Fido2AuthenticationRequest};
 use crate::core::opentelemetry::Metrics;
 
+/// Get frontend base URL based on NODE_ENV environment variable
+fn get_frontend_base_url() -> String {
+    match std::env::var("NODE_ENV") {
+        Ok(env) if env == "production" => {
+            std::env::var("FRONTEND_BASE_URL")
+                .unwrap_or_else(|_| "https://sso.skygenesisenterprise.com".to_string())
+        }
+        _ => {
+            std::env::var("FRONTEND_BASE_URL")
+                .unwrap_or_else(|_| "http://localhost:3000".to_string())
+        }
+    }
+}
+
 pub fn auth_routes(
     auth_service: Arc<AuthService>,
     session_service: Arc<SessionService>,
@@ -190,12 +204,13 @@ pub fn auth_routes(
             match std::fs::read_to_string("keycloak-theme/login/login.ftl") {
                 Ok(content) => {
                     // Replace Keycloak variables with API endpoints
+                    let frontend_base_url = get_frontend_base_url();
                     let html = content
                         .replace("${url.loginAction}", "/sso/auth")
                         .replace("${realm.name}", "Sky Genesis Enterprise SSO")
                         .replace("${url.resourcesPath}", "/sso/resources")
                         .replace("http://localhost:8080/auth/oidc/callback", &redirect_uri)
-                        .replace("http://localhost:3000/callback", &redirect_uri);
+                        .replace(&format!("{}/callback", frontend_base_url), &redirect_uri);
 
                     // Add hidden fields for state management
                     let state_field = if !state.is_empty() {
@@ -377,12 +392,13 @@ pub fn auth_routes(
             match std::fs::read_to_string("keycloak-theme/login/login.ftl") {
                 Ok(content) => {
                     // Replace Keycloak variables with API endpoints
+                    let frontend_base_url = get_frontend_base_url();
                     let html = content
                         .replace("${url.loginAction}", "/api/v1/sso/auth")
                         .replace("${realm.name}", "Sky Genesis Enterprise SSO")
                         .replace("${url.resourcesPath}", "/api/v1/sso/resources")
                         .replace("http://localhost:8080/auth/oidc/callback", &redirect_uri)
-                        .replace("http://localhost:3000/callback", &redirect_uri);
+                        .replace(&format!("{}/callback", frontend_base_url), &redirect_uri);
 
                     // Add hidden fields for state management
                     let state_field = if !state.is_empty() {

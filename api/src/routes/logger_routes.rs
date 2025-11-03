@@ -249,30 +249,8 @@ struct SummaryQueryParams {
     days: Option<i64>,
 }
 
-                            // Filter by resource/route if specified
-                            if let Some(ref resource_filter) = params.resource {
-                                filtered_events = filtered_events.into_iter()
-                                    .filter(|event| event.resource.contains(resource_filter))
-                                    .collect();
-                            }
-
-                            Ok::<_, warp::Rejection>(warp::reply::json(&serde_json::json!({
-                                "status": "success",
-                                "total_events": filtered_events.len(),
-                                "events": filtered_events,
-                                "timestamp": Utc::now()
-                            })))
-                        },
-                        Err(e) => Ok(warp::reply::json(&serde_json::json!({
-                            "status": "error",
-                            "message": format!("Failed to retrieve logs: {}", e),
-                            "timestamp": Utc::now()
-                        })))
-                    }
-                }
-            }
-        });
-
+                            
+{
     // Get logs for specific route/resource
     let get_logs_by_route = warp::path!("api" / "v1" / "logger" / "route" / String)
         .and(warp::get())

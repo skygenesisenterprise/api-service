@@ -441,7 +441,4 @@ impl EncryptionService {
 
         Ok(decrypted_body)
     }
-}</content>
-</xai:function_call
-<xai:function_call name="edit">
-<parameter name="filePath">api/src/services/mail_service.rs
+}

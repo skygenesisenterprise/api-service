@@ -42,11 +42,6 @@ impl GitController {
         GitController { git_service: Some(git_service) }
     }
 
-impl GitController {
-    pub fn new() -> Self {
-        GitController {}
-    }
-
     /// [WEBHOOK HANDLER] Handle GitHub Webhook Events
     /// @MISSION Process incoming GitHub webhook events (push, PR, issues, etc.).
     /// @THREAT Webhook spoofing, unauthorized events, malicious payloads.
@@ -78,31 +73,6 @@ impl GitController {
             }
         }
 
-        Ok(warp::reply::with_status(
-            warp::reply::json(&serde_json::json!({
-                "status": "ok",
-                "message": "Webhook processed successfully",
-                "event_type": event.event_type,
-                "repository": event.repository.full_name
-            })),
-            StatusCode::OK,
-        ))
-    }
-            "pull_request" => {
-                // Handle pull request events
-                println!("Processing pull request event: {:?}", event.action);
-            }
-            "issues" => {
-                // Handle issue events
-                println!("Processing issue event: {:?}", event.action);
-            }
-            _ => {
-                // Handle other events
-                println!("Processing {} event", event.event_type);
-            }
-        }
-
-        // Return success response
         Ok(warp::reply::with_status(
             warp::reply::json(&serde_json::json!({
                 "status": "ok",

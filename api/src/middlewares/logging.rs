@@ -85,8 +85,5 @@ pub fn audit_log_requests(
                 eprintln!("Failed to log audit event: {}", e);
             }
         });
-    })
-}
-        });
-    })
+})
 }
