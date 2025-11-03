@@ -15,7 +15,7 @@
 // ============================================================================
 
 use warp::Reply;
-use crate::models::ApiKey;
+use crate::models::key_model::ApiKey;
 
 /// [PROTECTED ENDPOINT HANDLER] Base Handler for Authenticated API Requests
 /// @MISSION Process authenticated requests with proper permission validation.

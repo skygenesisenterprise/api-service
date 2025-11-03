@@ -212,8 +212,7 @@ pub fn logger_routes(
             }
         });
 
-    get_logs.or(get_logs_by_route).or(get_logged_routes).or(get_summary).or(verify_integrity).or(cleanup_logs)
-}
+    get_logs.or(get_logs_by_route).or(get_logged_routes).or(get_summary).or(verify_integrity).or(cleanup_logs);
 
 /// [QUERY PARAMETERS] Logger Endpoint Filtering Options
 /// @MISSION Provide flexible filtering options for log retrieval.
@@ -250,8 +249,7 @@ struct SummaryQueryParams {
 }
 
                             
-{
-    // Get logs for specific route/resource
+// Get logs for specific route/resource
     let get_logs_by_route = warp::path!("api" / "v1" / "logger" / "route" / String)
         .and(warp::get())
         .and(warp::query::<LoggerQueryParams>())
@@ -341,7 +339,12 @@ struct SummaryQueryParams {
             }
         });
 
-    get_logs.or(get_logs_by_route).or(get_logged_routes)
+    get_logs
+        .or(get_logs_by_route)
+        .or(get_logged_routes)
+        .or(get_summary)
+        .or(verify_integrity)
+        .or(cleanup_logs)
 }
 
 /// [QUERY PARAMETERS] Logger Endpoint Filtering Options

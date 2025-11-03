@@ -56,7 +56,7 @@ impl MacService {
     pub async fn generate_sge_mac(&self, organization_id: Uuid) -> Result<String, String> {
         // Generate cryptographically secure random bytes
         let mut rng = rand::thread_rng();
-        let random_bytes: [u8; 6] = rng.gen();
+        let random_bytes: [u8; 6] = rng.r#gen();
 
         // Create SGE prefix (SGE-)
         let mut mac_bytes = [0u8; 8];
@@ -96,8 +96,7 @@ impl MacService {
             return Err("SGE-MAC already exists".to_string());
         }
 
-        let mac = sqlx::query_as!(
-            MacIdentity,
+        let mac = sqlx::query_as::<_, MacIdentity>(
             r#"
             INSERT INTO mac_identities (
                 sge_mac, standard_mac, ip_address, owner, fingerprint,
@@ -136,8 +135,7 @@ impl MacService {
         let offset = (page - 1) * per_page;
 
         let (macs, total_count) = if let Some(status) = status_filter {
-            let macs = sqlx::query_as!(
-                MacIdentity,
+            let macs = sqlx::query_as::<_, MacIdentity>(
                 r#"
                 SELECT id, sge_mac, standard_mac, ip_address, owner, fingerprint,
                        status as "status: MacStatus", organization_id, metadata,
@@ -156,7 +154,7 @@ impl MacService {
             .await
             .map_err(|e| format!("Database error: {}", e))?;
 
-            let count = sqlx::query_scalar!(
+            let count = sqlx::query_scalar(
                 r#"
                 SELECT COUNT(*) as count
                 FROM mac_identities
@@ -172,8 +170,7 @@ impl MacService {
 
             (macs, count)
         } else {
-            let macs = sqlx::query_as!(
-                MacIdentity,
+            let macs = sqlx::query_as::<_, MacIdentity>(
                 r#"
                 SELECT id, sge_mac, standard_mac, ip_address, owner, fingerprint,
                        status as "status: MacStatus", organization_id, metadata,
@@ -191,7 +188,7 @@ impl MacService {
             .await
             .map_err(|e| format!("Database error: {}", e))?;
 
-            let count = sqlx::query_scalar!(
+            let count = sqlx::query_scalar(
                 r#"
                 SELECT COUNT(*) as count
                 FROM mac_identities
@@ -216,8 +213,7 @@ impl MacService {
         sge_mac: &str,
         organization_id: Uuid,
     ) -> Result<MacIdentity, String> {
-        let mac = sqlx::query_as!(
-            MacIdentity,
+        let mac = sqlx::query_as::<_, MacIdentity>(
             r#"
             SELECT id, sge_mac, standard_mac, ip_address, owner, fingerprint,
                    status as "status: MacStatus", organization_id, metadata,
@@ -270,8 +266,7 @@ impl MacService {
         query.push_str(&format!(" WHERE sge_mac = ${} AND organization_id = ${} RETURNING id, sge_mac, standard_mac, ip_address, owner, fingerprint, status as \"status: MacStatus\", organization_id, metadata, created_at, updated_at", param_count, param_count + 1));
 
         // For simplicity, let's use a more direct approach
-        let updated_mac = sqlx::query_as!(
-            MacIdentity,
+        let updated_mac = sqlx::query_as::<_, MacIdentity>(
             r#"
             UPDATE mac_identities
             SET ip_address = COALESCE($1, ip_address),
@@ -303,7 +298,7 @@ impl MacService {
         sge_mac: &str,
         organization_id: Uuid,
     ) -> Result<(), String> {
-        let result = sqlx::query!(
+        let result = sqlx::query(
             r#"
             DELETE FROM mac_identities
             WHERE sge_mac = $1 AND organization_id = $2
@@ -328,8 +323,7 @@ impl MacService {
         ip_address: &str,
         organization_id: Uuid,
     ) -> Result<MacIdentity, String> {
-        let mac = sqlx::query_as!(
-            MacIdentity,
+        let mac = sqlx::query_as::<_, MacIdentity>(
             r#"
             SELECT id, sge_mac, standard_mac, ip_address, owner, fingerprint,
                    status as "status: MacStatus", organization_id, metadata,
@@ -355,8 +349,7 @@ impl MacService {
         fingerprint: &str,
         organization_id: Uuid,
     ) -> Result<MacIdentity, String> {
-        let mac = sqlx::query_as!(
-            MacIdentity,
+        let mac = sqlx::query_as::<_, MacIdentity>(
             r#"
             SELECT id, sge_mac, standard_mac, ip_address, owner, fingerprint,
                    status as "status: MacStatus", organization_id, metadata,
@@ -391,7 +384,7 @@ impl MacService {
 
     /// Check if MAC exists
     async fn mac_exists(&self, sge_mac: &str, organization_id: Uuid) -> Result<bool, String> {
-        let count = sqlx::query_scalar!(
+        let count = sqlx::query_scalar(
             r#"
             SELECT COUNT(*) as count
             FROM mac_identities
@@ -441,8 +434,7 @@ impl MacService {
         let signature = self.cert_core.sign_mac_address(&temp_mac, &format!("mac-signing-key-{}", organization_id)).await?;
 
         // Register MAC with certificate and signature
-        let mac = sqlx::query_as!(
-            MacIdentity,
+        let mac = sqlx::query_as::<_, MacIdentity>(
             r#"
             INSERT INTO mac_identities (
                 sge_mac, standard_mac, ip_address, owner, fingerprint,
@@ -514,8 +506,7 @@ impl MacService {
             let new_cert = self.cert_core.renew_mac_certificate(&mac, &current_cert, validity_days, organization_name, user_id).await?;
 
             // Update database with new certificate
-            let updated_mac = sqlx::query_as!(
-                MacIdentity,
+            let updated_mac = sqlx::query_as::<_, MacIdentity>(
                 r#"
                 UPDATE mac_identities
                 SET certificate = $1, updated_at = NOW()
@@ -555,7 +546,7 @@ impl MacService {
             self.cert_core.revoke_mac_certificate(cert_info, reason, user_id).await?;
 
             // Update database with revoked certificate
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 UPDATE mac_identities
                 SET certificate = $1, updated_at = NOW()

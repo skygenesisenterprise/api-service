@@ -57,7 +57,7 @@ impl DiscordQueries {
     /// @AUDIT Configuration changes are logged.
     /// @FLOW Validate config -> Insert/update -> Log change.
     pub async fn save_configuration(&self, config: &DiscordConfig) -> Result<(), sqlx::Error> {
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO discord_configurations (id, channels, roles, permissions, commands, webhooks, vpn_required, audit_enabled, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -96,7 +96,7 @@ impl DiscordQueries {
     /// @AUDIT Configuration access is logged.
     /// @FLOW Query database -> Deserialize -> Return config.
     pub async fn get_configuration(&self) -> Result<Option<DiscordConfig>, sqlx::Error> {
-        let result = sqlx::query!(
+        let result = sqlx::query(
             r#"
             SELECT channels, roles, permissions, commands, webhooks, vpn_required, audit_enabled
             FROM discord_configurations
@@ -131,7 +131,7 @@ impl DiscordQueries {
     /// @AUDIT Audit logs are themselves audited.
     /// @FLOW Insert audit record -> Return success.
     pub async fn save_audit_event(&self, audit: &DiscordAudit) -> Result<(), sqlx::Error> {
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO discord_audit_logs (id, operation, user_id, channel_id, details, timestamp, ip_address, user_agent, success)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -166,8 +166,7 @@ impl DiscordQueries {
         offset: i64,
     ) -> Result<Vec<DiscordAudit>, sqlx::Error> {
         let events = if let Some(user_id) = user_id {
-            sqlx::query_as!(
-                DiscordAudit,
+            sqlx::query_as::<_, DiscordAudit>(
                 r#"
                 SELECT id, operation, user_id, channel_id, details, timestamp, ip_address, user_agent, success
                 FROM discord_audit_logs
@@ -182,8 +181,7 @@ impl DiscordQueries {
             .fetch_all(&self.pool)
             .await?
         } else {
-            sqlx::query_as!(
-                DiscordAudit,
+            sqlx::query_as::<_, DiscordAudit>(
                 r#"
                 SELECT id, operation, user_id, channel_id, details, timestamp, ip_address, user_agent, success
                 FROM discord_audit_logs
@@ -208,7 +206,7 @@ impl DiscordQueries {
     /// @AUDIT Command history is audited.
     /// @FLOW Insert command record -> Return success.
     pub async fn save_command_history(&self, command: &DiscordCommand, response: &CommandResponse) -> Result<(), sqlx::Error> {
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO discord_command_history (id, command, args, user_id, channel_id, service, urgent, response_success, response_output, response_error, execution_time, timestamp)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
@@ -246,7 +244,7 @@ impl DiscordQueries {
         offset: i64,
     ) -> Result<Vec<serde_json::Value>, sqlx::Error> {
         let history = if let Some(user_id) = user_id {
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 SELECT id, command, args, user_id, channel_id, service, urgent, response_success, response_output, response_error, execution_time, timestamp
                 FROM discord_command_history
@@ -261,7 +259,7 @@ impl DiscordQueries {
             .fetch_all(&self.pool)
             .await?
         } else {
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 SELECT id, command, args, user_id, channel_id, service, urgent, response_success, response_output, response_error, execution_time, timestamp
                 FROM discord_command_history
@@ -305,7 +303,7 @@ impl DiscordQueries {
     /// @AUDIT Webhook changes are logged.
     /// @FLOW Encrypt URL -> Store configuration -> Log change.
     pub async fn save_webhook_config(&self, webhook: &WebhookConfig) -> Result<(), sqlx::Error> {
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO discord_webhooks (id, url, events, secret, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6)
@@ -336,7 +334,7 @@ impl DiscordQueries {
     /// @AUDIT Webhook access is logged.
     /// @FLOW Query database -> Decrypt if needed -> Return config.
     pub async fn get_webhook_config(&self, webhook_id: &str) -> Result<Option<WebhookConfig>, sqlx::Error> {
-        let result = sqlx::query!(
+        let result = sqlx::query(
             r#"
             SELECT id, url, events, secret
             FROM discord_webhooks
@@ -370,7 +368,7 @@ impl DiscordQueries {
     pub async fn cleanup_old_records(&self, days_old: i32) -> Result<(u64, u64), sqlx::Error> {
         let cutoff_date = Utc::now() - chrono::Duration::days(days_old as i64);
 
-        let audit_deleted = sqlx::query!(
+        let audit_deleted = sqlx::query(
             "DELETE FROM discord_audit_logs WHERE timestamp < $1",
             cutoff_date
         )
@@ -378,7 +376,7 @@ impl DiscordQueries {
         .await?
         .rows_affected();
 
-        let command_deleted = sqlx::query!(
+        let command_deleted = sqlx::query(
             "DELETE FROM discord_command_history WHERE timestamp < $1",
             cutoff_date
         )
@@ -397,25 +395,25 @@ impl DiscordQueries {
     /// @AUDIT Statistics queries are logged.
     /// @FLOW Aggregate data -> Return statistics.
     pub async fn get_statistics(&self) -> Result<serde_json::Value, sqlx::Error> {
-        let audit_count = sqlx::query!("SELECT COUNT(*) as count FROM discord_audit_logs")
+        let audit_count = sqlx::query("SELECT COUNT(*) as count FROM discord_audit_logs")
             .fetch_one(&self.pool)
             .await?
             .count
             .unwrap_or(0);
 
-        let command_count = sqlx::query!("SELECT COUNT(*) as count FROM discord_command_history")
+        let command_count = sqlx::query("SELECT COUNT(*) as count FROM discord_command_history")
             .fetch_one(&self.pool)
             .await?
             .count
             .unwrap_or(0);
 
-        let webhook_count = sqlx::query!("SELECT COUNT(*) as count FROM discord_webhooks")
+        let webhook_count = sqlx::query("SELECT COUNT(*) as count FROM discord_webhooks")
             .fetch_one(&self.pool)
             .await?
             .count
             .unwrap_or(0);
 
-        let recent_commands = sqlx::query!(
+        let recent_commands = sqlx::query(
             r#"
             SELECT COUNT(*) as count
             FROM discord_command_history

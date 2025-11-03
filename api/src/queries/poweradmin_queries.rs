@@ -28,7 +28,7 @@ use crate::models::poweradmin_models::*;
 /// @COUNTERMEASURE ACID transactions with validation.
 /// @AUDIT Zone operations logged.
 #[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
-#[table_name = "poweradmin_zones"]
+#[diesel(table_name = poweradmin_zones)]
 pub struct PowerAdminZoneRecord {
     pub id: String,
     pub name: String,
@@ -57,7 +57,7 @@ pub struct PowerAdminZoneRecord {
 /// @COUNTERMEASURE ACID transactions with validation.
 /// @AUDIT Record operations logged.
 #[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
-#[table_name = "poweradmin_records"]
+#[diesel(table_name = poweradmin_records)]
 pub struct PowerAdminRecordRecord {
     pub id: String,
     pub zone_id: String,
@@ -81,7 +81,7 @@ pub struct PowerAdminRecordRecord {
 /// @COUNTERMEASURE Encrypted storage with access controls.
 /// @AUDIT DNSSEC operations logged.
 #[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
-#[table_name = "poweradmin_dnssec_keys"]
+#[diesel(table_name = poweradmin_dnssec_keys)]
 pub struct PowerAdminDnssecKeyRecord {
     pub id: String,
     pub zone_id: String,
@@ -107,7 +107,7 @@ pub struct PowerAdminDnssecKeyRecord {
 /// @COUNTERMEASURE Comprehensive operation logging.
 /// @AUDIT DNS operations tracked for compliance.
 #[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
-#[table_name = "poweradmin_operation_logs"]
+#[diesel(table_name = poweradmin_operation_logs)]
 pub struct PowerAdminOperationLogRecord {
     pub id: String,
     pub operation: String,
@@ -132,7 +132,7 @@ pub struct PowerAdminOperationLogRecord {
 /// @COUNTERMEASURE Versioned template storage.
 /// @AUDIT Template operations logged.
 #[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
-#[table_name = "poweradmin_zone_templates"]
+#[diesel(table_name = poweradmin_zone_templates)]
 pub struct PowerAdminZoneTemplateRecord {
     pub id: String,
     pub name: String,
@@ -157,7 +157,7 @@ pub struct PowerAdminZoneTemplateRecord {
 /// @COUNTERMEASURE Versioned rule storage.
 /// @AUDIT Validation rule operations logged.
 #[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
-#[table_name = "poweradmin_validation_rules"]
+#[diesel(table_name = poweradmin_validation_rules)]
 pub struct PowerAdminValidationRuleRecord {
     pub id: String,
     pub record_type: String,
@@ -179,7 +179,7 @@ pub struct PowerAdminValidationRuleRecord {
 /// @COUNTERMEASURE Persistent monitoring setup.
 /// @AUDIT Monitoring operations logged.
 #[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
-#[table_name = "poweradmin_monitoring"]
+#[diesel(table_name = poweradmin_monitoring)]
 pub struct PowerAdminMonitoringRecord {
     pub id: String,
     pub zone_id: Option<String>,
@@ -202,7 +202,7 @@ pub struct PowerAdminMonitoringRecord {
 /// @COUNTERMEASURE Structured permission storage.
 /// @AUDIT Permission operations logged.
 #[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
-#[table_name = "poweradmin_permissions"]
+#[diesel(table_name = poweradmin_permissions)]
 pub struct PowerAdminPermissionRecord {
     pub id: String,
     pub user_id: String,

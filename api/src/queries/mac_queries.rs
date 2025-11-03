@@ -45,7 +45,7 @@ impl MacQueries {
         mac: &MacIdentity,
         user_id: &str,
     ) -> Result<(), String> {
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO mac_identities (
                 id, sge_mac, standard_mac, ip_address, owner, fingerprint,
@@ -92,8 +92,7 @@ impl MacQueries {
         organization_id: Uuid,
         user_id: &str,
     ) -> Result<MacIdentity, String> {
-        let mac = sqlx::query_as!(
-            MacIdentity,
+        let mac = sqlx::query_as::<_, MacIdentity>(
             r#"
             SELECT id, sge_mac, standard_mac, ip_address, owner, fingerprint,
                    status as "status: MacStatus", organization_id, metadata,
@@ -132,8 +131,7 @@ impl MacQueries {
         organization_id: Uuid,
         user_id: &str,
     ) -> Result<MacIdentity, String> {
-        let mac = sqlx::query_as!(
-            MacIdentity,
+        let mac = sqlx::query_as::<_, MacIdentity>(
             r#"
             SELECT id, sge_mac, standard_mac, ip_address, owner, fingerprint,
                    status as "status: MacStatus", organization_id, metadata,
@@ -172,8 +170,7 @@ impl MacQueries {
         organization_id: Uuid,
         user_id: &str,
     ) -> Result<MacIdentity, String> {
-        let mac = sqlx::query_as!(
-            MacIdentity,
+        let mac = sqlx::query_as::<_, MacIdentity>(
             r#"
             SELECT id, sge_mac, standard_mac, ip_address, owner, fingerprint,
                    status as "status: MacStatus", organization_id, metadata,
@@ -219,8 +216,7 @@ impl MacQueries {
         let offset = (page - 1) * per_page;
 
         let (macs, total_count) = if let Some(status) = status_filter {
-            let macs = sqlx::query_as!(
-                MacIdentity,
+            let macs = sqlx::query_as::<_, MacIdentity>(
                 r#"
                 SELECT id, sge_mac, standard_mac, ip_address, owner, fingerprint,
                        status as "status: MacStatus", organization_id, metadata,
@@ -239,7 +235,7 @@ impl MacQueries {
             .await
             .map_err(|e| format!("Database error: {}", e))?;
 
-            let count = sqlx::query_scalar!(
+            let count = sqlx::query_scalar(
                 r#"
                 SELECT COUNT(*) as count
                 FROM mac_identities
@@ -255,8 +251,7 @@ impl MacQueries {
 
             (macs, count)
         } else {
-            let macs = sqlx::query_as!(
-                MacIdentity,
+            let macs = sqlx::query_as::<_, MacIdentity>(
                 r#"
                 SELECT id, sge_mac, standard_mac, ip_address, owner, fingerprint,
                    status as "status: MacStatus", organization_id, metadata,
@@ -274,7 +269,7 @@ impl MacQueries {
             .await
             .map_err(|e| format!("Database error: {}", e))?;
 
-            let count = sqlx::query_scalar!(
+            let count = sqlx::query_scalar(
                 r#"
                 SELECT COUNT(*) as count
                 FROM mac_identities
@@ -318,8 +313,7 @@ impl MacQueries {
         metadata: Option<HashMap<String, String>>,
         user_id: &str,
     ) -> Result<MacIdentity, String> {
-        let updated_mac = sqlx::query_as!(
-            MacIdentity,
+        let updated_mac = sqlx::query_as::<_, MacIdentity>(
             r#"
             UPDATE mac_identities
             SET ip_address = COALESCE($1, ip_address),
@@ -370,7 +364,7 @@ impl MacQueries {
         organization_id: Uuid,
         user_id: &str,
     ) -> Result<(), String> {
-        let result = sqlx::query!(
+        let result = sqlx::query(
             r#"
             DELETE FROM mac_identities
             WHERE sge_mac = $1 AND organization_id = $2
@@ -407,7 +401,7 @@ impl MacQueries {
         sge_mac: &str,
         organization_id: Uuid,
     ) -> Result<bool, String> {
-        let count = sqlx::query_scalar!(
+        let count = sqlx::query_scalar(
             r#"
             SELECT COUNT(*) as count
             FROM mac_identities
@@ -430,7 +424,7 @@ impl MacQueries {
         organization_id: Uuid,
         user_id: &str,
     ) -> Result<MacStatistics, String> {
-        let stats = sqlx::query!(
+        let stats = sqlx::query(
             r#"
             SELECT
                 COUNT(*) as total_macs,

@@ -20,7 +20,7 @@ use serde_json::Value;
 use std::sync::Arc;
 use crate::core::vault::VaultClient;
 use std::collections::HashMap;
-use openidconnect::{core::*, reqwest::async_http_client, IssuerUrl, ClientId, ClientSecret, RedirectUrl, Nonce, CsrfToken, PkceCodeChallenge, AuthorizationCode, AccessToken, IdToken, OAuth2TokenResponse, TokenResponse};
+use openidconnect::{core::*, reqwest::async_http_client, IssuerUrl, ClientId, ClientSecret, RedirectUrl, Nonce, CsrfToken, PkceCodeChallenge, AuthorizationCode, AccessToken, IdToken, OAuth2TokenResponse, TokenResponse as OtherTokenResponse};
 use openidconnect::core::{CoreClient, CoreProviderMetadata};
 use jsonwebtoken::{decode_header, DecodingKey, Validation, Algorithm, decode};
 use base64::{Engine as _, engine::general_purpose};
@@ -52,7 +52,7 @@ fn load_defaults_from_env_example() -> HashMap<String, String> {
 /// @INVARIANT Tokens are validated before use and refreshed as needed.
 /// @AUDIT Token operations logged for security monitoring.
 #[derive(Deserialize)]
-struct TokenResponse {
+struct CustomTokenResponse {
     access_token: String,
     refresh_token: String,
     expires_in: u64,
@@ -195,7 +195,7 @@ impl KeycloakClient {
     /// @COUNTERMEASURE TLS encryption and secure token handling.
     /// @PERFORMANCE ~200ms authentication with network round-trip.
     /// @AUDIT Login attempts logged without exposing credentials.
-    pub async fn login(&self, email: &str, password: &str) -> Result<TokenResponse, Box<dyn std::error::Error>> {
+    pub async fn login(&self, email: &str, password: &str) -> Result<CustomTokenResponse, Box<dyn std::error::Error>> {
         let url = format!("{}/realms/{}/protocol/openid-connect/token", self.base_url, self.realm);
         let req = LoginRequest {
             grant_type: "password".to_string(),
@@ -205,7 +205,7 @@ impl KeycloakClient {
             password: password.to_string(),
         };
         let response = self.client.post(&url).form(&req).send().await?;
-        let token: TokenResponse = response.json().await?;
+        let token: CustomTokenResponse = response.json().await?;
         Ok(token)
     }
 
@@ -317,7 +317,7 @@ impl KeycloakClient {
         Ok(auth_url.to_string())
     }
 
-    pub async fn exchange_code_for_token(&self, code: &str, redirect_uri: &str) -> Result<TokenResponse, Box<dyn std::error::Error>> {
+    pub async fn exchange_code_for_token(&self, code: &str, redirect_uri: &str) -> Result<CustomTokenResponse, Box<dyn std::error::Error>> {
         if self.oidc_config.is_none() {
             return Err("OIDC config not discovered".into());
         }
@@ -335,7 +335,7 @@ impl KeycloakClient {
             .request_async(async_http_client)
             .await?;
 
-        Ok(TokenResponse {
+        Ok(CustomTokenResponse {
             access_token: token_response.access_token().secret().clone(),
             refresh_token: token_response.refresh_token().map(|t| t.secret().clone()).unwrap_or_default(),
             expires_in: token_response.expires_in().map(|d| d.as_secs()).unwrap_or(3600),
@@ -348,7 +348,7 @@ impl KeycloakClient {
     /// @COUNTERMEASURE Secure secret storage, limited scope tokens.
     /// @PERFORMANCE ~150ms token acquisition with network round-trip.
     /// @AUDIT Client credentials usage logged for service authentication.
-    pub async fn client_credentials_token(&self, scope: Option<&str>) -> Result<TokenResponse, Box<dyn std::error::Error>> {
+    pub async fn client_credentials_token(&self, scope: Option<&str>) -> Result<CustomTokenResponse, Box<dyn std::error::Error>> {
         let url = format!("{}/realms/{}/protocol/openid-connect/token", self.base_url, self.realm);
 
         let mut params = vec![
@@ -363,7 +363,7 @@ impl KeycloakClient {
 
         let client = reqwest::Client::new();
         let response = client.post(&url).form(&params).send().await?;
-        let token: TokenResponse = response.json().await?;
+        let token: CustomTokenResponse = response.json().await?;
         Ok(token)
     }
 }

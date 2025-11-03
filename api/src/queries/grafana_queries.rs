@@ -27,7 +27,7 @@ use std::collections::HashMap;
 /// @COUNTERMEASURE ACID transactions with validation.
 /// @AUDIT Dashboard operations logged.
 #[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
-#[table_name = "grafana_dashboards"]
+#[diesel(table_name = grafana_dashboards)]
 pub struct GrafanaDashboardRecord {
     pub id: i64,
     pub uid: String,
@@ -49,7 +49,7 @@ pub struct GrafanaDashboardRecord {
 /// @COUNTERMEASURE Encrypted storage with access controls.
 /// @AUDIT Datasource operations logged.
 #[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
-#[table_name = "grafana_datasources"]
+#[diesel(table_name = grafana_datasources)]
 pub struct GrafanaDatasourceRecord {
     pub id: i64,
     pub uid: String,
@@ -75,7 +75,7 @@ pub struct GrafanaDatasourceRecord {
 /// @COUNTERMEASURE Persistent storage with versioning.
 /// @AUDIT Alert operations logged.
 #[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
-#[table_name = "grafana_alert_rules"]
+#[diesel(table_name = grafana_alert_rules)]
 pub struct GrafanaAlertRuleRecord {
     pub id: i64,
     pub uid: String,
@@ -101,7 +101,7 @@ pub struct GrafanaAlertRuleRecord {
 /// @COUNTERMEASURE Comprehensive audit logging.
 /// @AUDIT All operations automatically logged.
 #[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
-#[table_name = "grafana_audit_logs"]
+#[diesel(table_name = grafana_audit_logs)]
 pub struct GrafanaAuditLogRecord {
     pub id: i64,
     pub user_id: String,
@@ -124,7 +124,7 @@ pub struct GrafanaAuditLogRecord {
 /// @COUNTERMEASURE Versioned template storage.
 /// @AUDIT Template operations logged.
 #[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
-#[table_name = "grafana_templates"]
+#[diesel(table_name = grafana_templates)]
 pub struct GrafanaTemplateRecord {
     pub id: i64,
     pub name: String,
@@ -148,7 +148,7 @@ pub struct GrafanaTemplateRecord {
 /// @AUDIT Insert operations logged.
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[table_name = "grafana_dashboards"]
+#[diesel(table_name = grafana_dashboards)]
 pub struct NewGrafanaDashboardRecord {
     pub uid: String,
     pub title: String,
@@ -162,7 +162,7 @@ pub struct NewGrafanaDashboardRecord {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[table_name = "grafana_datasources"]
+#[diesel(table_name = grafana_datasources)]
 pub struct NewGrafanaDatasourceRecord {
     pub uid: String,
     pub name: String,
@@ -180,7 +180,7 @@ pub struct NewGrafanaDatasourceRecord {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[table_name = "grafana_alert_rules"]
+#[diesel(table_name = grafana_alert_rules)]
 pub struct NewGrafanaAlertRuleRecord {
     pub uid: String,
     pub title: String,
@@ -198,7 +198,7 @@ pub struct NewGrafanaAlertRuleRecord {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[table_name = "grafana_audit_logs"]
+#[diesel(table_name = grafana_audit_logs)]
 pub struct NewGrafanaAuditLogRecord {
     pub user_id: String,
     pub organization_id: String,
@@ -214,7 +214,7 @@ pub struct NewGrafanaAuditLogRecord {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[table_name = "grafana_templates"]
+#[diesel(table_name = grafana_templates)]
 pub struct NewGrafanaTemplateRecord {
     pub name: String,
     pub template_type: String,
@@ -235,7 +235,7 @@ pub struct NewGrafanaTemplateRecord {
 /// @AUDIT Update operations logged.
 
 #[derive(Debug, Clone, AsChangeset, Serialize, Deserialize)]
-#[table_name = "grafana_dashboards"]
+#[diesel(table_name = grafana_dashboards)]
 pub struct UpdateGrafanaDashboardRecord {
     pub title: Option<String>,
     pub folder_uid: Option<Option<String>>,
@@ -245,7 +245,7 @@ pub struct UpdateGrafanaDashboardRecord {
 }
 
 #[derive(Debug, Clone, AsChangeset, Serialize, Deserialize)]
-#[table_name = "grafana_datasources"]
+#[diesel(table_name = grafana_datasources)]
 pub struct UpdateGrafanaDatasourceRecord {
     pub name: Option<String>,
     pub url: Option<String>,
@@ -258,7 +258,7 @@ pub struct UpdateGrafanaDatasourceRecord {
 }
 
 #[derive(Debug, Clone, AsChangeset, Serialize, Deserialize)]
-#[table_name = "grafana_alert_rules"]
+#[diesel(table_name = grafana_alert_rules)]
 pub struct UpdateGrafanaAlertRuleRecord {
     pub title: Option<String>,
     pub condition: Option<String>,

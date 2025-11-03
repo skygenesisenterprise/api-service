@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 tokio = { version = "1.0", features = ["full"] }
-warp = "0.4"
+warp = { version = "0.4", features = ["websocket"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
@@ -81,7 +81,7 @@ webauthn-rs = "0.5"
 webauthn-authenticator-rs = "0.5"
 
 # OpenTelemetry
-opentelemetry = "0.31"
+opentelemetry = { version = "0.31", features = ["trace"] }
 opentelemetry-otlp = { version = "0.31", features = ["tonic"] }
 opentelemetry-prometheus = "0.29"
 
@@ -91,13 +91,23 @@ tower = "0.5"
 tower-http = "0.6"
 
 # OpenPGP
-sequoia-openpgp = "2.0"
+# sequoia-openpgp = "2.0"  # Commented out due to nettle-sys compilation issues
+pgp = "0.11"
 
 # Search indexing
 tantivy = "0.25"
 
 # Regular expressions
 regex = "1.0"
+
+# Missing dependencies
+tokio-rustls = "0.26"
+lettre = { version = "0.11", features = ["tokio1-rustls", "ring", "rustls-native-certs"], default-features = false }
+ring = "0.17"
+sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-rustls", "chrono", "uuid"] }
+tokio-postgres = "0.7"
+hmac = "0.12"
+rustls = "0.23"
 
 # Compression (Zstandard)
 zstd = "0.13.2"

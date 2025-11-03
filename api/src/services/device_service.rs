@@ -72,8 +72,7 @@ impl DeviceService {
         credentials_ref: Option<String>,
         metadata: HashMap<String, String>,
     ) -> Result<Device, String> {
-        let device = sqlx::query_as!(
-            Device,
+        let device = sqlx::query_as::<_, Device>(
             r#"
             INSERT INTO devices (
                 name, hostname, ip_address, device_type, connection_type,
@@ -127,8 +126,7 @@ impl DeviceService {
         let status_filter_str = status_filter.map(|s| format!("{:?}", s));
         let type_filter_str = type_filter.map(|t| format!("{:?}", t));
 
-        let devices = sqlx::query_as!(
-            Device,
+        let devices = sqlx::query_as::<_, Device>(
             r#"
             SELECT
                 id, name, hostname, ip_address as "ip_address: Option<String>",
@@ -156,7 +154,7 @@ impl DeviceService {
         .await
         .map_err(|e| format!("Failed to list devices: {}", e))?;
 
-        let total_count = sqlx::query_scalar!(
+        let total_count = sqlx::query_scalar(
             r#"
             SELECT COUNT(*) as "count!"
             FROM devices
@@ -177,8 +175,7 @@ impl DeviceService {
 
     /// Get a specific device by ID and organization
     pub async fn get_device(&self, device_id: Uuid, organization_id: Uuid) -> Result<Device, String> {
-        let device = sqlx::query_as!(
-            Device,
+        let device = sqlx::query_as::<_, Device>(
             r#"
             SELECT
                 id, name, hostname, ip_address as "ip_address: Option<String>",
@@ -223,8 +220,7 @@ impl DeviceService {
         credentials_ref: Option<String>,
         metadata: Option<HashMap<String, String>>,
     ) -> Result<Device, String> {
-        let device = sqlx::query_as!(
-            Device,
+        let device = sqlx::query_as::<_, Device>(
             r#"
             UPDATE devices
             SET
@@ -281,7 +277,7 @@ impl DeviceService {
 
     /// Delete a device
     pub async fn delete_device(&self, device_id: Uuid, organization_id: Uuid) -> Result<(), String> {
-        let result = sqlx::query!(
+        let result = sqlx::query(
             "DELETE FROM devices WHERE id = $1 AND organization_id = $2",
             device_id,
             organization_id
@@ -311,8 +307,7 @@ impl DeviceService {
         let device = self.get_device(device_id, organization_id).await?;
 
         // Create command record
-        let command_record = sqlx::query_as!(
-            DeviceCommand,
+        let command_record = sqlx::query_as::<_, DeviceCommand>(
             r#"
             INSERT INTO device_commands (device_id, user_id, command, parameters, status)
             VALUES ($1, $2, $3, $4, $5)
@@ -330,7 +325,7 @@ impl DeviceService {
         .map_err(|e| format!("Failed to create command record: {}", e))?;
 
         // Update command as started
-        sqlx::query!(
+        sqlx::query(
             "UPDATE device_commands SET started_at = now() WHERE id = $1",
             command_record.id
         )
@@ -363,7 +358,7 @@ impl DeviceService {
             Err(error) => (CommandStatus::Failed, Some(error), Some(1)),
         };
 
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE device_commands
             SET status = $2, output = $3, exit_code = $4, completed_at = now()
@@ -379,8 +374,7 @@ impl DeviceService {
         .map_err(|e| format!("Failed to update command results: {}", e))?;
 
         // Return updated command record
-        let updated_command = sqlx::query_as!(
-            DeviceCommand,
+        let updated_command = sqlx::query_as::<_, DeviceCommand>(
             r#"
             SELECT id, device_id, user_id, command, parameters, status as "status: CommandStatus",
                    output, exit_code, started_at, completed_at, created_at
@@ -471,8 +465,7 @@ impl DeviceService {
 
     /// Get command execution status
     pub async fn get_command_status(&self, command_id: Uuid, organization_id: Uuid) -> Result<DeviceCommand, String> {
-        let command = sqlx::query_as!(
-            DeviceCommand,
+        let command = sqlx::query_as::<_, DeviceCommand>(
             r#"
             SELECT c.id, c.device_id, c.user_id, c.command, c.parameters, c.status as "status: CommandStatus",
                    c.output, c.exit_code, c.started_at, c.completed_at, c.created_at
@@ -503,8 +496,7 @@ impl DeviceService {
 
         let limit_val = limit.unwrap_or(100);
 
-        let metrics = sqlx::query_as!(
-            DeviceMetrics,
+        let metrics = sqlx::query_as::<_, DeviceMetrics>(
             r#"
             SELECT id, device_id, timestamp, cpu_usage, memory_usage, disk_usage,
                    network_stats, temperature, power_usage, custom_metrics
@@ -530,8 +522,7 @@ impl DeviceService {
         organization_id: Uuid,
         status: DeviceStatus,
     ) -> Result<Device, String> {
-        let device = sqlx::query_as!(
-            Device,
+        let device = sqlx::query_as::<_, Device>(
             r#"
             UPDATE devices
             SET status = $3, last_seen = now(), updated_at = now()
@@ -561,8 +552,7 @@ impl DeviceService {
     /// Collect metrics from device (called by background task)
     pub async fn collect_device_metrics(&self, device_id: Uuid) -> Result<(), String> {
         // Get device without organization validation for background tasks
-        let device = sqlx::query_as!(
-            Device,
+        let device = sqlx::query_as::<_, Device>(
             r#"
             SELECT
                 id, name, hostname, ip_address as "ip_address: Option<String>",
@@ -594,7 +584,7 @@ impl DeviceService {
 
         match metrics {
             Ok(metrics) => {
-                sqlx::query!(
+                sqlx::query(
                     r#"
                     INSERT INTO device_metrics (
                         id, device_id, timestamp, cpu_usage, memory_usage, disk_usage,
@@ -617,7 +607,7 @@ impl DeviceService {
                 .map_err(|e| format!("Failed to insert device metrics: {}", e))?;
 
                 // Update device last_seen timestamp
-                sqlx::query!(
+                sqlx::query(
                     "UPDATE devices SET last_seen = now() WHERE id = $1",
                     device_id
                 )
