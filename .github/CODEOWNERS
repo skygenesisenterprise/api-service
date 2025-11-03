@@ -1,48 +1,47 @@
 # Code owners for security and quality control
-# Military-grade access control principles
 
-# Global owners (security team)
-* @security-team @maintainers
+# Global owners - require review from maintainers
+* @skygenesisenterprise/owners
 
 # Security-critical files
-.github/ @security-team
-.github/workflows/ @security-team @ci-team
-.github/codeql-config.yml @security-team
-.github/dependabot.yml @security-team
-.github/CODEOWNERS @security-team
+.github/ @skygenesisenterprise/owners
+.github/workflows/ @skygenesisenterprise/owners
+.github/codeql-config.yml @skygenesisenterprise/owners
+.github/dependabot.yml @skygenesisenterprise/owners
+.github/CODEOWNERS @skygenesisenterprise/owners
 
 # API security
-api/src/core/ @security-team @backend-team
-api/src/middlewares/ @security-team @backend-team
-api/src/services/ @security-team @backend-team
+api/src/core/ @skygenesisenterprise/owners
+api/src/middlewares/ @skygenesisenterprise/owners
+api/src/services/ @skygenesisenterprise/owners
 
 # Infrastructure security
-infrastructure/ @security-team @devops-team
-infrastructure/kubernetes/ @security-team @devops-team
-infrastructure/terraform/ @security-team @devops-team
+infrastructure/ @skygenesisenterprise/owners
+infrastructure/kubernetes/ @skygenesisenterprise/owners
+infrastructure/terraform/ @skygenesisenterprise/owners
 
-# Frontend security
-app/ @frontend-team
-app/components/ @frontend-team
+# Frontend
+app/ @skygenesisenterprise/owners
+app/components/ @skygenesisenterprise/owners
 
 # Documentation
-docs/ @documentation-team
-runbooks/ @documentation-team @security-team
+docs/ @skygenesisenterprise/owners
+runbooks/ @skygenesisenterprise/owners
 
 # Tests
-api/src/tests/ @qa-team @backend-team
-**/*.test.* @qa-team
-**/*.spec.* @qa-team
+api/src/tests/ @skygenesisenterprise/owners
+**/*.test.* @skygenesisenterprise/owners
+**/*.spec.* @skygenesisenterprise/owners
 
 # Configuration files
-*.config.* @devops-team
-*.toml @backend-team
-*.json @frontend-team
-*.yml @devops-team
-*.yaml @devops-team
+*.config.* @skygenesisenterprise/owners
+*.toml @skygenesisenterprise/owners
+*.json @skygenesisenterprise/owners
+*.yml @skygenesisenterprise/owners
+*.yaml @skygenesisenterprise/owners
 
 # Require security review for changes to these patterns
-/SECURITY.md @security-team
-/package.json @security-team
-/Cargo.toml @security-team
-/Dockerfile* @security-team @devops-team
+/SECURITY.md @skygenesisenterprise/owners
+/package.json @skygenesisenterprise/owners
+/Cargo.toml @skygenesisenterprise/owners
+/Dockerfile* @skygenesisenterprise/owners

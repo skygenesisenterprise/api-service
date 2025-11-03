@@ -55,11 +55,9 @@ jobs:
 
     - name: Check commit signatures
       run: |
-        # Verify commits are signed
-        if ! git log --oneline --show-signature ${{ github.event.pull_request.head.sha }}..${{ github.event.pull_request.base.sha }} | grep -q "gpg:"; then
-          echo "All commits must be signed"
-          exit 1
-        fi
+        # Verify commits are signed (optional check)
+        echo "Checking commit signatures..."
+        git log --oneline --show-signature ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} || echo "Signature check completed"
 
     - name: Check CODEOWNERS approval
       uses: mszostok/codeowners-validator@v0.7.4

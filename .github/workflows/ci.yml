@@ -90,11 +90,15 @@ jobs:
         image: postgres:15
         env:
           POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: test_db
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+        ports:
+          - 5432:5432
 
     steps:
     - name: Checkout code
@@ -120,7 +124,7 @@ jobs:
       run: pnpm run lint
 
     - name: Run TypeScript check
-      run: npx tsc --noEmit
+      run: pnpm run typecheck
 
     - name: Run Clippy
       run: cargo clippy -- -D warnings
@@ -137,6 +141,14 @@ jobs:
     - name: Run cargo audit
       uses: actions-rs/audit@v1
 
+    # Setup database
+    - name: Setup database
+      run: |
+        pnpm run db:generate
+        pnpm run db:migrate:deploy
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+
     # Tests
     - name: Run tests
       run: pnpm test
@@ -145,6 +157,8 @@ jobs:
 
     - name: Generate test coverage
       run: pnpm run test:coverage
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
