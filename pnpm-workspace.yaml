@@ -1,3 +1,9 @@
+packages:
+  - 'app'
+  - 'api'
+  - 'cli'
+  - '.'
+  
 ignoredBuiltDependencies:
   - '@prisma/client'
   - '@prisma/engines'
