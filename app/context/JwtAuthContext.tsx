@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, getCurrentUser, login as loginApi, logout as logoutApi, isAuthenticated, getToken } from '../lib/jwt-auth';
+import { User, getCurrentUser, login as loginApi, logout as logoutApi, isAuthenticated, getToken, initializeAuth } from '../lib/jwt-auth';
 
 interface AuthContextType {
   user: User | null;
@@ -103,6 +103,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
+    initializeAuth();
     checkAuth();
   }, []);
 

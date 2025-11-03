@@ -2,7 +2,7 @@
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1";
 
 export async function apiRequest<T>(path: string, options: {
   method?: HttpMethod;
@@ -83,7 +83,7 @@ export const apiKeyService = {
       ...(params.status && { status: params.status }),
     });
 
-    return apiRequest<ApiKey>(`/api/keys/with-certificate?${queryParams}`, {
+    return apiRequest<ApiKey>(`/keys/with-certificate?${queryParams}`, {
       method: "POST",
       token,
     });
@@ -97,7 +97,7 @@ export const apiKeyService = {
       ...(params.cert_type && { cert_type: params.cert_type }),
     });
 
-    return apiRequest<ApiKey>(`/api/keys/sandbox/with-certificate?${queryParams}`, {
+    return apiRequest<ApiKey>(`/keys/sandbox/with-certificate?${queryParams}`, {
       method: "POST",
       token,
     });
@@ -111,28 +111,28 @@ export const apiKeyService = {
       ...(params.cert_type && { cert_type: params.cert_type }),
     });
 
-    return apiRequest<ApiKey>(`/api/keys/production/with-certificate?${queryParams}`, {
+    return apiRequest<ApiKey>(`/keys/production/with-certificate?${queryParams}`, {
       method: "POST",
       token,
     });
   },
 
   async getKey(keyId: string, token: string): Promise<ApiKey> {
-    return apiRequest<ApiKey>(`/api/keys/${keyId}`, {
+    return apiRequest<ApiKey>(`/keys/${keyId}`, {
       method: "GET",
       token,
     });
   },
 
   async listKeys(tenant: string, token: string): Promise<ApiKey[]> {
-    return apiRequest<ApiKey[]>(`/api/keys?tenant=${tenant}`, {
+    return apiRequest<ApiKey[]>(`/keys?tenant=${tenant}`, {
       method: "GET",
       token,
     });
   },
 
   async revokeKey(keyId: string, token: string): Promise<void> {
-    return apiRequest<void>(`/api/keys/${keyId}`, {
+    return apiRequest<void>(`/keys/${keyId}`, {
       method: "DELETE",
       token,
     });

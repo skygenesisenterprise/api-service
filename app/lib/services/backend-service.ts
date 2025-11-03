@@ -15,11 +15,13 @@ export interface User {
   id: string;
   email: string;
   fullName?: string;
+  name?: string; // Alias for fullName for compatibility
   status: string;
   avatar?: string;
   phone?: string;
   department?: string;
   position?: string;
+  role?: string; // Computed role for compatibility
   lastLoginAt?: string;
   isActive: boolean;
   createdAt: string;

@@ -5,7 +5,7 @@
  * using JWT tokens and provides compatibility with NextAuth patterns.
  */
 
-import { backendService, User } from './backend-service'
+import { backendService, User } from '../services/backend-service'
 
 export interface LoginCredentials {
   email: string
@@ -161,6 +161,9 @@ class BackendAuthService {
       if (storedUser && storedToken) {
         try {
           const user = JSON.parse(storedUser)
+          // Add compatibility properties
+          user.role = this.getUserRole(user)
+          user.name = user.fullName
           this.user = user
           this.accessToken = storedToken
           backendService.setAuthToken(storedToken)
@@ -176,11 +179,15 @@ class BackendAuthService {
       try {
         const response = await backendService.getCurrentUser()
         if (response.data) {
-          this.user = response.data
+          const user = response.data
+          // Add compatibility properties
+          user.role = this.getUserRole(user)
+          user.name = user.fullName
+          this.user = user
           if (typeof window !== 'undefined') {
-            localStorage.setItem('user', JSON.stringify(response.data))
+            localStorage.setItem('user', JSON.stringify(user))
           }
-          return response.data
+          return user
         }
       } catch (error) {
         console.error('Failed to get current user:', error)
@@ -267,12 +274,17 @@ class BackendAuthService {
    * Convert User to NextAuth compatible format
    */
   toNextAuthUser(user: User): AuthUser {
+    const role = this.getUserRole(user);
+    // Add role and name to user object for compatibility
+    user.role = role;
+    user.name = user.fullName;
+    
     return {
       id: user.id,
       email: user.email,
       name: user.fullName,
       image: user.avatar,
-      role: this.getUserRole(user),
+      role: role,
       permissions: this.getUserPermissions(user),
     }
   }
@@ -349,4 +361,4 @@ export const authService = BackendAuthService.getInstance()
 
 // Export types
 export type { BackendAuthService }
-export type { User } from './backend-service'
+export type { User } from '../services/backend-service'

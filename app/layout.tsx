@@ -5,6 +5,7 @@ import "./styles/globals.css";
 import { AuthProvider } from "./context/JwtAuthContext";
 import { SidebarProvider } from "./context/SidebarContext";
 import { Toaster } from "./components/ui/toaster";
+import { NavigationModeIndicator } from "./components/NavigationModeIndicator";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,6 +29,7 @@ export default function RootLayout({
       >
         <AuthProvider>
           <SidebarProvider>
+            <NavigationModeIndicator />
             {children}
             <Toaster />
           </SidebarProvider>
