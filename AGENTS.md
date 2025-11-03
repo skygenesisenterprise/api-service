@@ -2,6 +2,17 @@
 
 This document provides essential information for AI coding agents working on this repository.
 
+### 🚨 CRITICAL: Commit Approval Required
+
+**NEVER create commits without explicit user approval.** Before any commit operation:
+
+1. **Always show staged changes**: Use `git status` and `git diff --cached` to display what will be committed
+2. **Always ask for permission**: Present the changes clearly and ask "Should I commit these changes?" or similar
+3. **Wait for explicit confirmation**: Proceed only after receiving clear user consent (yes, go ahead, proceed, etc.)
+4. **Never auto-commit**: Do not commit automatically after completing tasks, even if following conventional commit format
+
+This rule ensures users maintain full control over their repository history and can review all changes before they become permanent.
+
 ## Build/Lint/Test Commands
 
 ### Development
@@ -87,6 +98,7 @@ data/               # Database schemas
 - **Branch naming**: `feature/feature-name`, `fix/bug-name`, `docs/update-docs`
 - **Commits**: Clear, descriptive commit messages following Conventional Commits
 - **PRs**: Include description and link to issues
+- **Commit approval**: ALWAYS ask for user approval before creating commits. Never commit automatically without explicit user consent.
 
 ## Commit Message Conventions
 
@@ -148,6 +160,7 @@ Closes #123
 5. **Reference issues**: Use `Closes #issue-number` or `Fixes #issue-number`
 6. **One commit per feature**: Keep commits focused and atomic
 7. **Avoid merge commits**: Use rebase to keep history clean
+8. **CRITICAL: Always ask for approval**: NEVER create commits without explicit user permission. Always show staged changes and ask "Should I commit these changes?" before proceeding.
 
 ### Scope (optional)
 Use parentheses to specify the scope of the change:
