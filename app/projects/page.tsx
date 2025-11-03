@@ -30,152 +30,166 @@ import {
   Edit, 
   Trash2, 
   Eye,
-  UserPlus,
-  Filter
+  Plus,
+  Filter,
+  FolderOpen,
+  Calendar,
+  User
 } from "lucide-react";
 
-interface User {
+interface Project {
   id: string;
   name: string;
-  email: string;
-  role: string;
-  status: 'active' | 'inactive' | 'suspended';
+  description: string;
+  status: 'active' | 'completed' | 'archived' | 'on-hold';
+  owner: string;
   createdAt: string;
-  lastLogin?: string;
+  updatedAt: string;
+  progress: number;
+  teamSize: number;
 }
 
-export default function UsersPage() {
+export default function ProjectsPage() {
   const { token } = useAuth();
   const router = useRouter();
-  const [users, setUsers] = useState<User[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    // Simulate loading users data
-    const loadUsers = async () => {
+    // Simulate loading projects data
+    const loadProjects = async () => {
       setLoading(true);
       try {
         // In a real implementation, this would fetch from API
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        const mockUsers: User[] = [
+        const mockProjects: Project[] = [
           {
             id: "1",
-            name: "Jean Dupont",
-            email: "jean.dupont@example.com",
-            role: "Admin",
+            name: "API Gateway",
+            description: "Mise en place d'un gateway pour les microservices",
             status: "active",
+            owner: "Jean Dupont",
             createdAt: "2024-01-15",
-            lastLogin: "2024-03-10T14:30:00Z"
+            updatedAt: "2024-03-10",
+            progress: 75,
+            teamSize: 4
           },
           {
             id: "2",
-            name: "Marie Martin",
-            email: "marie.martin@example.com",
-            role: "User",
+            name: "Dashboard Analytics",
+            description: "Tableau de bord pour les analytics en temps réel",
             status: "active",
-            createdAt: "2024-01-20",
-            lastLogin: "2024-03-09T09:15:00Z"
+            owner: "Marie Martin",
+            createdAt: "2024-02-01",
+            updatedAt: "2024-03-09",
+            progress: 60,
+            teamSize: 3
           },
           {
             id: "3",
-            name: "Pierre Durand",
-            email: "pierre.durand@example.com",
-            role: "User",
-            status: "inactive",
-            createdAt: "2024-02-01",
-            lastLogin: "2024-02-28T16:45:00Z"
+            name: "Migration Cloud",
+            description: "Migration des services vers le cloud",
+            status: "on-hold",
+            owner: "Pierre Durand",
+            createdAt: "2024-01-20",
+            updatedAt: "2024-02-28",
+            progress: 30,
+            teamSize: 6
           },
           {
             id: "4",
-            name: "Sophie Bernard",
-            email: "sophie.bernard@example.com",
-            role: "Manager",
-            status: "active",
-            createdAt: "2024-01-10",
-            lastLogin: "2024-03-10T11:20:00Z"
+            name: "App Mobile",
+            description: "Application mobile iOS et Android",
+            status: "completed",
+            owner: "Sophie Bernard",
+            createdAt: "2023-11-10",
+            updatedAt: "2024-02-15",
+            progress: 100,
+            teamSize: 5
           },
           {
             id: "5",
-            name: "Thomas Petit",
-            email: "thomas.petit@example.com",
-            role: "User",
-            status: "suspended",
-            createdAt: "2024-02-15",
-            lastLogin: "2024-03-01T13:10:00Z"
+            name: "Security Audit",
+            description: "Audit de sécurité complet de l'infrastructure",
+            status: "archived",
+            owner: "Thomas Petit",
+            createdAt: "2023-12-01",
+            updatedAt: "2024-01-30",
+            progress: 100,
+            teamSize: 2
           },
         ];
         
-        setUsers(mockUsers);
-        setFilteredUsers(mockUsers);
+        setProjects(mockProjects);
+        setFilteredProjects(mockProjects);
       } catch (error) {
-        console.error('Failed to load users:', error);
+        console.error('Failed to load projects:', error);
       } finally {
         setLoading(false);
       }
     };
 
     if (token) {
-      loadUsers();
+      loadProjects();
     }
   }, [token]);
 
   useEffect(() => {
-    const filtered = users.filter(user =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchTerm.toLowerCase())
+    const filtered = projects.filter(project =>
+      project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.owner.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    setFilteredUsers(filtered);
-  }, [searchTerm, users]);
+    setFilteredProjects(filtered);
+  }, [searchTerm, projects]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
         return 'bg-green-100 text-green-800';
-      case 'inactive':
+      case 'completed':
+        return 'bg-blue-100 text-blue-800';
+      case 'archived':
         return 'bg-gray-100 text-gray-800';
-      case 'suspended':
-        return 'bg-red-100 text-red-800';
+      case 'on-hold':
+        return 'bg-yellow-100 text-yellow-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'Admin':
-        return 'bg-purple-100 text-purple-800';
-      case 'Manager':
-        return 'bg-blue-100 text-blue-800';
-      case 'User':
-        return 'bg-gray-100 text-gray-800';
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'Actif';
+      case 'completed':
+        return 'Terminé';
+      case 'archived':
+        return 'Archivé';
+      case 'on-hold':
+        return 'En pause';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return status;
     }
+  };
+
+  const getProgressColor = (progress: number) => {
+    if (progress >= 80) return 'bg-green-500';
+    if (progress >= 50) return 'bg-blue-500';
+    if (progress >= 30) return 'bg-yellow-500';
+    return 'bg-red-500';
   };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR');
   };
 
-  const formatLastLogin = (dateString?: string) => {
-    if (!dateString) return 'Jamais';
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'Moins d\'une heure';
-    if (diffInHours < 24) return `Il y a ${diffInHours} heures`;
-    if (diffInHours < 48) return 'Hier';
-    return formatDate(dateString);
-  };
-
   if (loading) {
     return (
-      <DashboardPageLayout title="Utilisateurs" subtitle="Gestion des utilisateurs">
+      <DashboardPageLayout title="Projets" subtitle="Gestion des projets">
         <div className="space-y-6">
           <div className="animate-pulse">
             <div className="h-10 bg-gray-200 rounded w-1/3 mb-6"></div>
@@ -187,7 +201,7 @@ export default function UsersPage() {
   }
 
   return (
-    <DashboardPageLayout title="Utilisateurs" subtitle="Gestion des utilisateurs du système">
+    <DashboardPageLayout title="Projets" subtitle="Gestion des projets de l'entreprise">
       <div className="space-y-6">
         {/* Actions Bar */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -195,7 +209,7 @@ export default function UsersPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Rechercher des utilisateurs..."
+                placeholder="Rechercher des projets..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 w-64"
@@ -207,9 +221,9 @@ export default function UsersPage() {
             </Button>
           </div>
           
-          <Button onClick={() => router.push('/users/create')}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Ajouter un utilisateur
+          <Button onClick={() => router.push('/projects/create')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouveau projet
           </Button>
         </div>
 
@@ -218,9 +232,10 @@ export default function UsersPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total</CardTitle>
+              <FolderOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{users.length}</div>
+              <div className="text-2xl font-bold">{projects.length}</div>
             </CardContent>
           </Card>
           
@@ -230,79 +245,98 @@ export default function UsersPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {users.filter(u => u.status === 'active').length}
+                {projects.filter(p => p.status === 'active').length}
               </div>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Inactifs</CardTitle>
+              <CardTitle className="text-sm font-medium">Terminés</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-600">
-                {users.filter(u => u.status === 'inactive').length}
+              <div className="text-2xl font-bold text-blue-600">
+                {projects.filter(p => p.status === 'completed').length}
               </div>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Suspendus</CardTitle>
+              <CardTitle className="text-sm font-medium">En pause</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {users.filter(u => u.status === 'suspended').length}
+              <div className="text-2xl font-bold text-yellow-600">
+                {projects.filter(p => p.status === 'on-hold').length}
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Users Table */}
+        {/* Projects Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Liste des utilisateurs</CardTitle>
+            <CardTitle>Liste des projets</CardTitle>
             <CardDescription>
-              {filteredUsers.length} utilisateur{filteredUsers.length > 1 ? 's' : ''} trouvé{filteredUsers.length > 1 ? 's' : ''}
+              {filteredProjects.length} projet{filteredProjects.length > 1 ? 's' : ''} trouvé{filteredProjects.length > 1 ? 's' : ''}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Utilisateur</TableHead>
-                  <TableHead>Rôle</TableHead>
+                  <TableHead>Projet</TableHead>
+                  <TableHead>Responsable</TableHead>
                   <TableHead>Statut</TableHead>
-                  <TableHead>Dernière connexion</TableHead>
-                  <TableHead>Créé le</TableHead>
+                  <TableHead>Progression</TableHead>
+                  <TableHead>Équipe</TableHead>
+                  <TableHead>Dernière mise à jour</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
+                {filteredProjects.map((project) => (
+                  <TableRow key={project.id}>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{user.name}</div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
+                        <div className="font-medium">{project.name}</div>
+                        <div className="text-sm text-gray-500 truncate max-w-xs">
+                          {project.description}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getRoleColor(user.role)}>
-                        {user.role}
+                      <div className="flex items-center space-x-2">
+                        <User className="h-4 w-4 text-gray-400" />
+                        <span>{project.owner}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(project.status)}>
+                        {getStatusLabel(project.status)}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(user.status)}>
-                        {user.status === 'active' ? 'Actif' : 
-                         user.status === 'inactive' ? 'Inactif' : 'Suspendu'}
-                      </Badge>
+                      <div className="flex items-center space-x-2">
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full ${getProgressColor(project.progress)}`}
+                            style={{ width: `${project.progress}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm text-gray-600 min-w-[3rem]">
+                          {project.progress}%
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-1">
+                        <span>{project.teamSize}</span>
+                        <User className="h-3 w-3 text-gray-400" />
+                      </div>
                     </TableCell>
                     <TableCell className="text-sm text-gray-500">
-                      {formatLastLogin(user.lastLogin)}
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-500">
-                      {formatDate(user.createdAt)}
+                      {formatDate(project.updatedAt)}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -315,13 +349,13 @@ export default function UsersPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem
-                            onClick={() => router.push(`/users/${user.id}`)}
+                            onClick={() => router.push(`/projects/${project.id}`)}
                           >
                             <Eye className="h-4 w-4 mr-2" />
                             Voir
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => router.push(`/users/${user.id}/edit`)}
+                            onClick={() => router.push(`/projects/${project.id}/edit`)}
                           >
                             <Edit className="h-4 w-4 mr-2" />
                             Modifier

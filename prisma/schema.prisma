@@ -13,6 +13,71 @@ datasource db {
 }
 
 // ======================================
+// ROLE AND PERMISSION MANAGEMENT
+// ======================================
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  resource    String   @db.VarChar(100) // e.g., "users", "projects", "api_keys"
+  action      String   @db.VarChar(50)  // e.g., "create", "read", "update", "delete"
+  module      String   @db.VarChar(50)  // e.g., "admin", "dashboard", "logs"
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+  @@map("permissions")
+}
+
+model UserRole {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id") @db.Uuid
+  roleId       String   @map("role_id") @db.Uuid
+  assignedBy   String?  @map("assigned_by") @db.Uuid
+  assignedAt   DateTime @default(now()) @map("assigned_at")
+  expiresAt    DateTime? @map("expires_at")
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assigner User?    @relation("RoleAssigner", fields: [assignedBy], references: [id])
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id           String @id @default(cuid())
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  // Relations
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ======================================
 // CORE STRUCTURE
 // ======================================
 
@@ -31,6 +96,7 @@ model Organization {
   devices         Device[]
   macIdentities   MacIdentity[]
   auditEvents     AuditEvent[]
+  projects        Project[]
 
   @@map("organizations")
 }
@@ -41,13 +107,20 @@ model User {
   email        String   @unique @db.VarChar(255)
   fullName     String?  @map("full_name") @db.VarChar(255)
   passwordHash String   @map("password_hash")
-  role         String   @default("user") @db.VarChar(50)
   status       String   @default("active") @db.VarChar(50)
+  avatar       String?  @db.VarChar(255)
+  phone        String?  @db.VarChar(20)
+  department   String?  @db.VarChar(100)
+  position     String?  @db.VarChar(100)
+  lastLoginAt  DateTime? @map("last_login_at")
+  isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
   organization         Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userRoles            UserRole[]
+  assignedRoles        UserRole[] @relation("RoleAssigner")
   userSessions         UserSession[]
   apiAccessLogs        ApiAccessLog[] @relation("ApiAccessLogUser")
   aiModels             AiModel[]
@@ -59,6 +132,8 @@ model User {
   messageReactions     MessageReaction[]
   messageReads         MessageRead[]
   deviceCommands       DeviceCommand[]
+  createdProjects      Project[] @relation("ProjectCreator")
+  projectMemberships   ProjectMember[]
 
   @@map("users")
 }
@@ -358,6 +433,50 @@ model MessageRead {
 
   @@unique([message, user])
   @@map("message_reads")
+}
+
+// ======================================
+// PROJECT MANAGEMENT
+// ======================================
+
+model Project {
+  id           String    @id @default(cuid())
+  name         String    @db.VarChar(255)
+  description  String?   @db.Text
+  key          String    @unique @db.VarChar(100)
+  status       String    @default("active") @db.VarChar(50)
+  priority     String    @default("medium") @db.VarChar(20)
+  startDate    DateTime? @map("start_date")
+  endDate      DateTime? @map("end_date")
+  budget       Decimal?  @db.Decimal(12, 2)
+  progress     Int       @default(0)
+  organizationId String  @map("organization_id") @db.Uuid
+  createdBy    String?   @map("created_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  organizationRelation Organization?   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creatorRelation     User?           @relation("ProjectCreator", fields: [createdBy], references: [id])
+  members             ProjectMember[]
+
+  @@map("projects")
+}
+
+model ProjectMember {
+  id         String    @id @default(cuid())
+  project    String    @map("project_id") @db.Uuid
+  user       String    @map("user_id") @db.Uuid
+  role       String    @default("member") @db.VarChar(50)
+  joinedAt   DateTime  @default(now()) @map("joined_at")
+  isActive   Boolean   @default(true) @map("is_active")
+
+  // Relations
+  projectRelation Project @relation(fields: [project], references: [id], onDelete: Cascade)
+  userRelation     User    @relation(fields: [user], references: [id], onDelete: Cascade)
+
+  @@unique([project, user])
+  @@map("project_members")
 }
 
 // ======================================

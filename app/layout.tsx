@@ -1,13 +1,10 @@
 "use client";
 
-import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { usePathname } from "next/navigation";
-import { SessionProvider } from "next-auth/react";
 import "./styles/globals.css";
-import { AuthProvider } from "./context/AuthContext";
-import { SidebarProvider, useSidebar } from "./context/SidebarContext";
-import Navbar from "./components/Navbar";
+import { AuthProvider } from "./context/JwtAuthContext";
+import { SidebarProvider } from "./context/SidebarContext";
+import { Toaster } from "./components/ui/toaster";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,47 +16,22 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Note: Metadata cannot be exported from client components in Next.js
-// Consider moving metadata to a server component or using other approaches
-
-function MainContent({ children }: { children: React.ReactNode }) {
-  const { isCollapsed } = useSidebar();
-  const pathname = usePathname();
-
-  // Don't apply sidebar margin on auth pages
-  const isAuthPage = pathname.startsWith('/auth') || pathname === '/login';
-
-  return (
-    <main
-      className={`min-h-screen bg-gray-50 transition-all duration-300 ${
-        isAuthPage ? '' : (isCollapsed ? 'md:ml-16' : 'md:ml-64')
-      }`}
-    >
-      {children}
-    </main>
-  );
-}
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="fr">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SessionProvider>
-          <AuthProvider>
-            <SidebarProvider>
-              <Navbar />
-              <MainContent>
-                {children}
-              </MainContent>
-            </SidebarProvider>
-          </AuthProvider>
-        </SessionProvider>
+        <AuthProvider>
+          <SidebarProvider>
+            {children}
+            <Toaster />
+          </SidebarProvider>
+        </AuthProvider>
       </body>
     </html>
   );

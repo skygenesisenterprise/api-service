@@ -17,7 +17,7 @@ export default function AuthForm() {
 
   // Set page title
   useEffect(() => {
-    document.title = "Sky Genesis Enterprise API Login"
+    document.title = "SSO Enterprise Login"
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
