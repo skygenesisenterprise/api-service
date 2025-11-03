@@ -20,7 +20,7 @@ use serde_json::Value;
 use std::sync::Arc;
 use crate::core::vault::VaultClient;
 use std::collections::HashMap;
-use openidconnect::{core::*, reqwest::async_http_client, IssuerUrl, ClientId, ClientSecret, RedirectUrl, Nonce, CsrfToken, PkceCodeChallenge, AuthorizationCode, AccessToken, IdToken, OAuth2TokenResponse, TokenResponse as OtherTokenResponse};
+use openidconnect::{core::*, IssuerUrl, ClientId, ClientSecret, RedirectUrl, Nonce, CsrfToken, PkceCodeChallenge, AuthorizationCode, AccessToken, IdToken, OAuth2TokenResponse, TokenResponse as OtherTokenResponse};
 use openidconnect::core::{CoreClient, CoreProviderMetadata};
 use jsonwebtoken::{decode_header, DecodingKey, Validation, Algorithm, decode};
 use base64::{Engine as _, engine::general_purpose};

@@ -146,7 +146,7 @@ pub fn certificate_auth(key_service: Arc<KeyService>) -> impl Filter<Extract = (
 /// @DEPENDENCY Uses rsa crate for cryptographic operations.
 fn verify_rsa_signature(message: &str, signature: &[u8], public_key_pem: &str) -> bool {
     use rsa::{RsaPublicKey, pkcs8::DecodePublicKey};
-    use rsa::signature::{Verifier, Signature};
+    use rsa::pkcs1v15::Signature;
     use sha2::Sha256;
 
     match RsaPublicKey::from_public_key_pem(public_key_pem) {

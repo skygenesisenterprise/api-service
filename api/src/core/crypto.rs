@@ -18,9 +18,10 @@ use aes_gcm::aead::{Aead, KeyInit};
 use argon2::{Argon2, Params};
 use chacha20poly1305::{ChaCha20Poly1305, Key as ChaChaKey, Nonce as ChaChaNonce};
 use chacha20poly1305::aead::{Aead as ChaChaAead, KeyInit as ChaChaKeyInit};
-use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature, Signer, Verifier};
+use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier};
+use ed25519_dalek::pkcs8::{spki::der::EncodePem, KeypairBytes};
 use hkdf::Hkdf;
-use p384::ecdsa::{SigningKey, VerifyingKey, signature::{Signer as EcdsaSigner, Verifier as EcdsaVerifier}};
+use p384::ecdsa::{SigningKey as EcdsaP384SigningKey, VerifyingKey as EcdsaP384VerifyingKey, signature::{Signer as EcdsaSigner, Verifier as EcdsaVerifier}};
 use rand::rngs::OsRng;
 use rand::RngCore;
 use sha2::{Sha512, Digest as Sha2Digest};
@@ -360,7 +361,8 @@ pub fn x25519_shared_secret(local: &X25519Keypair, peer_public: &X25519PublicKey
 /// @AUDIT Keypair generation and usage logged for compliance.
 #[derive(ZeroizeOnDrop)]
 pub struct Ed25519Keypair {
-    pub keypair: Keypair,
+    pub signing_key: SigningKey,
+    pub verifying_key: VerifyingKey,
 }
 
 impl Ed25519Keypair {
@@ -372,8 +374,9 @@ impl Ed25519Keypair {
     /// @AUDIT Key generation events logged with unique identifiers.
     pub fn generate() -> Self {
         let mut csprng = OsRng;
-        let keypair = Keypair::generate(&mut csprng);
-        Ed25519Keypair { keypair }
+        let signing_key = SigningKey::generate(&mut csprng);
+        let verifying_key = signing_key.verifying_key();
+        Ed25519Keypair { signing_key, verifying_key }
     }
 
     /// [ED25519 MESSAGE SIGNING] Deterministic Signature Creation
@@ -384,17 +387,17 @@ impl Ed25519Keypair {
     /// @PERFORMANCE ~50k signatures/second on modern hardware.
     /// @AUDIT All signing operations logged with message hash.
     pub fn sign(&self, message: &[u8]) -> Signature {
-        self.keypair.sign(message)
+        self.signing_key.sign(message)
     }
 
     /// [ED25519 PUBLIC KEY EXPORT] Signature Verification Key
     /// @MISSION Provide public key for signature verification by others.
     /// @THREAT Public key confusion or incorrect usage.
-    /// @COUNTERMEASURE Return typed PublicKey struct with validation.
+    /// @COUNTERMEASURE Return typed VerifyingKey struct with validation.
     /// @INVARIANT Public key is always valid Ed25519 key.
     /// @AUDIT Public key exports logged for distribution tracking.
-    pub fn public_key(&self) -> PublicKey {
-        self.keypair.public
+    pub fn public_key(&self) -> VerifyingKey {
+        self.verifying_key
     }
 
     /// [ED25519 SIGNATURE VERIFICATION] Integrity and Authenticity Check
@@ -405,7 +408,7 @@ impl Ed25519Keypair {
     /// @PERFORMANCE ~25k verifications/second on modern hardware.
     /// @AUDIT Verification attempts logged with success/failure status.
     pub fn verify(&self, message: &[u8], signature: &Signature) -> CryptoResult<()> {
-        self.keypair.public.verify(message, signature)
+        self.verifying_key.verify(message, signature)
             .map_err(|_| CryptoError::SignatureVerificationFailed)
     }
 }
@@ -419,7 +422,7 @@ impl Ed25519Keypair {
 /// @AUDIT Keypair operations logged for regulatory compliance.
 #[derive(ZeroizeOnDrop)]
 pub struct EcdsaP384Keypair {
-    pub signing_key: SigningKey,
+    pub signing_key: EcdsaP384SigningKey,
 }
 
 impl EcdsaP384Keypair {
@@ -430,7 +433,7 @@ impl EcdsaP384Keypair {
     /// @PERFORMANCE ~2k keypairs/second on modern hardware.
     /// @AUDIT Key generation logged with FIPS compliance markers.
     pub fn generate() -> Self {
-        let signing_key = SigningKey::random(&mut OsRng);
+        let signing_key = EcdsaP384SigningKey::random(&mut OsRng);
         EcdsaP384Keypair { signing_key }
     }
 
@@ -451,7 +454,7 @@ impl EcdsaP384Keypair {
     /// @COUNTERMEASURE Return typed VerifyingKey with built-in validation.
     /// @INVARIANT Public key conforms to P-384 curve standards.
     /// @AUDIT Public key exports logged for distribution audit.
-    pub fn verifying_key(&self) -> VerifyingKey {
+    pub fn verifying_key(&self) -> EcdsaP384VerifyingKey {
         self.signing_key.verifying_key()
     }
 
@@ -500,15 +503,15 @@ pub fn sign(algorithm: SignatureAlgorithm, keypair: &dyn Signable, message: &[u8
 pub fn verify(algorithm: SignatureAlgorithm, public_key: &[u8], message: &[u8], signature: &[u8]) -> CryptoResult<()> {
     match algorithm {
         SignatureAlgorithm::Ed25519 => {
-            let pk = PublicKey::from_bytes(public_key)
+            let pk = VerifyingKey::from_bytes(public_key.try_into().unwrap())
                 .map_err(|_| CryptoError::InvalidFormat("Invalid Ed25519 public key".to_string()))?;
-            let sig = Signature::from_bytes(signature)
+            let sig = Signature::from_bytes(signature.try_into().unwrap())
                 .map_err(|_| CryptoError::InvalidFormat("Invalid Ed25519 signature".to_string()))?;
             pk.verify(message, &sig)
                 .map_err(|_| CryptoError::SignatureVerificationFailed)
         }
         SignatureAlgorithm::EcdsaP384 => {
-            let vk = VerifyingKey::from_sec1_bytes(public_key)
+            let vk = EcdsaP384VerifyingKey::from_sec1_bytes(public_key)
                 .map_err(|_| CryptoError::InvalidFormat("Invalid ECDSA P-384 public key".to_string()))?;
             let sig = p384::ecdsa::Signature::from_bytes(signature)
                 .map_err(|_| CryptoError::InvalidFormat("Invalid ECDSA P-384 signature".to_string()))?;
@@ -832,7 +835,7 @@ pub fn sign_data(keypair: &Ed25519Keypair, data: &[u8]) -> Vec<u8> {
 /// @DEPENDENCY ed25519-dalek with timing protection.
 /// @PERFORMANCE ~25k verifications/second.
 /// @AUDIT Verification results logged.
-pub fn verify_signature(public_key: &PublicKey, data: &[u8], signature: &Signature) -> CryptoResult<()> {
+pub fn verify_signature(public_key: &VerifyingKey, data: &[u8], signature: &Signature) -> CryptoResult<()> {
     public_key.verify(data, signature)
         .map_err(|_| CryptoError::SignatureVerificationFailed)
 }

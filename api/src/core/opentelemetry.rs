@@ -16,12 +16,9 @@
 
 use opentelemetry::{global, KeyValue};
 use opentelemetry::trace::{Tracer, Span, TracerProvider};
-use opentelemetry::metrics::{Meter, Counter, Histogram, UpDownCounter};
-use opentelemetry_otlp::{WithExportConfig, WithTonicConfig};
-use opentelemetry::sdk::trace::{self, Sampler};
-use opentelemetry::sdk::metrics::{self, MeterProvider};
-use opentelemetry::sdk::Resource;
-use std::sync::Arc;
+use opentelemetry::metrics::{Counter, Histogram, UpDownCounter};
+use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::{Resource, trace as sdk_trace, metrics as sdk_metrics};
 use tokio::sync::OnceCell;
 
 /// [GLOBAL INITIALIZATION GUARD] Thread-Safe OTEL Setup
@@ -69,17 +66,17 @@ pub async fn init_opentelemetry(service_name: &str, service_version: &str) -> Re
                 .with_endpoint("http://localhost:4317") // OTLP gRPC endpoint
         )
         .with_trace_config(
-            trace::config()
+            sdk_trace::Config::default()
                 .with_resource(resource.clone())
-                .with_sampler(Sampler::AlwaysOn)
+                .with_sampler(sdk_trace::Sampler::AlwaysOn)
         )
-        .install_batch(opentelemetry::runtime::Tokio)?;
+        .install_batch(opentelemetry_sdk::runtime::Tokio)?;
 
     let tracer = tracer_provider.tracer(service_name);
 
     // Initialize metrics
     let meter_provider = opentelemetry_otlp::new_pipeline()
-        .metrics(opentelemetry::runtime::Tokio)
+        .metrics(opentelemetry_sdk::runtime::Tokio)
         .with_exporter(
             opentelemetry_otlp::new_exporter()
                 .tonic()

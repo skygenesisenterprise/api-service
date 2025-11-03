@@ -33,6 +33,7 @@ mod openapi;
 mod websocket;
 mod ssh;
 mod data;
+mod utils;
 
 /// [CONFIGURATION LAYER] Environment Variable Loader
 /// @MISSION Load default configuration values from secure template.

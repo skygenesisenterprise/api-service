@@ -21,7 +21,7 @@ jsonwebtoken = { version = "10.1", features = ["rust_crypto"] }
 aes-gcm = "0.10"
 chacha20poly1305 = "0.10"
 x25519-dalek = { version = "2.0.1", features = ["getrandom"] }
-ed25519-dalek = { version = "2.0", features = ["serde"] }
+ed25519-dalek = { version = "2.0", features = ["serde", "rand_core"] }
 p384 = { version = "0.13", features = ["ecdsa", "pem"] }
 sha3 = "0.10"
 hkdf = "0.12"
@@ -82,7 +82,7 @@ webauthn-authenticator-rs = "0.5"
 
 # OpenTelemetry
 opentelemetry = { version = "0.31", features = ["trace"] }
-opentelemetry-otlp = { version = "0.31", features = ["tonic"] }
+opentelemetry-otlp = { version = "0.31", features = ["grpc-tonic"] }
 opentelemetry-prometheus = "0.29"
 
 # Additional utilities
@@ -102,12 +102,17 @@ regex = "1.0"
 
 # Missing dependencies
 tokio-rustls = "0.26"
-lettre = { version = "0.11", features = ["tokio1-rustls", "ring", "rustls-native-certs"], default-features = false }
+axum = "0.8"
+lettre = { version = "0.11", features = ["tokio1-rustls", "ring", "rustls-native-certs", "smtp-transport", "builder"], default-features = false }
 ring = "0.17"
 sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-rustls", "chrono", "uuid"] }
 tokio-postgres = "0.7"
 hmac = "0.12"
-rustls = "0.23"
+rustls = { version = "0.23", features = ["std"] }
+log = "0.4"
+sequoia-openpgp = "2.0"
+sha256 = "1.5"
+validator = { version = "0.18", features = ["derive"] }
 
 # Compression (Zstandard)
 zstd = "0.13.2"

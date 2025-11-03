@@ -234,3 +234,11 @@ pub mod grafana_core;
 /// @PERFORMANCE Template caching and efficient operations.
 /// @AUDIT DNS operations logged for compliance.
 pub mod poweradmin_core;
+
+/// [ASTERISK CLIENT] Asterisk PBX Integration Client
+/// @MISSION Provide secure communication with Asterisk PBX systems.
+/// @THREAT Unauthorized PBX access or call manipulation.
+/// @COUNTERMEASURE Authentication, TLS encryption, and request validation.
+/// @DEPENDENCY Asterisk ARI HTTP API and WebSocket events.
+/// @INVARIANT All operations are authenticated and logged.
+pub mod asterisk_client;

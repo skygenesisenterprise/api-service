@@ -17,8 +17,8 @@
 use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio_rustls::{TlsConnector, TlsAcceptor, rustls};
-use rustls::{ClientConfig, ServerConfig, Certificate, PrivateKey, RootCertStore};
-use rustls::client::ServerName;
+use rustls::{ClientConfig, ServerConfig, RootCertStore};
+use rustls::pki_types::{CertificateDer, PrivateKeyDer, ServerName, UnixTime};
 use rustls::server::ClientHello;
 use crate::core::vault::VaultClient;
 use std::time::Duration;
@@ -90,7 +90,7 @@ impl TransportSecurity {
 
         let mut root_store = RootCertStore::empty();
         for cert in ca_certs {
-            root_store.add(&cert).map_err(|e| TransportError::CertificateError(e.to_string()))?;
+            root_store.add(cert).map_err(|e| TransportError::CertificateError(e.to_string()))?;
         }
 
         let mut config = ClientConfig::builder()
@@ -121,10 +121,12 @@ impl TransportSecurity {
 
         let mut root_store = RootCertStore::empty();
         for cert in ca_certs {
-            root_store.add(&cert).map_err(|e| TransportError::CertificateError(e.to_string()))?;
+            root_store.add(cert).map_err(|e| TransportError::CertificateError(e.to_string()))?;
         }
 
-        let client_cert_verifier = rustls::server::AllowAnyAuthenticatedClient::new(root_store);
+        let client_cert_verifier = rustls::server::WebPkiClientVerifier::builder(root_store)
+            .build()
+            .map_err(|e| TransportError::CertificateError(e.to_string()))?;
 
         let mut config = ServerConfig::builder()
             .with_cipher_suites(APPROVED_CIPHER_SUITES)
@@ -145,7 +147,7 @@ impl TransportSecurity {
     }
 
     /// Load CA certificates from Vault
-    async fn load_ca_certificates(vault_client: &VaultClient) -> TransportResult<Vec<Certificate>> {
+    async fn load_ca_certificates(vault_client: &VaultClient) -> TransportResult<Vec<CertificateDer<'static>>> {
         let ca_cert_pem = vault_client.get_secret("secret/ssl/ca_cert")
             .await
             .map_err(|e| TransportError::VaultError(e.to_string()))?;
@@ -159,7 +161,7 @@ impl TransportSecurity {
     }
 
     /// Load client certificate from Vault
-    async fn load_client_certificate(vault_client: &VaultClient) -> TransportResult<Certificate> {
+    async fn load_client_certificate(vault_client: &VaultClient) -> TransportResult<CertificateDer<'static>> {
         let client_cert_pem = vault_client.get_secret("secret/ssl/client_cert")
             .await
             .map_err(|e| TransportError::VaultError(e.to_string()))?;
@@ -172,7 +174,7 @@ impl TransportSecurity {
     }
 
     /// Load client private key from Vault
-    async fn load_client_private_key(vault_client: &VaultClient) -> TransportResult<PrivateKey> {
+    async fn load_client_private_key(vault_client: &VaultClient) -> TransportResult<PrivateKeyDer<'static>> {
         let client_key_data = vault_client.get_secret("secret/ssl/client_key")
             .await
             .map_err(|e| TransportError::VaultError(e.to_string()))?;
@@ -193,7 +195,7 @@ impl TransportSecurity {
     }
 
     /// Load server certificate from Vault
-    async fn load_server_certificate(vault_client: &VaultClient) -> TransportResult<Certificate> {
+    async fn load_server_certificate(vault_client: &VaultClient) -> TransportResult<CertificateDer<'static>> {
         let server_cert_pem = vault_client.get_secret("secret/ssl/server_cert")
             .await
             .map_err(|e| TransportError::VaultError(e.to_string()))?;
@@ -206,7 +208,7 @@ impl TransportSecurity {
     }
 
     /// Load server private key from Vault
-    async fn load_server_private_key(vault_client: &VaultClient) -> TransportResult<PrivateKey> {
+    async fn load_server_private_key(vault_client: &VaultClient) -> TransportResult<PrivateKeyDer<'static>> {
         let server_key_data = vault_client.get_secret("secret/ssl/server_key")
             .await
             .map_err(|e| TransportError::VaultError(e.to_string()))?;
@@ -227,15 +229,15 @@ impl TransportSecurity {
     }
 
     /// Parse PEM certificate
-    fn parse_pem_certificate(pem_str: &str) -> TransportResult<Certificate> {
+    fn parse_pem_certificate(pem_str: &str) -> TransportResult<CertificateDer<'static>> {
         let cert_der = Self::pem_to_der(pem_str, "CERTIFICATE")?;
-        Ok(Certificate(cert_der))
+        Ok(CertificateDer::from(cert_der))
     }
 
     /// Parse PEM private key
-    fn parse_pem_private_key(pem_str: &str) -> TransportResult<PrivateKey> {
+    fn parse_pem_private_key(pem_str: &str) -> TransportResult<PrivateKeyDer<'static>> {
         let key_der = Self::pem_to_der(pem_str, "PRIVATE KEY")?;
-        Ok(PrivateKey(key_der))
+        Ok(PrivateKeyDer::from(key_der))
     }
 
     /// Convert PEM to DER
@@ -256,7 +258,8 @@ impl TransportSecurity {
             .map_err(|e| TransportError::TlsError(format!("TCP connection failed: {}", e)))?;
 
         let domain = ServerName::try_from(host)
-            .map_err(|e| TransportError::ConfigurationError(format!("Invalid domain name: {}", e)))?;
+            .map_err(|e| TransportError::ConfigurationError(format!("Invalid domain name: {}", e)))?
+            .to_owned();
 
         let connector = TlsConnector::from(self.client_config.clone());
         let tls_stream = connector.connect(domain, tcp_stream).await
@@ -338,7 +341,8 @@ impl SecureSmtpClient {
     }
 
     pub async fn send_secure_email(&self, from: &str, to: &str, subject: &str, body: &str, smtp_host: &str, smtp_port: u16) -> TransportResult<()> {
-        use lettre::{Message, SmtpTransport, Transport, transport::smtp::client::Tls};
+        use lettre::{Message, SmtpTransport, Transport};
+        use lettre::transport::smtp::client::Tls;
 
         let email = Message::builder()
             .from(from.parse().map_err(|e| TransportError::ConfigurationError(format!("Invalid from address: {}", e)))?)
@@ -372,11 +376,11 @@ impl SecureSmtpClient {
 
         // Add CA certificates
         for cert in ca_certs {
-            tls_builder = tls_builder.add_root_certificate(cert.0);
+            tls_builder = tls_builder.add_root_certificate(cert);
         }
 
         // Add client certificate
-        tls_builder = tls_builder.add_client_certificate(client_cert.0, client_key.0);
+        tls_builder = tls_builder.add_client_certificate(client_cert, client_key);
 
         tls_builder.build()
             .map_err(|e| TransportError::ConfigurationError(format!("TLS config build failed: {}", e)))

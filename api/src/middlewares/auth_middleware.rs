@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
 use crate::core::keycloak::KeycloakClient;
-use rustls::Certificate;
+use rustls::pki_types::CertificateDer;
 
 /// [JWT CLAIMS STRUCT] Decoded JWT Token Payload
 /// @MISSION Structure JWT claims for user identity and permissions.
@@ -256,3 +256,15 @@ pub enum AuthError {
 }
 
 impl warp::reject::Reject for AuthError {}
+
+/// [WITH AUTH FILTER] Authentication middleware wrapper
+/// @MISSION Provide authentication filter for route protection.
+/// @THREAT Unauthenticated access to protected routes.
+/// @COUNTERMEASURE Require valid authentication before route access.
+/// @INVARIANT All protected routes require authentication.
+/// @AUDIT Authentication attempts logged for security monitoring.
+/// @FLOW Extract auth header -> Validate -> Return claims or reject.
+/// @DEPENDENCY Uses combined_auth for flexible authentication.
+pub fn with_auth(keycloak: Arc<KeycloakClient>) -> impl Filter<Extract = (Claims,), Error = Rejection> + Clone {
+    combined_auth(keycloak)
+}
