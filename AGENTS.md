@@ -85,8 +85,85 @@ data/               # Database schemas
 
 ### Git Workflow
 - **Branch naming**: `feature/feature-name`, `fix/bug-name`, `docs/update-docs`
-- **Commits**: Clear, descriptive commit messages
+- **Commits**: Clear, descriptive commit messages following Conventional Commits
 - **PRs**: Include description and link to issues
+
+## Commit Message Conventions
+
+This project follows the [Conventional Commits](https://www.conventionalcommits.org/) specification. All commit messages must follow this format:
+
+### Format
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+### Types
+- `feat`: New feature or enhancement
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code formatting, missing semicolons, etc. (no functional changes)
+- `refactor`: Code refactoring that doesn't change functionality
+- `perf`: Performance improvements
+- `test`: Adding or updating tests
+- `chore`: Maintenance tasks, dependency updates, build process changes
+- `ci`: CI/CD configuration changes
+- `build`: Build system or dependency changes
+
+### Examples
+
+#### Good commit messages
+```bash
+feat(auth): add API key authentication middleware
+fix(database): resolve connection pool timeout issue
+docs(readme): update installation instructions
+refactor(services): extract common validation logic
+test(api): add integration tests for user endpoints
+chore(deps): update prisma to v6.18.0
+```
+
+#### Commit with body and footer
+```bash
+feat(messaging): implement real-time chat functionality
+
+Add WebSocket support for instant messaging between users.
+Includes message history, typing indicators, and read receipts.
+
+- Add WebSocket server configuration
+- Implement message broadcasting
+- Add client-side event handlers
+- Update database schema for message status
+
+Closes #123
+```
+
+### Guidelines
+1. **Use imperative mood**: "add feature" not "added feature" or "adds feature"
+2. **Keep description short**: Max 50 characters for the subject line
+3. **Separate subject from body**: Use blank line between subject and body
+4. **Explain what and why**: Focus on what the change does and why it's needed
+5. **Reference issues**: Use `Closes #issue-number` or `Fixes #issue-number`
+6. **One commit per feature**: Keep commits focused and atomic
+7. **Avoid merge commits**: Use rebase to keep history clean
+
+### Scope (optional)
+Use parentheses to specify the scope of the change:
+- `feat(auth):` - Authentication related changes
+- `fix(database):` - Database related fixes
+- `docs(api):` - API documentation changes
+- `refactor(ui):` - UI component refactoring
+
+### Breaking Changes
+For breaking changes, add `!` after the type and include BREAKING CHANGE footer:
+```bash
+feat(api)!: remove deprecated user endpoints
+
+BREAKING CHANGE: The /api/v1/users/legacy endpoints have been removed.
+Use the new /api/v1/users endpoints instead.
+```
 
 ## Environment Variables
 
