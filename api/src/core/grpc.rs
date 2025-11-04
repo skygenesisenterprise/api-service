@@ -35,9 +35,11 @@ pub mod sky_genesis {
     use tonic::{Request, Response, Status};
     
     pub mod mail_service_server {
+        use super::{SendEmailRequest, SendEmailResponse, GetEmailRequest, GetEmailResponse};
+        
         pub trait MailService: Send + Sync + 'static {
-            async fn send_email(&self, request: Request<super::SendEmailRequest>) -> Result<Response<super::SendEmailResponse>, Status>;
-            async fn get_email(&self, request: Request<super::GetEmailRequest>) -> Result<Response<super::GetEmailResponse>, Status>;
+            async fn send_email(&self, request: tonic::Request<SendEmailRequest>) -> Result<tonic::Response<SendEmailResponse>, tonic::Status>;
+            async fn get_email(&self, request: tonic::Request<GetEmailRequest>) -> Result<tonic::Response<GetEmailResponse>, tonic::Status>;
         }
     }
     
@@ -85,8 +87,8 @@ pub mod sky_genesis {
     
     pub mod search_service_server {
         pub trait SearchService: Send + Sync + 'static {
-            async fn search(&self, request: Request<super::SearchRequest>) -> Result<Response<super::SearchResponse>, Status>;
-            async fn index_document(&self, request: Request<super::IndexDocumentRequest>) -> Result<Response<super::IndexDocumentResponse>, Status>;
+            async fn search(&self, request: tonic::Request<super::SearchRequest>) -> Result<tonic::Response<super::SearchResponse>, tonic::Status>;
+            async fn index_document(&self, request: tonic::Request<super::IndexDocumentRequest>) -> Result<tonic::Response<super::IndexDocumentResponse>, tonic::Status>;
         }
     }
     
@@ -178,8 +180,8 @@ impl sky_genesis::mail_service_server::MailService for MailServiceImpl {
     /// @AUDIT All send operations logged with message IDs.
     async fn send_email(
         &self,
-        request: Request<sky_genesis::SendEmailRequest>,
-    ) -> Result<Response<sky_genesis::SendEmailResponse>, Status> {
+        request: tonic::Request<sky_genesis::SendEmailRequest>,
+    ) -> Result<tonic::Response<sky_genesis::SendEmailResponse>, tonic::Status> {
         let req = request.into_inner();
 
         // Implement email sending logic here
@@ -191,7 +193,7 @@ impl sky_genesis::mail_service_server::MailService for MailServiceImpl {
             timestamp: chrono::Utc::now().timestamp(),
         };
 
-        Ok(Response::new(response))
+        Ok(tonic::Response::new(response))
     }
 
     /// [EMAIL RETRIEVAL] Secure Message Access
@@ -203,8 +205,8 @@ impl sky_genesis::mail_service_server::MailService for MailServiceImpl {
     /// @AUDIT All access operations logged with user attribution.
     async fn get_email(
         &self,
-        request: Request<sky_genesis::GetEmailRequest>,
-    ) -> Result<Response<sky_genesis::GetEmailResponse>, Status> {
+        request: tonic::Request<sky_genesis::GetEmailRequest>,
+    ) -> Result<tonic::Response<sky_genesis::GetEmailResponse>, tonic::Status> {
         let req = request.into_inner();
 
         // Implement email retrieval logic
@@ -223,7 +225,7 @@ impl sky_genesis::mail_service_server::MailService for MailServiceImpl {
             email: Some(email),
         };
 
-        Ok(Response::new(response))
+        Ok(tonic::Response::new(response))
     }
 }
 
@@ -249,8 +251,8 @@ impl sky_genesis::search_service_server::SearchService for SearchServiceImpl {
     /// @AUDIT Search queries logged for security and usage analysis.
     async fn search(
         &self,
-        request: Request<sky_genesis::SearchRequest>,
-    ) -> Result<Response<sky_genesis::SearchResponse>, Status> {
+        request: tonic::Request<sky_genesis::SearchRequest>,
+    ) -> Result<tonic::Response<sky_genesis::SearchResponse>, tonic::Status> {
         let req = request.into_inner();
 
         // Implement search logic here
@@ -272,7 +274,7 @@ impl sky_genesis::search_service_server::SearchService for SearchServiceImpl {
             query_time_ms: 50,
         };
 
-        Ok(Response::new(response))
+        Ok(tonic::Response::new(response))
     }
 
     /// [DOCUMENT INDEXING] Secure Content Ingestion
@@ -284,8 +286,8 @@ impl sky_genesis::search_service_server::SearchService for SearchServiceImpl {
     /// @AUDIT Indexing operations logged with document metadata.
     async fn index_document(
         &self,
-        request: Request<sky_genesis::IndexDocumentRequest>,
-    ) -> Result<Response<sky_genesis::IndexDocumentResponse>, Status> {
+        request: tonic::Request<sky_genesis::IndexDocumentRequest>,
+    ) -> Result<tonic::Response<sky_genesis::IndexDocumentResponse>, tonic::Status> {
         let req = request.into_inner();
 
         // Implement document indexing logic
@@ -296,7 +298,7 @@ impl sky_genesis::search_service_server::SearchService for SearchServiceImpl {
             timestamp: chrono::Utc::now().timestamp(),
         };
 
-        Ok(Response::new(response))
+        Ok(tonic::Response::new(response))
     }
 }
 

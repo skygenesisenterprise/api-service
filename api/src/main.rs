@@ -149,18 +149,18 @@ async fn main() {
     let audit_manager = Arc::new(crate::core::audit_manager::AuditManager::new(vault_client.clone()));
     let metrics = Arc::new(crate::core::opentelemetry::Metrics::new().unwrap());
 
-    /// [DATABASE LAYER] Database Connection Pool
-    /// @MISSION Provide secure database connections.
-    /// @THREAT Unauthorized database access.
-    /// @COUNTERMEASURE Encrypted credentials and connection pooling.
-    let db_pool = Arc::new(crate::data::database::DatabasePool::new().await.unwrap());
+     /// [DATABASE LAYER] Database Connection Pool
+     /// @MISSION Provide secure database connections.
+     /// @THREAT Unauthorized database access.
+     /// @COUNTERMEASURE Encrypted credentials and connection pooling.
+     let data_service = Arc::new(crate::services::data_service::DataService::new(vault_client.clone()));
 
        /// [DEVICE MANAGEMENT LAYER] Remote Device Management Service
        /// @MISSION Enable secure remote management of network devices.
        /// @THREAT Unauthorized device access or configuration changes.
        /// @COUNTERMEASURE Authentication, authorization, and audit logging.
          let device_service = Arc::new(crate::services::device_service::DeviceService::new(
-             db_pool.clone(),
+             data_service.clone(),
              vault_client.clone(),
              snmp_manager.clone(),
          ));
@@ -326,14 +326,6 @@ async fn main() {
          }
      });
 
-    /// [FIDO2 LAYER] Hardware Authentication Manager
-    /// @MISSION Provide FIDO2/WebAuthn authentication capabilities.
-    /// @THREAT Phishing or credential theft.
-    /// @COUNTERMEASURE Use hardware-backed public key cryptography.
-    let rp_id = std::env::var("FIDO2_RP_ID").unwrap_or("localhost".to_string());
-    let rp_origin = std::env::var("FIDO2_RP_ORIGIN").unwrap_or("http://localhost:8080".to_string());
-    let fido2_manager = Arc::new(crate::core::fido2::Fido2Manager::new(&rp_id, &rp_origin).unwrap());
-
     /// [NETWORK LAYER] VPN Infrastructure Management
     /// @MISSION Secure inter-service communication via encrypted mesh.
     /// @THREAT Network interception or lateral movement.
@@ -351,6 +343,14 @@ async fn main() {
 
     let tailscale_auth_key = vault_client.get_secret("tailscale/auth_key").await.unwrap_or("".to_string());
     let tailscale_manager = Arc::new(crate::core::vpn::TailscaleManager::new(tailscale_auth_key));
+
+    /// [FIDO2 LAYER] Hardware Authentication Manager
+    /// @MISSION Provide FIDO2/WebAuthn authentication capabilities.
+    /// @THREAT Phishing or credential theft.
+    /// @COUNTERMEASURE Use hardware-backed public key cryptography.
+    let rp_id = std::env::var("FIDO2_RP_ID").unwrap_or("localhost".to_string());
+    let rp_origin = std::env::var("FIDO2_RP_ORIGIN").unwrap_or("http://localhost:8080".to_string());
+    let fido2_manager = Arc::new(crate::core::fido2::Fido2Manager::new(&rp_id, &rp_origin).unwrap());
 
     /// [INTER-SERVICE LAYER] gRPC Communication Framework
     /// @MISSION Enable high-performance service-to-service communication.
@@ -428,7 +428,6 @@ async fn main() {
               device_service,
               mac_service.clone(),
               ws_server,
-            ws_server,
             snmp_manager,
             snmp_agent,
             trap_listener,

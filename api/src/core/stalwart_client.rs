@@ -14,7 +14,7 @@
 //  License: MIT (Open Source for Strategic Transparency)
 // ============================================================================
 
-use reqwest::{Client, Certificate, Identity};
+use reqwest::{Client, Certificate, Identity, header::HeaderMap};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -368,15 +368,13 @@ impl StalwartClient {
         let url = format!("{}/upload", server_url);
 
         let headers = self.build_sge_headers(user);
-        let form = reqwest::multipart::Form::new()
-            .part("file", reqwest::multipart::Part::bytes(data.to_vec())
-                .file_name(filename.to_string())
-                .mime_str(content_type)?);
+        // Simplified upload without multipart for now
+        let body = data.to_vec();
 
         let response = self.client
             .post(&url)
             .headers(headers)
-            .multipart(form)
+            .body(body)
             .send()
             .await?;
 

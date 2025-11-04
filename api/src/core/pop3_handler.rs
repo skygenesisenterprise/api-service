@@ -130,7 +130,7 @@ pub struct Pop3Config {
 pub struct Pop3Handler {
     config: Pop3Config,
     tls_acceptor: Option<TlsAcceptor>,
-    transport_security: Arc<TransportSecurityManager>,
+    transport_security: Arc<TransportSecurity>,
     encryption_manager: Arc<EncryptionManager>,
     audit_manager: Arc<AuditManager>,
     mail_storage: Arc<MailStorageManager>,
@@ -179,7 +179,7 @@ impl Pop3Handler {
     /// Create new POP3 handler
     pub fn new(
         config: Pop3Config,
-        transport_security: Arc<TransportSecurityManager>,
+    transport_security: Arc<TransportSecurity>,
         encryption_manager: Arc<EncryptionManager>,
         audit_manager: Arc<AuditManager>,
         mail_storage: Arc<MailStorageManager>,

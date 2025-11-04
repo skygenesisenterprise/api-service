@@ -740,7 +740,7 @@ impl AuditManager {
 /// @COUNTERMEASURE OnceCell singleton pattern with Arc sharing.
 /// @INVARIANT Only one audit manager instance exists per process.
 /// @AUDIT Manager initialization is logged for system startup verification.
-static AUDIT_MANAGER: once_cell::sync::OnceCell<Arc<AuditManager>> = once_cell::sync::OnceCell::new();
+static AUDIT_MANAGER: std::sync::OnceLock<Arc<AuditManager>> = std::sync::OnceLock::new();
 
 /// [AUDIT MANAGER INITIALIZATION] Global Instance Setup
 /// @MISSION Initialize the global audit manager with Vault integration.

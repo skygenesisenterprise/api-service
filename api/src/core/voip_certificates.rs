@@ -16,6 +16,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
@@ -62,14 +63,14 @@ pub struct VoipCertificateRequest {
 /// @THREAT Weak certificates, expired certificates, certificate compromise.
 /// @COUNTERMEASURE Certificate validation, rotation, revocation.
 pub struct VoipCertificatesCore {
-    vault_client: Arc<dyn crate::core::vault::VaultClient>,
+    vault_client: crate::core::vault::VaultClient,
     ca_certificate: String,
 }
 
 impl VoipCertificatesCore {
     /// [CORE INITIALIZATION] Create new VoIP certificates core
     /// @MISSION Initialize certificate management with CA configuration.
-    pub fn new(vault_client: Arc<dyn crate::core::vault::VaultClient>, ca_certificate: String) -> Self {
+    pub fn new(vault_client: crate::core::vault::VaultClient, ca_certificate: String) -> Self {
         Self {
             vault_client,
             ca_certificate,

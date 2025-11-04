@@ -151,7 +151,7 @@ pub struct ImapConfig {
 pub struct ImapHandler {
     config: ImapConfig,
     tls_acceptor: Option<TlsAcceptor>,
-    transport_security: Arc<TransportSecurityManager>,
+    transport_security: Arc<TransportSecurity>,
     encryption_manager: Arc<EncryptionManager>,
     audit_manager: Arc<AuditManager>,
     mail_storage: Arc<MailStorageManager>,
@@ -185,7 +185,7 @@ impl ImapHandler {
     /// @AUDIT Handler initialization logged with configuration details.
     pub fn new(
         config: ImapConfig,
-        transport_security: Arc<TransportSecurityManager>,
+    transport_security: Arc<TransportSecurity>,
         encryption_manager: Arc<EncryptionManager>,
         audit_manager: Arc<AuditManager>,
         mail_storage: Arc<MailStorageManager>,

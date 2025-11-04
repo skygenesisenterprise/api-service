@@ -16,6 +16,7 @@
 
 use webauthn_rs::prelude::*;
 use webauthn_rs::Webauthn;
+use crate::models::user::User;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -30,7 +31,7 @@ use tokio::sync::RwLock;
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Fido2Credential {
     pub cred_id: String,
-    pub cred: Credential,
+    pub cred: webauthn_rs::prelude::Passkey,
     pub counter: u32,
     pub user_id: String,
 }
@@ -183,7 +184,7 @@ impl Fido2Manager {
         let creds = self.credentials.read().await;
         let user_creds = creds.get(username).ok_or("User not found")?;
 
-        let credentials: Vec<Credential> = user_creds.iter().map(|c| c.cred.clone()).collect();
+        let credentials: Vec<webauthn_rs::prelude::Passkey> = user_creds.iter().map(|c| c.cred.clone()).collect();
 
         let (challenge, authentication_state) = self.webauthn.start_passkey_authentication(&credentials)?;
 
@@ -206,7 +207,7 @@ impl Fido2Manager {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let creds = self.credentials.read().await;
         let user_creds = creds.get(username).ok_or("User not found")?;
-        let credentials: Vec<Credential> = user_creds.iter().map(|c| c.cred.clone()).collect();
+        let credentials: Vec<webauthn_rs::prelude::Passkey> = user_creds.iter().map(|c| c.cred.clone()).collect();
 
         let authentication_state: AuthenticationState = serde_json::from_str(challenge)?;
         let credential: PublicKeyCredential = serde_json::from_str(response)?;

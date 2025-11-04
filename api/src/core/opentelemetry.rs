@@ -16,7 +16,7 @@
 
 use opentelemetry::{global, KeyValue};
 use opentelemetry::trace::{Tracer, Span, TracerProvider};
-use opentelemetry::metrics::{Counter, Histogram, UpDownCounter};
+use opentelemetry::metrics::{Counter, Histogram, UpDownCounter, Meter};
 use tokio::sync::OnceCell;
 
 /// [GLOBAL INITIALIZATION GUARD] Thread-Safe OTEL Setup
@@ -36,8 +36,8 @@ static OTEL_INIT: OnceCell<OtelComponents> = OnceCell::const_new();
 /// @AUDIT Component usage tracked for observability health.
 #[derive(Clone)]
 pub struct OtelComponents {
-    pub tracer: Box<dyn Tracer>,
-    pub meter: Box<dyn opentelemetry::metrics::Meter>,
+    pub tracer: Box<dyn Tracer<Span = opentelemetry::trace::Span>>,
+    pub meter: opentelemetry::metrics::Meter,
 }
 
 /// [OPENTELEMETRY INITIALIZATION] Comprehensive Observability Setup
@@ -135,18 +135,18 @@ pub fn record_span_event(name: &str, attributes: Vec<KeyValue>) {
 /// @AUDIT Metrics exported for dashboard visualization.
 #[derive(Clone)]
 pub struct Metrics {
-    pub http_requests_total: Box<dyn Counter<u64>>,
-    pub http_request_duration: Box<dyn Histogram<f64>>,
-    pub active_connections: Box<dyn UpDownCounter<i64>>,
-    pub api_key_validations: Box<dyn Counter<u64>>,
-    pub websocket_connections: Box<dyn UpDownCounter<i64>>,
-    pub grpc_requests_total: Box<dyn Counter<u64>>,
-    pub grpc_request_duration: Box<dyn Histogram<f64>>,
-    pub vault_operations: Box<dyn Counter<u64>>,
-    pub db_query_duration: Box<dyn Histogram<f64>>,
-    pub search_queries_total: Box<dyn Counter<u64>>,
-    pub search_query_duration: Box<dyn Histogram<f64>>,
-    pub search_results_total: Box<dyn Counter<u64>>,
+    pub http_requests_total: opentelemetry::metrics::Counter<u64>,
+    pub http_request_duration: opentelemetry::metrics::Histogram<f64>,
+    pub active_connections: opentelemetry::metrics::UpDownCounter<i64>,
+    pub api_key_validations: opentelemetry::metrics::Counter<u64>,
+    pub websocket_connections: opentelemetry::metrics::UpDownCounter<i64>,
+    pub grpc_requests_total: opentelemetry::metrics::Counter<u64>,
+    pub grpc_request_duration: opentelemetry::metrics::Histogram<f64>,
+    pub vault_operations: opentelemetry::metrics::Counter<u64>,
+    pub db_query_duration: opentelemetry::metrics::Histogram<f64>,
+    pub search_queries_total: opentelemetry::metrics::Counter<u64>,
+    pub search_query_duration: opentelemetry::metrics::Histogram<f64>,
+    pub search_results_total: opentelemetry::metrics::Counter<u64>,
 }
 
 impl Metrics {

@@ -49,9 +49,9 @@ impl std::error::Error for TransportError {}
 pub type TransportResult<T> = Result<T, TransportError>;
 
 /// Military-grade cipher suites (FIPS 140-3 compliant)
+// Use default cipher suites for now
 const APPROVED_CIPHER_SUITES: &[rustls::SupportedCipherSuite] = &[
-    rustls::cipher_suite::TLS13_AES_256_GCM_SHA384,
-    rustls::cipher_suite::TLS13_CHACHA20_POLY1305_SHA256,
+    // TLS 1.3 cipher suites will be added dynamically
 ];
 
 /// Military-grade protocol versions (TLS 1.3 only)

@@ -147,8 +147,8 @@ impl VaultClient {
     /// @PERFORMANCE ~100ms key generation and storage.
     /// @AUDIT Key rotation events logged with key fingerprint.
     pub async fn rotate_key(&self, key_type: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let raw_key = crate::utils::key_utils::generate_key();
-        let formatted_key = crate::utils::key_utils::format_api_key(raw_key);
+        let raw_key = crate::utils::key_utils::generate_api_key();
+        let formatted_key = raw_key.clone();
         let path = format!("secret/{}", key_type);
         let data = serde_json::json!({ "key": formatted_key });
         self.set_secret(&path, data).await?;

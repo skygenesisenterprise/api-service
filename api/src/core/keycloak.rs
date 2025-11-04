@@ -303,10 +303,11 @@ impl KeycloakClient {
         let provider_metadata = CoreProviderMetadata::discover_async(issuer_url, |url| {
             let client = reqwest::Client::new();
             async move {
-                client.get(url.as_str()).send().await
-                    .and_then(|response| response.bytes().await)
-                    .map_err(|e| openidconnect::reqwest::Error::Reqwest(e))
-                    .and_then(|bytes| serde_json::from_slice(&bytes).map_err(|e| e.into()))
+                let response = client.get(url.as_str()).send().await
+                    .map_err(|e| openidconnect::reqwest::Error::Reqwest(e))?;
+                let bytes = response.bytes().await
+                    .map_err(|e| openidconnect::reqwest::Error::Reqwest(e))?;
+                serde_json::from_slice(&bytes).map_err(|e| e.into())
             }
         }).await?;
         let client = CoreClient::from_provider_metadata(
@@ -336,10 +337,11 @@ impl KeycloakClient {
         let provider_metadata = CoreProviderMetadata::discover_async(issuer_url, |url| {
             let client = reqwest::Client::new();
             async move {
-                client.get(url.as_str()).send().await
-                    .and_then(|response| response.bytes().await)
-                    .map_err(|e| openidconnect::reqwest::Error::Reqwest(e))
-                    .and_then(|bytes| serde_json::from_slice(&bytes).map_err(|e| e.into()))
+                let response = client.get(url.as_str()).send().await
+                    .map_err(|e| openidconnect::reqwest::Error::Reqwest(e))?;
+                let bytes = response.bytes().await
+                    .map_err(|e| openidconnect::reqwest::Error::Reqwest(e))?;
+                serde_json::from_slice(&bytes).map_err(|e| e.into())
             }
         }).await?;
         let client = CoreClient::from_provider_metadata(
@@ -352,12 +354,12 @@ impl KeycloakClient {
             .exchange_code(AuthorizationCode::new(code.to_string()))
             .request_async(|url| {
                 let client = reqwest::Client::new();
-                async move {
-                    client.post(url.as_str()).send().await
-                        .and_then(|response| response.bytes().await)
-                        .map_err(|e| openidconnect::reqwest::Error::Reqwest(e))
-                        .and_then(|bytes| serde_json::from_slice(&bytes).map_err(|e| e.into()))
-                }
+            async move {
+                client.get(url.as_str()).send().await
+                    .and_then(|response| async move { response.bytes().await })
+                    .map_err(|e| openidconnect::reqwest::Error::Reqwest(e))
+                    .and_then(|bytes| async move { serde_json::from_slice(&bytes).map_err(|e| e.into()) })
+            }
             })
             .await?;
 

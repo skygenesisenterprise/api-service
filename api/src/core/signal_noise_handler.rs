@@ -363,7 +363,7 @@ impl SignalNoiseHandler {
                     .ok_or_else(|| SignalNoiseError::VaultError("Public key not found".to_string()))?;
 
                 let mut public_key = [0u8; 32];
-                base64::decode_config_slice(public_key_b64, base64::STANDARD, &mut public_key)
+                base64::decode_engine_slice(public_key_b64, &base64::engine::general_purpose::STANDARD, &mut public_key)
                     .map_err(|e| SignalNoiseError::VaultError(format!("Failed to decode public key: {}", e)))?;
 
                 let created_str = identity_data["data"]["created_at"].as_str()
@@ -408,7 +408,7 @@ impl SignalNoiseHandler {
             .ok_or_else(|| SignalNoiseError::KeyGenerationError("Public key not found".to_string()))?;
 
         let mut public_key = [0u8; 32];
-        base64::decode_config_slice(public_key_b64, base64::STANDARD, &mut public_key)
+        base64::decode_engine_slice(public_key_b64, &base64::engine::general_purpose::STANDARD, &mut public_key)
             .map_err(|e| SignalNoiseError::KeyGenerationError(format!("Failed to decode public key: {}", e)))?;
 
         let now = Utc::now();
