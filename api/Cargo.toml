@@ -116,7 +116,7 @@ validator = { version = "0.18", features = ["derive"] }
 
 # Compression (Zstandard)
 zstd = "0.13.2"
-zstd-safe = "6.0.6"
+zstd-safe = "7.2.4"
 
 [[bin]]
 name = "api"
