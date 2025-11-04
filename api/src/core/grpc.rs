@@ -14,7 +14,7 @@
 //  License: MIT (Open Source for Strategic Transparency)
 // ============================================================================
 
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::{Request, Response, Status};
 use std::sync::Arc;
 use quinn::Endpoint;
 use tokio::sync::Mutex;
@@ -37,6 +37,7 @@ pub mod sky_genesis {
     pub mod mail_service_server {
         pub trait MailService: Send + Sync + 'static {
             async fn send_email(&self, request: Request<super::SendEmailRequest>) -> Result<Response<super::SendEmailResponse>, Status>;
+            async fn get_email(&self, request: Request<super::GetEmailRequest>) -> Result<Response<super::GetEmailResponse>, Status>;
         }
     }
     
@@ -52,6 +53,106 @@ pub mod sky_genesis {
         pub message_id: String,
         pub status: String,
         pub timestamp: i64,
+    }
+    
+    #[derive(Clone, Debug)]
+    pub struct GetEmailRequest {
+        pub message_id: String,
+    }
+    
+    #[derive(Clone, Debug)]
+    pub struct GetEmailResponse {
+        pub email: Email,
+    }
+    
+    #[derive(Clone, Debug)]
+    pub struct Email {
+        pub id: String,
+        pub to: Vec<String>,
+        pub from: String,
+        pub subject: String,
+        pub body: String,
+        pub timestamp: i64,
+        pub attachments: Vec<EmailAttachment>,
+    }
+    
+    #[derive(Clone, Debug)]
+    pub struct EmailAttachment {
+        pub filename: String,
+        pub content_type: String,
+        pub size: u64,
+    }
+    
+    pub mod search_service_server {
+        pub trait SearchService: Send + Sync + 'static {
+            async fn search(&self, request: Request<super::SearchRequest>) -> Result<Response<super::SearchResponse>, Status>;
+            async fn index_document(&self, request: Request<super::IndexDocumentRequest>) -> Result<Response<super::IndexDocumentResponse>, Status>;
+        }
+    }
+    
+    #[derive(Clone, Debug)]
+    pub struct SearchRequest {
+        pub query: String,
+        pub limit: u32,
+    }
+    
+    #[derive(Clone, Debug)]
+    pub struct SearchResponse {
+        pub results: Vec<SearchResult>,
+    }
+    
+    #[derive(Clone, Debug)]
+    pub struct SearchResult {
+        pub id: String,
+        pub title: String,
+        pub content: String,
+        pub score: f32,
+    }
+    
+    #[derive(Clone, Debug)]
+    pub struct IndexDocumentRequest {
+        pub document: Document,
+    }
+    
+    #[derive(Clone, Debug)]
+    pub struct IndexDocumentResponse {
+        pub document_id: String,
+        pub status: String,
+    }
+    
+    #[derive(Clone, Debug)]
+    pub struct Document {
+        pub id: String,
+        pub title: String,
+        pub content: String,
+    }
+    
+    pub mod mail_service_client {
+        use tonic::transport::Channel;
+        
+        pub struct MailServiceClient<T> {
+            inner: T,
+        }
+        
+        impl MailServiceClient<tonic::transport::Channel> {
+            pub fn new(channel: Channel) -> Self {
+                Self { inner: channel }
+            }
+        }
+    }
+    
+    pub mod search_service_client {
+        use tonic::transport::Channel;
+        
+        pub struct SearchServiceClient<T> {
+            inner: T,
+        }
+        
+        impl SearchServiceClient<tonic::transport::Channel> {
+            pub fn new(channel: Channel) -> Self {
+                Self { inner: channel }
+            }
+        }
     }
 }
 
@@ -109,7 +210,7 @@ impl sky_genesis::mail_service_server::MailService for MailServiceImpl {
         // Implement email retrieval logic
 
         let email = sky_genesis::Email {
-            id: req.email_id,
+            id: req.message_id,
             from: "sender@example.com".to_string(),
             to: vec!["recipient@example.com".to_string()],
             subject: "Test Email".to_string(),

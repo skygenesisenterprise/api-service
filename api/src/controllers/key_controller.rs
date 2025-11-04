@@ -15,7 +15,7 @@
 // ============================================================================
 
 use warp::Reply;
-use crate::models::key_model::{ApiKey, KeyType, CertificateType, ApiKeyStatus};
+use crate::models::key_model::{KeyType, CertificateType, ApiKeyStatus};
 use crate::services::key_service::KeyService;
 use std::sync::Arc;
 

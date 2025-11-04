@@ -22,6 +22,7 @@ use crate::services::two_factor_service::{TwoFactorSetupRequest, TwoFactorVerifi
 use std::sync::Arc;
 use warp::http::StatusCode;
 
+
 /// [AUTH LOGIN HANDLER] Primary User Authentication Endpoint
 /// @MISSION Authenticate users with credentials and establish secure sessions.
 /// @THREAT Credential stuffing, brute force attacks, session hijacking.
@@ -35,8 +36,8 @@ use warp::http::StatusCode;
     path = "/auth/login",
     request_body = LoginRequest,
     responses(
-        (status = 200, description = "Login successful", body = LoginResponse),
-        (status = 401, description = "Invalid credentials", body = ErrorResponse)
+        (status = 200, description = "Login successful", body = serde_json::Value),
+        (status = 401, description = "Invalid credentials", body = serde_json::Value)
     )
 )]
 pub async fn login(

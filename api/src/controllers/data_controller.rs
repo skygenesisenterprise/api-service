@@ -22,7 +22,7 @@ use serde_json::json;
 use crate::models::data_model::{
     DatabaseConnection, DatabaseType, DatabaseQuery, DatabasePermission,
     DatabaseOperation, ZTNADatabasePolicy, ZTNAAccessRequest, ZTNAContext,
-    PolicyStatus, ZTNAAccessDecision
+    PolicyStatus
 };
 use crate::services::data_service::DataService;
 

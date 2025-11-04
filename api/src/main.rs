@@ -26,6 +26,7 @@ mod middlewares;
 mod models;
 mod queries;
 mod routes;
+mod schema;
 mod services;
 mod tests;
 mod search;

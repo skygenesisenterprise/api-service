@@ -4,14 +4,14 @@
 use std::sync::Arc;
 use crate::core::stalwart_client::StalwartClient;
 use crate::core::vault::VaultClient;
-use crate::services::encryption_service::{EncryptionService, EncryptionMethod};
+
 use crate::models::mail::{Mailbox, Message, SendRequest, SearchResult, EmailContext, ContextualSendRequest, ContextualSendResponse, BulkContextualSendRequest, BulkSendResponse, EmailTemplate, TemplateListResponse, ContextStats, BatchStatus};
 use crate::models::user::User;
 
 pub struct MailService {
     stalwart_client: Arc<StalwartClient>,
     vault_client: Arc<VaultClient>,
-    encryption_service: Arc<EncryptionService>,
+
 }
 
 impl MailService {
@@ -873,7 +873,7 @@ pub struct DateRange {
 }
 
 #[derive(Clone)]
-pub struct SendRequest {
+pub struct MailSendRequest {
     pub to: Vec<String>,
     pub subject: String,
     pub body: MessageBody,
@@ -916,7 +916,7 @@ pub enum Operation {
 }
 
 #[derive(Clone)]
-pub struct SearchResult {
+pub struct MailSearchResult {
     pub messages: Vec<Message>,
     pub total: usize,
     pub has_more: bool,

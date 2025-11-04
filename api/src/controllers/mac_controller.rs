@@ -20,9 +20,10 @@ use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::models::data_model::{MacIdentity, MacStatus, MacCertificateInfo};
+use crate::models::data_model::{MacIdentity, MacStatus};
 use crate::services::mac_service::MacService;
 use crate::core::audit_manager::{AuditManager, AuditEventType, AuditSeverity};
+use crate::middlewares::auth_middleware::ApiError;
 
 /// [MAC REGISTER REQUEST] API Request for Registering New MAC Identity
 #[derive(Debug, Deserialize, Serialize)]
@@ -71,7 +72,7 @@ pub async fn register_mac(
     } else {
         mac_service.generate_sge_mac(organization_id).await
             .map_err(|e| {
-                warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+                warp::reject::custom(ApiError::InternalError(e.to_string()))
             })?
     };
 
@@ -85,7 +86,7 @@ pub async fn register_mac(
         organization_id,
         request.metadata.unwrap_or_default(),
     ).await.map_err(|e| {
-        warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+        warp::reject::custom(ApiError::InternalError(e.to_string()))
     })?;
 
     // Audit MAC registration
@@ -128,7 +129,7 @@ pub async fn list_macs(
         per_page,
         status,
     ).await.map_err(|e| {
-        warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+        warp::reject::custom(ApiError::InternalError(e.to_string()))
     })?;
 
     // Audit MAC listing
@@ -170,7 +171,7 @@ pub async fn get_mac(
 ) -> Result<impl Reply, warp::Rejection> {
     let mac = mac_service.get_mac_by_address(&address, organization_id).await
         .map_err(|e| {
-            warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+            warp::reject::custom(ApiError::InternalError(e.to_string()))
         })?;
 
     // Audit MAC access
@@ -210,7 +211,7 @@ pub async fn update_mac(
         request.status,
         request.metadata,
     ).await.map_err(|e| {
-        warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+        warp::reject::custom(ApiError::InternalError(e.to_string()))
     })?;
 
     // Audit MAC update
@@ -248,7 +249,7 @@ pub async fn delete_mac(
 
     mac_service.delete_mac(&address, organization_id).await
         .map_err(|e| {
-            warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+            warp::reject::custom(ApiError::InternalError(e.to_string()))
         })?;
 
     // Audit MAC deletion
@@ -281,7 +282,7 @@ pub async fn resolve_ip(
 ) -> Result<impl Reply, warp::Rejection> {
     let mac = mac_service.resolve_ip_to_mac(&ip, organization_id).await
         .map_err(|e| {
-            warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+            warp::reject::custom(ApiError::InternalError(e.to_string()))
         })?;
 
     // Audit IP resolution
@@ -316,7 +317,7 @@ pub async fn get_mac_by_fingerprint(
 ) -> Result<impl Reply, warp::Rejection> {
     let mac = mac_service.get_mac_by_fingerprint(&fingerprint, organization_id).await
         .map_err(|e| {
-            warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+            warp::reject::custom(ApiError::InternalError(e.to_string()))
         })?;
 
     // Audit fingerprint lookup
@@ -357,7 +358,7 @@ pub async fn register_mac_with_certificate(
     } else {
         mac_service.generate_sge_mac(organization_id).await
             .map_err(|e| {
-                warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+                warp::reject::custom(ApiError::InternalError(e.to_string()))
             })?
     };
 
@@ -372,7 +373,7 @@ pub async fn register_mac_with_certificate(
         &organization_name,
         request.metadata.unwrap_or_default(),
     ).await.map_err(|e| {
-        warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+        warp::reject::custom(ApiError::InternalError(e.to_string()))
     })?;
 
     // Audit certificate-backed registration
@@ -408,12 +409,12 @@ pub async fn verify_mac_integrity(
 ) -> Result<impl Reply, warp::Rejection> {
     let mac = mac_service.get_mac_by_address(&address, organization_id).await
         .map_err(|e| {
-            warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+            warp::reject::custom(ApiError::InternalError(e.to_string()))
         })?;
 
     let is_valid = mac_service.verify_mac_integrity(&mac).await
         .map_err(|e| {
-            warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+            warp::reject::custom(ApiError::InternalError(e.to_string()))
         })?;
 
     // Audit integrity verification
@@ -460,7 +461,7 @@ pub async fn renew_mac_certificate(
         validity_days as i64,
         &user_id,
     ).await.map_err(|e| {
-        warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+        warp::reject::custom(ApiError::InternalError(e.to_string()))
     })?;
 
     // Audit certificate renewal
@@ -496,7 +497,7 @@ pub async fn revoke_mac_certificate(
 ) -> Result<impl Reply, warp::Rejection> {
     mac_service.revoke_mac_certificate(&address, organization_id, &reason, &user_id).await
         .map_err(|e| {
-            warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+            warp::reject::custom(ApiError::InternalError(e.to_string()))
         })?;
 
     // Audit certificate revocation
@@ -530,12 +531,12 @@ pub async fn get_mac_certificate_chain(
 ) -> Result<impl Reply, warp::Rejection> {
     let mac = mac_service.get_mac_by_address(&address, organization_id).await
         .map_err(|e| {
-            warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+            warp::reject::custom(ApiError::InternalError(e.to_string()))
         })?;
 
     let chain = mac_service.get_mac_certificate_chain(&mac)
         .map_err(|e| {
-            warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+            warp::reject::custom(ApiError::InternalError(e.to_string()))
         })?;
 
     // Audit certificate chain access

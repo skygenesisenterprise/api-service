@@ -21,6 +21,8 @@ use std::sync::Arc;
 use crate::core::vault::VaultClient;
 use std::collections::HashMap;
 use openidconnect::{core::*, IssuerUrl, ClientId, ClientSecret, RedirectUrl, Nonce, CsrfToken, PkceCodeChallenge, AuthorizationCode, AccessToken, IdToken, OAuth2TokenResponse, TokenResponse as OtherTokenResponse};
+use openidconnect::http;
+
 use openidconnect::core::{CoreClient, CoreProviderMetadata};
 use jsonwebtoken::{decode_header, DecodingKey, Validation, Algorithm, decode};
 use base64::{Engine as _, engine::general_purpose};
@@ -171,7 +173,7 @@ impl KeycloakClient {
     /// @AUDIT Client initialization logged with configuration details.
     pub async fn new(vault: Arc<VaultClient>) -> Result<Self, Box<dyn std::error::Error>> {
         // Load defaults from .env.example
-        let defaults = super::load_defaults_from_env_example();
+        let defaults = crate::load_defaults_from_env_example();
 
         let base_url = std::env::var("KEYCLOAK_URL")
             .or_else(|_| std::env::var("KEYCLOAK_BASE_URL"))
@@ -298,7 +300,15 @@ impl KeycloakClient {
         }
 
         let issuer_url = IssuerUrl::new(format!("{}/realms/{}", self.base_url, self.realm))?;
-        let provider_metadata = CoreProviderMetadata::discover_async(issuer_url, async_http_client).await?;
+        let provider_metadata = CoreProviderMetadata::discover_async(issuer_url, |url| {
+            let client = reqwest::Client::new();
+            async move {
+                client.get(url.as_str()).send().await
+                    .and_then(|response| response.bytes().await)
+                    .map_err(|e| openidconnect::reqwest::Error::Reqwest(e))
+                    .and_then(|bytes| serde_json::from_slice(&bytes).map_err(|e| e.into()))
+            }
+        }).await?;
         let client = CoreClient::from_provider_metadata(
             provider_metadata,
             ClientId::new(self.client_id.clone()),
@@ -323,7 +333,15 @@ impl KeycloakClient {
         }
 
         let issuer_url = IssuerUrl::new(format!("{}/realms/{}", self.base_url, self.realm))?;
-        let provider_metadata = CoreProviderMetadata::discover_async(issuer_url, async_http_client).await?;
+        let provider_metadata = CoreProviderMetadata::discover_async(issuer_url, |url| {
+            let client = reqwest::Client::new();
+            async move {
+                client.get(url.as_str()).send().await
+                    .and_then(|response| response.bytes().await)
+                    .map_err(|e| openidconnect::reqwest::Error::Reqwest(e))
+                    .and_then(|bytes| serde_json::from_slice(&bytes).map_err(|e| e.into()))
+            }
+        }).await?;
         let client = CoreClient::from_provider_metadata(
             provider_metadata,
             ClientId::new(self.client_id.clone()),
@@ -332,7 +350,15 @@ impl KeycloakClient {
 
         let token_response = client
             .exchange_code(AuthorizationCode::new(code.to_string()))
-            .request_async(async_http_client)
+            .request_async(|url| {
+                let client = reqwest::Client::new();
+                async move {
+                    client.post(url.as_str()).send().await
+                        .and_then(|response| response.bytes().await)
+                        .map_err(|e| openidconnect::reqwest::Error::Reqwest(e))
+                        .and_then(|bytes| serde_json::from_slice(&bytes).map_err(|e| e.into()))
+                }
+            })
             .await?;
 
         Ok(CustomTokenResponse {

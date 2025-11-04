@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use russh::{server::{self, Server as _, Session}, ChannelId, CryptoVec};
-use russh_keys::key::KeyPair;
+use russh_keys::key::{KeyPair, SSH_KEY_LEN};
 use async_trait::async_trait;
 use std::io;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -27,8 +27,7 @@ use crate::services::key_service::KeyService;
 use crate::services::device_service::DeviceService;
 use crate::core::vault::VaultClient;
 use crate::core::audit_manager::AuditManager;
-use crate::ssh_shell::ssh_shell::{SshShellHandler, SshShellSession};
-use crate::ssh_shell::ssh_session::ShellSessionManager;
+
 
 /// [SSH CONFIG] Server Configuration
 /// @MISSION Define SSH server parameters and security settings.

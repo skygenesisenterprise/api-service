@@ -21,11 +21,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::models::data_model::{
-    Device, DeviceStatus, DeviceType, DeviceConnectionType, DeviceCommand,
+    Device, DeviceStatus, DeviceType, DeviceConnectionType,
     CommandStatus, DeviceMetrics
 };
 use crate::services::device_service::DeviceService;
 use crate::core::audit_manager::{AuditManager, AuditEventType, AuditSeverity};
+use crate::middlewares::auth_middleware::ApiError;
 
 /// [DEVICE CREATE REQUEST] API Request for Creating New Device
 #[derive(Debug, Deserialize, Serialize)]
@@ -127,7 +128,7 @@ pub async fn create_device(
         request.credentials_ref,
         request.metadata.unwrap_or_default(),
     ).await.map_err(|e| {
-        warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+        warp::reject::custom(ApiError::InternalError(e.to_string()))
     })?;
 
     // Audit device creation
@@ -172,7 +173,7 @@ pub async fn list_devices(
         status_filter,
         type_filter,
     ).await.map_err(|e| {
-        warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+        warp::reject::custom(ApiError::InternalError(e.to_string()))
     })?;
 
     // Audit device listing
@@ -214,7 +215,7 @@ pub async fn get_device(
 ) -> Result<impl Reply, warp::Rejection> {
     let device = device_service.get_device(device_id, organization_id).await
         .map_err(|e| {
-            warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+            warp::reject::custom(ApiError::InternalError(e.to_string()))
         })?;
 
     // Audit device access
@@ -264,7 +265,7 @@ pub async fn update_device(
         request.credentials_ref,
         request.metadata,
     ).await.map_err(|e| {
-        warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+        warp::reject::custom(ApiError::InternalError(e.to_string()))
     })?;
 
     // Audit device update
@@ -301,7 +302,7 @@ pub async fn delete_device(
 
     device_service.delete_device(device_id, organization_id).await
         .map_err(|e| {
-            warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+            warp::reject::custom(ApiError::InternalError(e.to_string()))
         })?;
 
     // Audit device deletion
@@ -341,7 +342,7 @@ pub async fn execute_command(
         request.parameters,
         request.timeout_seconds,
     ).await.map_err(|e| {
-        warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+        warp::reject::custom(ApiError::InternalError(e.to_string()))
     })?;
 
     // Audit command execution
@@ -383,7 +384,7 @@ pub async fn get_command_status(
 ) -> Result<impl Reply, warp::Rejection> {
     let command = device_service.get_command_status(command_id, organization_id).await
         .map_err(|e| {
-            warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+            warp::reject::custom(ApiError::InternalError(e.to_string()))
         })?;
 
     // Audit command status check
@@ -425,7 +426,7 @@ pub async fn get_device_metrics(
 ) -> Result<impl Reply, warp::Rejection> {
     let metrics = device_service.get_device_metrics(device_id, organization_id, limit).await
         .map_err(|e| {
-            warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+            warp::reject::custom(ApiError::InternalError(e.to_string()))
         })?;
 
     // Audit metrics access
@@ -465,7 +466,7 @@ pub async fn update_device_status(
 ) -> Result<impl Reply, warp::Rejection> {
     let updated_device = device_service.update_device_status(device_id, organization_id, status).await
         .map_err(|e| {
-            warp::reject::custom(crate::middlewares::auth_middleware::ApiError::InternalError(e))
+            warp::reject::custom(ApiError::InternalError(e.to_string()))
         })?;
 
     // Audit status update

@@ -241,6 +241,24 @@ pub fn combined_auth(keycloak: Arc<KeycloakClient>) -> impl Filter<Extract = (Cl
         .unify()
 }
 
+/// [API ERROR ENUM] General API Error Types
+/// @MISSION Provide standardized error types for API responses.
+/// @THREAT Error information leakage.
+/// @COUNTERMEASURE Sanitized error messages.
+/// @INVARIANT Errors are properly categorized and handled.
+/// @AUDIT Error occurrences are logged.
+/// @DEPENDENCY Used by controllers for error handling.
+#[derive(Debug)]
+pub enum ApiError {
+    InternalError(String),
+    BadRequest(String),
+    Unauthorized(String),
+    NotFound(String),
+    Conflict(String),
+}
+
+impl warp::reject::Reject for ApiError {}
+
 /// [AUTH MIDDLEWARE ERROR ENUM] Advanced Authentication Failures
 /// @MISSION Categorize complex authentication errors.
 /// @THREAT Information leakage through detailed errors.

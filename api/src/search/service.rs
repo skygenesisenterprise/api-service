@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tantivy::collector::{Count, TopDocs};
 use tantivy::query::{AllQuery, BooleanQuery, FuzzyTermQuery, PhraseQuery, Query, RangeQuery, TermQuery};
-use tantivy::schema::{Field, Index, IndexRecordOption, Schema, TextFieldIndexing, TextOptions};
+use tantivy::schema::{Field, IndexRecordOption, Schema, TextFieldIndexing, TextOptions};
 use tantivy::{IndexReader, IndexWriter, ReloadPolicy, Searcher, Term};
 use tokio::sync::RwLock;
 use uuid::Uuid;

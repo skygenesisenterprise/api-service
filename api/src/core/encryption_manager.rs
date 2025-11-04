@@ -21,12 +21,15 @@ use tokio::sync::RwLock;
 use crate::core::vault::VaultClient;
 use crate::core::crypto::*;
 use crate::models::user::User;
-use crate::models::mail::{MessageBody, EmailContext};
+use crate::models::mail::MessageBody;
 use sequoia_openpgp as openpgp;
 use openpgp::cert::prelude::*;
 use openpgp::parse::Parse;
 use openpgp::policy::StandardPolicy;
 use openpgp::serialize::Serialize;
+
+use sequoia_openpgp::types::CompressionAlgorithm;
+use x25519_dalek::{EphemeralSecret, PublicKey as X25519PublicKey};
 
 /// [ENCRYPTION ERROR ENUM] Comprehensive Cryptographic Failure Classification
 /// @MISSION Categorize all encryption system failure modes for proper incident response.
@@ -109,7 +112,7 @@ pub enum KeyType {
 /// @AUDIT Manager operations are self-auditing for compliance verification.
 pub struct EncryptionManager {
     vault_client: Arc<VaultClient>,
-    policy: StandardPolicy,
+    policy: StandardPolicy<'static>,
     key_cache: Arc<RwLock<HashMap<String, CachedKey>>>,
 }
 

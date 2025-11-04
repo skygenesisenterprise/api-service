@@ -8,7 +8,7 @@
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use crate::search::core::{AetherSearchEngine, DocumentData};
+
 use crate::search::models::*;
 use crate::services::auth_service::AuthService;
 use crate::core::vault::VaultClient;

@@ -24,7 +24,7 @@ use validator::Validate;
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub struct SearchQuery {
     /// Search query string
-    #[validate(length(min = 1, max = 1000), custom = "validate_query")]
+    #[validate(length(min = 1, max = 1000), custom(function = "validate_query"))]
     pub q: String,
 
     /// Content type filters
@@ -81,11 +81,11 @@ pub struct SearchQuery {
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub struct DateRangeFilter {
     /// Start date (ISO 8601 format)
-    #[validate(custom = "validate_date")]
+    #[validate(custom(function = "validate_date"))]
     pub start: Option<String>,
 
     /// End date (ISO 8601 format)
-    #[validate(custom = "validate_date")]
+    #[validate(custom(function = "validate_date"))]
     pub end: Option<String>,
 
     /// Date field to filter on

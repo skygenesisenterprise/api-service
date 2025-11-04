@@ -25,6 +25,7 @@ use hmac::{Hmac, Mac};
 use sha256::digest;
 use serde_json;
 use reqwest::Client;
+use serde::{Serialize, Deserialize};
 
 /// [DISCORD CORE STRUCT] Core Discord Bot Operations
 /// @MISSION Centralize Discord API interactions and webhook processing.

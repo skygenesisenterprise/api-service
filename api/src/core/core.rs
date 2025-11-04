@@ -19,6 +19,6 @@
 /// @DEPENDENCY ApiKey model with permissions array.
 /// @PERFORMANCE O(n) where n is number of user permissions.
 /// @AUDIT Permission checks are logged for access monitoring.
-pub fn validate_permissions(api_key: &crate::models::ApiKey, required: &str) -> bool {
+pub fn validate_permissions(api_key: &crate::models::auth::ApiKey, required: &str) -> bool {
     api_key.permissions.contains(&required.to_string())
 }

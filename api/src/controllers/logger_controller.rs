@@ -18,7 +18,8 @@ use warp::Reply;
 use std::sync::Arc;
 use warp::http::StatusCode;
 use crate::services::logger_service::{LoggerService, LoggerServiceError};
-use crate::models::logger_model::{LoggerResponse, LogFilterRequest, LogExportRequest, ExportFormat, LoggerConfig, LogAlertRule};
+use crate::models::logger_model::{LoggerResponse, LogFilterRequest, LogExportRequest};
+use serde_json::Value;
 
 /// [GET LOGS HANDLER] Retrieve Filtered Audit Logs
 /// @MISSION Provide secure access to audit logs with flexible filtering.
@@ -41,7 +42,7 @@ use crate::models::logger_model::{LoggerResponse, LogFilterRequest, LogExportReq
         ("limit" = Option<usize>, Query, description = "Maximum results (default: 100, max: 1000)")
     ),
     responses(
-        (status = 200, description = "Logs retrieved successfully", body = LoggerResponse<LogQueryResult>),
+        (status = 200, description = "Logs retrieved successfully", body = LoggerResponse<Value>),
         (status = 400, description = "Invalid request parameters", body = LoggerResponse<String>),
         (status = 401, description = "Unauthorized access", body = LoggerResponse<String>),
         (status = 500, description = "Internal server error", body = LoggerResponse<String>)
@@ -112,7 +113,7 @@ pub async fn get_logs(
         ("limit" = Option<usize>, Query, description = "Maximum results")
     ),
     responses(
-        (status = 200, description = "Route logs retrieved successfully", body = LoggerResponse<LogQueryResult>),
+        (status = 200, description = "Route logs retrieved successfully", body = LoggerResponse<Value>),
         (status = 400, description = "Invalid route or parameters", body = LoggerResponse<String>),
         (status = 404, description = "Route not found in logs", body = LoggerResponse<String>)
     )
@@ -279,7 +280,7 @@ pub async fn get_logged_routes(
         ("days" = Option<i64>, Query, description = "Number of days to analyze (default: 30)")
     ),
     responses(
-        (status = 200, description = "Log summary generated successfully", body = LoggerResponse<LogSummary>),
+        (status = 200, description = "Log summary generated successfully", body = LoggerResponse<Value>),
         (status = 400, description = "Invalid parameters", body = LoggerResponse<String>)
     )
 )]

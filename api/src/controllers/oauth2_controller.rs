@@ -29,7 +29,7 @@ use serde_json::json;
     path = "/api/v1/oauth2",
     responses(
         (status = 200, description = "OAuth2 integration information", body = serde_json::Value),
-        (status = 500, description = "Internal server error", body = ErrorResponse)
+        (status = 500, description = "Internal server error", body = serde_json::Value)
     )
 )]
 pub async fn oauth2_info() -> Result<impl Reply, warp::Rejection> {
