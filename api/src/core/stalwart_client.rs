@@ -16,6 +16,7 @@
 
 use reqwest::{Client, Certificate, Identity, header::HeaderMap};
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use async_trait::async_trait;
@@ -470,7 +471,12 @@ impl StalwartClient {
         use hmac::{Hmac, Mac};
 
         // Create a simple HMAC for now - in production, this would call Vault
-        let mut mac = Hmac::<Sha512>::new_from_slice(b"shared_secret_key").unwrap();
+        // Load HMAC secret from environment variable securely
+        let hmac_key = env::var("SGE_HMAC_KEY")
+            .expect("SGE_HMAC_KEY environment variable not set; required for secure request signing")
+            .into_bytes();
+        let mut mac = Hmac::<Sha512>::new_from_slice(&hmac_key)
+            .expect("Failed to create HMAC with provided key");
         let mut header_string = String::new();
 
         // Include relevant headers in signature
