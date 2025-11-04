@@ -262,6 +262,6 @@ jobs:
         path: combined-sbom.json
 
     - name: Attest SBOM
-      uses: actions/attest-build-provenance@v1
+      uses: actions/attest-build-provenance@v3
       with:
         subject-path: combined-sbom.json
