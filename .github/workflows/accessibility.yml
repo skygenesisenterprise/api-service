@@ -41,7 +41,7 @@ jobs:
         npx pa11y-ci --config .pa11yci.json --json > pa11y-results.json
 
     - name: Run lighthouse accessibility audit
-      uses: treosh/lighthouse-ci-action@v10
+      uses: treosh/lighthouse-ci-action@v12
       with:
         urls: http://localhost:3000
         configPath: .lighthouserc-accessibility.json
