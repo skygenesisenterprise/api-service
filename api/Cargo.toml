@@ -123,4 +123,4 @@ name = "api"
 path = "src/main.rs"
 
 [build-dependencies]
-tonic-build = "0.12.3"
+tonic-build = "0.14.2"
