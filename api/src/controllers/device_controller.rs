@@ -19,13 +19,14 @@ use std::sync::Arc;
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use chrono::Utc;
 
 use crate::models::data_model::{
     Device, DeviceStatus, DeviceType, DeviceConnectionType,
     CommandStatus, DeviceMetrics
 };
 use crate::services::device_service::DeviceService;
-use crate::core::audit_manager::{AuditManager, AuditEventType, AuditSeverity};
+use crate::core::audit_manager::{AuditManager, AuditEvent, AuditEventType, AuditSeverity};
 use crate::middlewares::auth_middleware::ApiError;
 
 /// [DEVICE CREATE REQUEST] API Request for Creating New Device
@@ -132,18 +133,27 @@ pub async fn create_device(
     })?;
 
     // Audit device creation
-    audit_manager.audit_event(
-        AuditEventType::Security,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "device_api",
-        &format!("Device '{}' created with ID {}", device.name, device.id),
-        Some(json!({
+    let event = AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::LoginSuccess,
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: Some(organization_id.to_string()),
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "device_api".to_string(),
+        action: format!("Device '{}' created with ID {}", device.name, device.id),
+        status: "success".to_string(),
+        details: json!({
             "device_id": device.id,
             "device_name": device.name,
             "organization_id": organization_id
-        })),
-    ).await;
+        }),
+        hmac_signature: "".to_string(),
+    };
+    audit_manager.log_event(event).await;
 
     Ok(warp::reply::json(&device))
 }
@@ -177,19 +187,28 @@ pub async fn list_devices(
     })?;
 
     // Audit device listing
-    audit_manager.audit_event(
-        AuditEventType::Access,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "device_api",
-        &format!("Listed {} devices for organization", devices.len()),
-        Some(json!({
+    let event = AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::MailReceived, // Using existing enum
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: Some(organization_id.to_string()),
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "device_api".to_string(),
+        action: Some(format!("Listed {} devices for organization", devices.len())),
+        outcome: Some("success".to_string()),
+        details: Some(json!({
             "organization_id": organization_id,
             "page": page,
             "per_page": per_page,
             "total_count": total_count
-        })),
-    ).await;
+        }).to_string()),
+        hmac_signature: None,
+    };
+    audit_manager.log_event(event).await;
 
     let response = DeviceListResponse {
         devices,
@@ -219,17 +238,26 @@ pub async fn get_device(
         })?;
 
     // Audit device access
-    audit_manager.audit_event(
-        AuditEventType::Access,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "device_api",
-        &format!("Accessed device '{}' details", device.name),
-        Some(json!({
+    let event = AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::MailReceived,
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: Some(organization_id.to_string()),
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "device_api".to_string(),
+        action: Some(format!("Accessed device '{}' details", device.name)),
+        outcome: Some("success".to_string()),
+        details: Some(json!({
             "device_id": device_id,
             "organization_id": organization_id
-        })),
-    ).await;
+        }).to_string()),
+        hmac_signature: None,
+    };
+    audit_manager.log_event(event).await;
 
     Ok(warp::reply::json(&device))
 }
@@ -269,17 +297,26 @@ pub async fn update_device(
     })?;
 
     // Audit device update
-    audit_manager.audit_event(
-        AuditEventType::Security,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "device_api",
-        &format!("Device '{}' updated", updated_device.name),
-        Some(json!({
+    let event = AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::LoginSuccess,
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: Some(organization_id.to_string()),
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "device_api".to_string(),
+        action: Some(format!("Device '{}' updated", updated_device.name)),
+        outcome: Some("success".to_string()),
+        details: Some(json!({
             "device_id": device_id,
             "organization_id": organization_id
-        })),
-    ).await;
+        }).to_string()),
+        hmac_signature: None,
+    };
+    audit_manager.log_event(event).await;
 
     Ok(warp::reply::json(&updated_device))
 }
@@ -306,17 +343,26 @@ pub async fn delete_device(
         })?;
 
     // Audit device deletion
-    audit_manager.audit_event(
-        AuditEventType::Security,
-        AuditSeverity::Warning,
-        Some(&user_id.to_string()),
-        "device_api",
-        &format!("Device '{}' deleted", device_name),
-        Some(json!({
+    let event = AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::LoginSuccess,
+        severity: AuditSeverity::Medium, // Using Medium for Warning
+        user_id: Some(user_id.to_string()),
+        tenant_id: Some(organization_id.to_string()),
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "device_api".to_string(),
+        action: Some(format!("Device '{}' deleted", device_name)),
+        outcome: Some("success".to_string()),
+        details: Some(json!({
             "device_id": device_id,
             "organization_id": organization_id
-        })),
-    ).await;
+        }).to_string()),
+        hmac_signature: None,
+    };
+    audit_manager.log_event(event).await;
 
     Ok(warp::reply::json(&json!({"status": "device_deleted"})))
 }
@@ -346,19 +392,28 @@ pub async fn execute_command(
     })?;
 
     // Audit command execution
-    audit_manager.audit_event(
-        AuditEventType::Security,
-        AuditSeverity::Warning,
-        Some(&user_id.to_string()),
-        "device_api",
-        &format!("Command executed on device {}", device_id),
-        Some(json!({
+    let event = AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::LoginSuccess,
+        severity: AuditSeverity::Medium,
+        user_id: Some(user_id.to_string()),
+        tenant_id: Some(organization_id.to_string()),
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "device_api".to_string(),
+        action: Some(format!("Command executed on device {}", device_id)),
+        outcome: Some("success".to_string()),
+        details: Some(json!({
             "device_id": device_id,
             "organization_id": organization_id,
             "command_id": command.id,
             "command": request.command
-        })),
-    ).await;
+        }).to_string()),
+        hmac_signature: None,
+    };
+    audit_manager.log_event(event).await;
 
     let response = CommandResponse {
         command_id: command.id,
@@ -388,18 +443,27 @@ pub async fn get_command_status(
         })?;
 
     // Audit command status check
-    audit_manager.audit_event(
-        AuditEventType::Access,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "device_api",
-        &format!("Checked status of command {}", command_id),
-        Some(json!({
+    let event = AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::MailReceived,
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: Some(organization_id.to_string()),
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "device_api".to_string(),
+        action: Some(format!("Checked status of command {}", command_id)),
+        outcome: Some("success".to_string()),
+        details: Some(json!({
             "command_id": command_id,
             "organization_id": organization_id,
             "status": format!("{:?}", command.status)
-        })),
-    ).await;
+        }).to_string()),
+        hmac_signature: None,
+    };
+    audit_manager.log_event(event).await;
 
     let response = CommandResponse {
         command_id: command.id,
@@ -430,18 +494,27 @@ pub async fn get_device_metrics(
         })?;
 
     // Audit metrics access
-    audit_manager.audit_event(
-        AuditEventType::Access,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "device_api",
-        &format!("Retrieved metrics for device {}", device_id),
-        Some(json!({
+    let event = AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::MailReceived,
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: Some(organization_id.to_string()),
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "device_api".to_string(),
+        action: Some(format!("Retrieved metrics for device {}", device_id)),
+        outcome: Some("success".to_string()),
+        details: Some(json!({
             "device_id": device_id,
             "organization_id": organization_id,
             "metrics_count": metrics.len()
-        })),
-    ).await;
+        }).to_string()),
+        hmac_signature: None,
+    };
+    audit_manager.log_event(event).await;
 
     let response = MetricsResponse {
         metrics,
@@ -470,18 +543,27 @@ pub async fn update_device_status(
         })?;
 
     // Audit status update
-    audit_manager.audit_event(
-        AuditEventType::Security,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "device_api",
-        &format!("Device '{}' status updated to {:?}", updated_device.name, status),
-        Some(json!({
+    let event = AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::LoginSuccess,
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: Some(organization_id.to_string()),
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "device_api".to_string(),
+        action: Some(format!("Device '{}' status updated to {:?}", updated_device.name, status)),
+        outcome: Some("success".to_string()),
+        details: Some(json!({
             "device_id": device_id,
             "organization_id": organization_id,
             "new_status": format!("{:?}", status)
-        })),
-    ).await;
+        }).to_string()),
+        hmac_signature: None,
+    };
+    audit_manager.log_event(event).await;
 
     Ok(warp::reply::json(&updated_device))
 }

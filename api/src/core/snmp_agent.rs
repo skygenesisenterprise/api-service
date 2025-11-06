@@ -19,7 +19,7 @@ use tokio::net::UdpSocket;
 use serde::{Deserialize, Serialize};
 use chrono::Utc;
 use crate::core::vault::VaultClient;
-use crate::core::audit_manager::{AuditManager, AuditEventType, AuditSeverity};
+use crate::core::audit_manager::{AuditManager, AuditEvent, AuditEventType, AuditSeverity};
 
 /// SGE Enterprise OID base
 const SGE_ENTERPRISE_OID: &str = "1.3.6.1.4.1.8072.1.3.2.3";
@@ -134,14 +134,23 @@ impl SnmpAgent {
         self.start_mib_updater();
 
         // Audit agent startup
-        self.audit_manager.audit_event(
-            AuditEventType::Security,
-            AuditSeverity::Info,
-            None,
-            "snmp_agent",
-            &format!("SNMP Agent started on {}", address),
-            None,
-        ).await;
+        let event = AuditEvent {
+            id: uuid::Uuid::new_v4().to_string(),
+            timestamp: chrono::Utc::now(),
+            event_type: AuditEventType::LoginSuccess, // Using existing enum
+            severity: AuditSeverity::Low, // Using existing enum
+            user_id: None,
+            tenant_id: None,
+            session_id: None,
+            ip_address: None,
+            user_agent: None,
+            resource: "snmp_agent".to_string(),
+            action: Some(format!("SNMP Agent started on {}", address)),
+            outcome: Some("success".to_string()),
+            details: None,
+            hmac_signature: None,
+        };
+        self.audit_manager.log_event(event).await?;
 
         Ok(())
     }
@@ -155,14 +164,23 @@ impl SnmpAgent {
         }
 
         // Audit agent shutdown
-        self.audit_manager.audit_event(
-            AuditEventType::Security,
-            AuditSeverity::Info,
-            None,
-            "snmp_agent",
-            "SNMP Agent stopped",
-            None,
-        ).await;
+        let event = AuditEvent {
+            id: uuid::Uuid::new_v4().to_string(),
+            timestamp: chrono::Utc::now(),
+            event_type: AuditEventType::Logout,
+            severity: AuditSeverity::Low,
+            user_id: None,
+            tenant_id: None,
+            session_id: None,
+            ip_address: None,
+            user_agent: None,
+            resource: "snmp_agent".to_string(),
+            action: Some("SNMP Agent stopped".to_string()),
+            outcome: Some("success".to_string()),
+            details: None,
+            hmac_signature: None,
+        };
+        self.audit_manager.log_event(event).await?;
 
         Ok(())
     }
@@ -184,14 +202,23 @@ impl SnmpAgent {
     /// Handle SNMPv2c requests
     async fn handle_v2c_request(&self, _msg: &[u8], peer: &str) -> Result<Vec<u8>, SnmpAgentError> {
         // Mock implementation for now
-        self.audit_manager.audit_event(
-            AuditEventType::Access,
-            AuditSeverity::Info,
-            None,
-            "snmp_agent",
-            &format!("SNMP request from {}", peer),
-            None,
-        ).await;
+        let event = AuditEvent {
+            id: uuid::Uuid::new_v4().to_string(),
+            timestamp: chrono::Utc::now(),
+            event_type: AuditEventType::MailReceived, // Using existing enum
+            severity: AuditSeverity::Low,
+            user_id: None,
+            tenant_id: None,
+            session_id: None,
+            ip_address: Some(peer.to_string()),
+            user_agent: None,
+            resource: "snmp_agent".to_string(),
+            action: Some(format!("SNMP request from {}", peer)),
+            outcome: Some("processed".to_string()),
+            details: None,
+            hmac_signature: None,
+        };
+        self.audit_manager.log_event(event).await?;
         Ok(b"mock snmp response".to_vec())
     }
 
@@ -204,28 +231,46 @@ impl SnmpAgent {
     /// Handle GET requests
     async fn handle_get_request(&self, _variables: &[u8], peer: &str) -> Result<Vec<u8>, SnmpAgentError> {
         // Mock implementation
-        self.audit_manager.audit_event(
-            AuditEventType::Access,
-            AuditSeverity::Info,
-            None,
-            "snmp_agent",
-            &format!("SNMP GET request from {}", peer),
-            None,
-        ).await;
+        let event = AuditEvent {
+            id: uuid::Uuid::new_v4().to_string(),
+            timestamp: chrono::Utc::now(),
+            event_type: AuditEventType::MailReceived,
+            severity: AuditSeverity::Low,
+            user_id: None,
+            tenant_id: None,
+            session_id: None,
+            ip_address: Some(peer.to_string()),
+            user_agent: None,
+            resource: "snmp_agent".to_string(),
+            action: Some(format!("SNMP GET request from {}", peer)),
+            outcome: Some("processed".to_string()),
+            details: None,
+            hmac_signature: None,
+        };
+        self.audit_manager.log_event(event).await?;
         Ok(b"mock get response".to_vec())
     }
 
     /// Handle GET NEXT requests (for WALK operations)
     async fn handle_get_next_request(&self, _variables: &[u8], peer: &str) -> Result<Vec<u8>, SnmpAgentError> {
         // Mock implementation
-        self.audit_manager.audit_event(
-            AuditEventType::Access,
-            AuditSeverity::Info,
-            None,
-            "snmp_agent",
-            &format!("SNMP GET NEXT request from {}", peer),
-            None,
-        ).await;
+        let event = AuditEvent {
+            id: uuid::Uuid::new_v4().to_string(),
+            timestamp: chrono::Utc::now(),
+            event_type: AuditEventType::MailReceived,
+            severity: AuditSeverity::Low,
+            user_id: None,
+            tenant_id: None,
+            session_id: None,
+            ip_address: Some(peer.to_string()),
+            user_agent: None,
+            resource: "snmp_agent".to_string(),
+            action: Some(format!("SNMP GET NEXT request from {}", peer)),
+            outcome: Some("processed".to_string()),
+            details: None,
+            hmac_signature: None,
+        };
+        self.audit_manager.log_event(event).await?;
         Ok(b"mock get next response".to_vec())
     }
 

@@ -284,11 +284,11 @@ impl SmtpHandler {
 
         // Audit command
         let _ = self.audit_manager.log_security_event(
-            AuditEventType::ProtocolCommand,
+            AuditEventType::ApiRequest,
             None,
             "smtp_command".to_string(),
             true,
-            AuditSeverity::Info,
+            AuditSeverity::Low,
             serde_json::json!({
                 "session_id": session_id,
                 "command": format!("{:?}", command),

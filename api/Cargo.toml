@@ -45,6 +45,8 @@ redis = { version = "0.32", features = ["tokio-comp"] }
 base32 = "0.5"
 urlencoding = "2.1"
 sha1 = "0.10"
+bytes = "1.5"
+http = "1.1"
 
 # OpenAPI / Swagger
 utoipa = { version = "5.4", features = ["chrono"] }
