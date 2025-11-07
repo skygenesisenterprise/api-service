@@ -129,13 +129,7 @@ async fn main() {
      /// @COUNTERMEASURE Use FIPS-compliant algorithms and regular rotation.
      let key_service = Arc::new(crate::services::key_service::KeyService::new(vault_client.clone()));
 
-      /// [DATABASE LAYER] Multi-Database Connection Management
-      /// @MISSION Provide secure access to multiple database types.
-      /// @THREAT Unauthorized database access or credential exposure.
-      /// @COUNTERMEASURE Encrypted credentials in Vault and access control.
-      let data_service = Arc::new(crate::services::data_service::DataService::new(vault_client.clone()));
-
-      /// [OPENPGP LAYER] OpenPGP Cryptographic Operations
+/// [OPENPGP LAYER] OpenPGP Cryptographic Operations
       /// @MISSION Provide OpenPGP key generation, signing, and encryption.
       /// @THREAT Weak cryptography or key compromise.
       /// @COUNTERMEASURE Use Sequoia OpenPGP with secure key management.
@@ -149,13 +143,7 @@ async fn main() {
     let audit_manager = Arc::new(crate::core::audit_manager::AuditManager::new(vault_client.clone()));
     let metrics = Arc::new(crate::core::opentelemetry::Metrics::new().unwrap());
 
-     /// [DATABASE LAYER] Database Connection Pool
-     /// @MISSION Provide secure database connections.
-     /// @THREAT Unauthorized database access.
-     /// @COUNTERMEASURE Encrypted credentials and connection pooling.
-     let data_service = Arc::new(crate::services::data_service::DataService::new(vault_client.clone()));
-
-       /// [DEVICE MANAGEMENT LAYER] Remote Device Management Service
+     /// [DEVICE MANAGEMENT LAYER] Remote Device Management Service
        /// @MISSION Enable secure remote management of network devices.
        /// @THREAT Unauthorized device access or configuration changes.
        /// @COUNTERMEASURE Authentication, authorization, and audit logging.
@@ -183,7 +171,6 @@ async fn main() {
         ));
 
         let mac_service = Arc::new(crate::services::mac_service::MacService::new(
-            db_pool.clone(),
             vault_client.clone(),
             mac_certificates_core.clone(),
         ));
@@ -239,8 +226,6 @@ async fn main() {
             vault_client.clone(),
             audit_manager.clone(),
             metrics.clone(),
-            vpn_manager.clone(),
-            tailscale_manager.clone(),
             mail_service.clone(),
             search_service.clone(),
             discord_config,

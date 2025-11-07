@@ -21,6 +21,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use crate::models::poweradmin_models::*;
+use crate::schema::*;
 
 /// [DNS ZONE RECORD] Database Representation
 /// @MISSION Store zone metadata in database.

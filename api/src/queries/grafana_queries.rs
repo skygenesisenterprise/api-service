@@ -20,6 +20,7 @@ use diesel::pg::PgConnection;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use crate::schema::*;
 
 /// [GRAFANA DASHBOARD RECORD] Database Representation
 /// @MISSION Store dashboard metadata in database.
