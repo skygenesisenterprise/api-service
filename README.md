@@ -1,3 +1,5 @@
+<div align="center">
+
 # 🔐 Sky Genesis Enterprise API Service
 
 [![Rust](https://img.shields.io/badge/Rust-1.70+-000000?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
@@ -11,6 +13,7 @@
 [![Coverage](https://img.shields.io/badge/Coverage-85%25-yellow?style=for-the-badge)](https://github.com/skygenesisenterprise/api-service/coverage)
 
 > **Enterprise-grade API management platform** with advanced security, certificate-coupled authentication, and comprehensive audit capabilities.
+</div>
 
 ## 📈 Project Evolution & Milestones
 
@@ -544,6 +547,10 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ---
 
+<div align="center">
+
 **🔒 Secure • 🚀 Performant • 🏢 Enterprise-Ready**
 
 *Sky Genesis Enterprise API Service - Powering the next generation of enterprise applications.*
+
+</div>
