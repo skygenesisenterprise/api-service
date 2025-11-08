@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
+export const dynamic = 'force-dynamic';
 import { apiKeyService, ApiKey, CreateApiKeyRequest } from "../../utils/apiClient";
-import { useAuthContext } from "../../context/AuthContext";
+import { useAuth } from "../../context/JwtAuthContext";
 
 export default function ApiSettingsPage() {
-  const { token, isAuthenticated } = useAuthContext();
+  const { token, isAuthenticated } = useAuth();
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

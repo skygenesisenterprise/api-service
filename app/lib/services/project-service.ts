@@ -9,8 +9,8 @@ export interface CreateProjectData {
   startDate?: Date
   endDate?: Date
   budget?: number
-  organizationId?: string
-  createdBy?: string
+  organizationId: string
+  createdBy: string
 }
 
 export interface UpdateProjectData {
@@ -35,12 +35,12 @@ export class ProjectService {
         priority: data.priority || 'medium',
         startDate: data.startDate,
         endDate: data.endDate,
-        budget: data.budget ? data.budget.toString() : undefined,
+        budget: data.budget ? data.budget : undefined,
         organizationId: data.organizationId,
         createdBy: data.createdBy,
       },
       include: {
-        organization: true,
+        organizationRelation: true,
         creatorRelation: true,
         members: {
           include: {
@@ -57,7 +57,7 @@ export class ProjectService {
     return await prisma.project.findUnique({
       where: { id },
       include: {
-        organization: true,
+        organizationRelation: true,
         creatorRelation: true,
         members: {
           include: {
@@ -72,7 +72,7 @@ export class ProjectService {
     return await prisma.project.findUnique({
       where: { key },
       include: {
-        organization: true,
+        organizationRelation: true,
         creatorRelation: true,
         members: {
           include: {
@@ -115,7 +115,7 @@ export class ProjectService {
       prisma.project.findMany({
         where,
         include: {
-          organization: true,
+          organizationRelation: true,
           creatorRelation: true,
           members: {
             include: {
@@ -141,7 +141,7 @@ export class ProjectService {
         budget: data.budget ? data.budget.toString() : undefined,
       },
       include: {
-        organization: true,
+        organizationRelation: true,
         creatorRelation: true,
         members: {
           include: {
@@ -170,7 +170,7 @@ export class ProjectService {
       include: {
         projectRelation: {
           include: {
-            organization: true
+            organizationRelation: true
           }
         },
         userRelation: true
@@ -203,7 +203,7 @@ export class ProjectService {
         ]
       },
       include: {
-        organization: true,
+        organizationRelation: true,
         creatorRelation: true,
         members: {
           include: {

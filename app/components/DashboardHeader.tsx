@@ -39,12 +39,12 @@ export default function DashboardHeader({ title, subtitle }: DashboardHeaderProp
           {user && (
             <div className="flex items-center space-x-4">
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{user.name}</p>
-                <p className="text-xs text-gray-500">{user.role}</p>
+                <p className="text-sm font-medium text-gray-900">{user.fullName || user.email}</p>
+                <p className="text-xs text-gray-500">{user.position || 'User'}</p>
               </div>
               <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
                 <span className="text-sm font-medium text-gray-700">
-                  {user.name?.charAt(0).toUpperCase() || 'U'}
+                  {(user.fullName || user.email)?.charAt(0).toUpperCase() || 'U'}
                 </span>
               </div>
             </div>

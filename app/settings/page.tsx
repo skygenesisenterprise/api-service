@@ -1,10 +1,12 @@
 "use client";
 
-import { useAuthContext } from "../context/AuthContext";
+import { useAuth } from "../context/JwtAuthContext";
+
+export const dynamic = 'force-dynamic';
 import { SettingsSidebar } from "../components/Sidebar";
 
 export default function SettingsPage() {
-  const { isAuthenticated } = useAuthContext();
+  const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
     return (

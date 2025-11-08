@@ -18,8 +18,10 @@ const nextConfig: NextConfig = {
     unoptimized: false,
   },
 
-  // Turbopack configuration (empty to silence webpack warning)
-  turbopack: {},
+  // Turbopack configuration
+  turbopack: {
+    root: process.cwd(),
+  },
 
   // Security headers
   async headers() {
