@@ -28,7 +28,7 @@ use openpgp::parse::Parse;
 use openpgp::policy::StandardPolicy;
 use openpgp::serialize::Serialize;
 
-use sequoia_openpgp::types::CompressionAlgorithm;
+
 use x25519_dalek::{EphemeralSecret, PublicKey as X25519PublicKey};
 
 /// [ENCRYPTION ERROR ENUM] Comprehensive Cryptographic Failure Classification

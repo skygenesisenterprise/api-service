@@ -16,7 +16,7 @@
 
 use warp::{Filter, Rejection};
 use serde::{Deserialize, Serialize};
-use sha2::{Sha256, Digest};
+use sha2::Digest;
 use base64::{Engine as _, engine::general_purpose};
 use crate::models::key_model::CertificateType;
 use crate::services::key_service::KeyService;
@@ -146,7 +146,7 @@ pub fn certificate_auth(key_service: Arc<KeyService>) -> impl Filter<Extract = (
 /// @DEPENDENCY Uses rsa crate for cryptographic operations.
 fn verify_rsa_signature(message: &str, signature: &[u8], public_key_pem: &str) -> bool {
     use rsa::{RsaPublicKey, pkcs8::DecodePublicKey};
-    use rsa::pkcs1v15::Signature;
+
     use sha2::Sha256;
 
     match RsaPublicKey::from_public_key_pem(public_key_pem) {

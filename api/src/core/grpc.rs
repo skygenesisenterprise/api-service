@@ -14,7 +14,7 @@
 //  License: MIT (Open Source for Strategic Transparency)
 // ============================================================================
 
-use tonic::{Request, Response, Status};
+
 use std::sync::Arc;
 use quinn::Endpoint;
 use tokio::sync::Mutex;
@@ -32,7 +32,7 @@ pub mod sky_genesis {
     // In production, ensure protoc is installed for full gRPC functionality
     
     // Placeholder types to maintain compilation
-    use tonic::{Request, Response, Status};
+
     
     pub mod mail_service_server {
         use super::{SendEmailRequest, SendEmailResponse, GetEmailRequest, GetEmailResponse};
@@ -170,7 +170,8 @@ pub struct MailServiceImpl {
 }
 
 #[tonic::async_trait]
-impl sky_genesis::mail_service_server::MailService for MailServiceImpl {
+impl crate::core::grpc::sky_genesis::mail_service_server::MailService for MailServiceImpl {
+    use crate::core::grpc::sky_genesis::{SendEmailRequest, SendEmailResponse, GetEmailRequest, GetEmailResponse};
     /// [EMAIL SENDING] Secure Message Transmission
     /// @MISSION Send encrypted emails with delivery tracking.
     /// @THREAT Email spoofing, content tampering, or delivery failures.
@@ -180,8 +181,8 @@ impl sky_genesis::mail_service_server::MailService for MailServiceImpl {
     /// @AUDIT All send operations logged with message IDs.
     async fn send_email(
         &self,
-        request: tonic::Request<sky_genesis::SendEmailRequest>,
-    ) -> Result<tonic::Response<sky_genesis::SendEmailResponse>, tonic::Status> {
+        request: tonic::Request<SendEmailRequest>,
+    ) -> Result<tonic::Response<SendEmailResponse>, tonic::Status> {
         let req = request.into_inner();
 
         // Implement email sending logic here
@@ -205,8 +206,8 @@ impl sky_genesis::mail_service_server::MailService for MailServiceImpl {
     /// @AUDIT All access operations logged with user attribution.
     async fn get_email(
         &self,
-        request: tonic::Request<sky_genesis::GetEmailRequest>,
-    ) -> Result<tonic::Response<sky_genesis::GetEmailResponse>, tonic::Status> {
+        request: tonic::Request<GetEmailRequest>,
+    ) -> Result<tonic::Response<GetEmailResponse>, tonic::Status> {
         let req = request.into_inner();
 
         // Implement email retrieval logic
@@ -241,7 +242,8 @@ pub struct SearchServiceImpl {
 }
 
 #[tonic::async_trait]
-impl sky_genesis::search_service_server::SearchService for SearchServiceImpl {
+impl crate::core::grpc::sky_genesis::search_service_server::SearchService for SearchServiceImpl {
+    use crate::core::grpc::sky_genesis::{SearchRequest, SearchResponse, IndexDocumentRequest, IndexDocumentResponse};
     /// [FULL-TEXT SEARCH] Secure Query Processing
     /// @MISSION Execute encrypted search queries with relevance ranking.
     /// @THREAT Query injection, result poisoning, or privacy leakage.
@@ -251,8 +253,8 @@ impl sky_genesis::search_service_server::SearchService for SearchServiceImpl {
     /// @AUDIT Search queries logged for security and usage analysis.
     async fn search(
         &self,
-        request: tonic::Request<sky_genesis::SearchRequest>,
-    ) -> Result<tonic::Response<sky_genesis::SearchResponse>, tonic::Status> {
+        request: tonic::Request<SearchRequest>,
+    ) -> Result<tonic::Response<SearchResponse>, tonic::Status> {
         let req = request.into_inner();
 
         // Implement search logic here
@@ -268,7 +270,7 @@ impl sky_genesis::search_service_server::SearchService for SearchServiceImpl {
             }
         ];
 
-        let response = sky_genesis::SearchResponse {
+        let response = SearchResponse {
             results,
             total_count: 1,
             query_time_ms: 50,
@@ -286,13 +288,13 @@ impl sky_genesis::search_service_server::SearchService for SearchServiceImpl {
     /// @AUDIT Indexing operations logged with document metadata.
     async fn index_document(
         &self,
-        request: tonic::Request<sky_genesis::IndexDocumentRequest>,
-    ) -> Result<tonic::Response<sky_genesis::IndexDocumentResponse>, tonic::Status> {
+        request: tonic::Request<IndexDocumentRequest>,
+    ) -> Result<tonic::Response<IndexDocumentResponse>, tonic::Status> {
         let req = request.into_inner();
 
         // Implement document indexing logic
 
-        let response = sky_genesis::IndexDocumentResponse {
+        let response = IndexDocumentResponse {
             document_id: req.document.id,
             status: "indexed".to_string(),
             timestamp: chrono::Utc::now().timestamp(),

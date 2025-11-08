@@ -13,7 +13,7 @@
 // ============================================================================
 
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -147,7 +147,7 @@ impl VaultClient {
     /// @PERFORMANCE ~100ms key generation and storage.
     /// @AUDIT Key rotation events logged with key fingerprint.
     pub async fn rotate_key(&self, key_type: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let raw_key = crate::utils::key_utils::generate_api_key();
+        let raw_key = crate::utils::key_utils::generate_key();
         let formatted_key = raw_key.clone();
         let path = format!("secret/{}", key_type);
         let data = serde_json::json!({ "key": formatted_key });

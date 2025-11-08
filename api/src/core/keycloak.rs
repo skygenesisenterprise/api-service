@@ -20,11 +20,10 @@ use serde_json::Value;
 use std::sync::Arc;
 use crate::core::vault::VaultClient;
 use std::collections::HashMap;
-use openidconnect::{core::*, IssuerUrl, ClientId, ClientSecret, RedirectUrl, Nonce, CsrfToken, PkceCodeChallenge, AuthorizationCode, AccessToken, IdToken, OAuth2TokenResponse, TokenResponse as OtherTokenResponse};
-use openidconnect::http;
+use openidconnect::{core::*, IssuerUrl, ClientId, ClientSecret, RedirectUrl, Nonce, CsrfToken, AuthorizationCode, OAuth2TokenResponse};
 
 use openidconnect::core::{CoreClient, CoreProviderMetadata};
-use jsonwebtoken::{decode_header, DecodingKey, Validation, Algorithm, decode};
+use jsonwebtoken::{decode_header, DecodingKey, Validation, Algorithm};
 use base64::{Engine as _, engine::general_purpose};
 
 // Function to load default values from .env.example

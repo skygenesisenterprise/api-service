@@ -177,6 +177,37 @@ pub struct MetricsResponse {
     pub time_range: String,
 }
 
+/// Document data for indexing
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentData {
+    /// Document ID
+    pub id: String,
+    /// Document title
+    pub title: String,
+    /// Document content
+    pub content: String,
+    /// Content type
+    pub content_type: String,
+    /// Author
+    pub author: Option<String>,
+    /// Creation timestamp
+    pub created_at: Option<String>,
+    /// Last update timestamp
+    pub updated_at: Option<String>,
+    /// Organization ID
+    pub organization_id: String,
+    /// Permissions
+    pub permissions: Vec<String>,
+    /// Access level
+    pub access_level: String,
+    /// Document status
+    pub status: String,
+    /// Workflow state
+    pub workflow_state: Option<String>,
+    /// Additional metadata
+    pub metadata: Option<HashMap<String, serde_json::Value>>,
+}
+
 /// Error response structure
 #[derive(Debug, Clone, Serialize)]
 pub struct SearchError {

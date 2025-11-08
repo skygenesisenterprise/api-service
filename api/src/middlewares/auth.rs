@@ -14,7 +14,7 @@
 //  License: MIT (Open Source for Strategic Transparency)
 // ============================================================================
 
-use warp::{Filter, Rejection, Reply};
+use warp::{Filter, Rejection};
 use crate::models::key_model::{ApiKey, KeyType, ApiKeyStatus};
 use crate::services::vault_manager::VaultManager;
 use std::sync::Arc;

@@ -14,10 +14,10 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tantivy::collector::{Count, TopDocs};
-use tantivy::query::{AllQuery, BooleanQuery, FuzzyTermQuery, PhraseQuery, Query, RangeQuery, TermQuery};
-use tantivy::schema::{Field, IndexRecordOption, Schema, TextFieldIndexing, TextOptions};
-use tantivy::{IndexReader, IndexWriter, ReloadPolicy, Searcher, Term};
-use tokio::sync::RwLock;
+use tantivy::query::{AllQuery, BooleanQuery, FuzzyTermQuery, Query, TermQuery};
+use tantivy::schema::{IndexRecordOption, Schema, TextFieldIndexing, TextOptions, TEXT, STORED, INDEXED};
+use tantivy::{IndexReader, ReloadPolicy, Term};
+
 use uuid::Uuid;
 
 /// [SEARCH SERVICE] Enterprise Search Engine
@@ -398,7 +398,7 @@ impl SearchService {
     /// @INVARIANT Only authorized fields are included.
     fn document_to_hit(
         &self,
-        doc: &tantivy::Document,
+        doc: &impl tantivy::schema::Document,
         score: f32,
         highlight: bool,
     ) -> Option<SearchHit> {

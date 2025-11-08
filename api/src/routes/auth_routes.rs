@@ -2,15 +2,17 @@ use warp::Filter;
 use std::sync::Arc;
 use crate::controllers::auth_controller;
 use urlencoding;
-use crate::services::auth_service::{AuthService, LoginRequest};
+use crate::services::auth_service::AuthService;
 use crate::models::user::User;
 use crate::middlewares::auth_guard::auth_guard;
+use crate::middlewares::auth_middleware::Claims;
 use crate::services::session_service::SessionService;
-use crate::services::application_service::ApplicationAccessRequest;
-use crate::services::two_factor_service::{TwoFactorSetupRequest, TwoFactorVerificationRequest, TwoFactorChallengeValidationRequest};
+use crate::services::application_service::{ApplicationService, ApplicationAccessRequest};
+use crate::services::two_factor_service::{TwoFactorService, TwoFactorSetupRequest, TwoFactorVerificationRequest, TwoFactorChallengeValidationRequest};
 use crate::core::keycloak::KeycloakClient;
 use crate::core::fido2::{Fido2Manager, Fido2RegistrationRequest, Fido2AuthenticationRequest};
-use crate::core::opentelemetry::Metrics;
+
+
 
 /// Get frontend base URL based on NODE_ENV environment variable
 fn get_frontend_base_url() -> String {
@@ -153,15 +155,15 @@ pub fn auth_routes(
     let two_factor_remove = warp::path!("auth" / "2fa" / "methods" / String)
         .and(warp::delete())
         .and(auth_guard)
-        .and(warp::any().map(move || as_.clone()))
-        .and_then(|method_id: String, claims: crate::middlewares::auth::Claims, as_: Arc<AuthService>| async move {
+        .and(warp::any().map(move || auth_service.clone()))
+        .and_then(|method_id: String, claims: Claims, as_: Arc<AuthService>| async move {
             auth_controller::remove_two_factor_method(as_, claims.sub, method_id).await
         });
 
     let validate_2fa_challenge = warp::path!("auth" / "2fa" / "validate-challenge")
         .and(warp::post())
         .and(warp::body::json::<TwoFactorChallengeValidationRequest>())
-        .and(warp::any().map(move || as_.clone()))
+        .and(warp::any().map(move || auth_service.clone()))
         .and_then(|request: TwoFactorChallengeValidationRequest, as_: Arc<AuthService>| async move {
             auth_controller::validate_2fa_challenge(as_, request).await
         });
@@ -244,9 +246,9 @@ pub fn auth_routes(
     let sso_auth = warp::path!("sso" / "auth")
         .and(warp::post())
         .and(warp::body::form::<std::collections::HashMap<String, String>>())
-        .and(warp::any().map(move || kc_.clone()))
-        .and(warp::any().map(move || tfs_.clone()))
-        .and(warp::any().map(move || apps_.clone()))
+        .and(warp::any().map(move || keycloak_client.clone()))
+        .and(warp::any().map(move || two_factor_service.clone()))
+        .and(warp::any().map(move || application_service.clone()))
         .and_then(|form: std::collections::HashMap<String, String>, kc: Arc<KeycloakClient>, tfs: Arc<TwoFactorService>, apps: Arc<crate::services::application_service::ApplicationService>| async move {
             let username = form.get("username").ok_or("No username")?;
             let password = form.get("password").ok_or("No password")?;
@@ -432,9 +434,9 @@ pub fn auth_routes(
     let api_sso_auth = warp::path!("sso" / "auth")
         .and(warp::post())
         .and(warp::body::form::<std::collections::HashMap<String, String>>())
-        .and(warp::any().map(move || kc_.clone()))
-        .and(warp::any().map(move || tfs_.clone()))
-        .and(warp::any().map(move || apps_.clone()))
+        .and(warp::any().map(move || keycloak_client.clone()))
+        .and(warp::any().map(move || two_factor_service.clone()))
+        .and(warp::any().map(move || application_service.clone()))
         .and_then(|form: std::collections::HashMap<String, String>, kc: Arc<KeycloakClient>, tfs: Arc<TwoFactorService>, apps: Arc<crate::services::application_service::ApplicationService>| async move {
             let username = form.get("username").ok_or("No username")?;
             let password = form.get("password").ok_or("No password")?;
@@ -590,7 +592,7 @@ pub fn auth_routes(
     let complete_sso_auth = warp::path!("sso" / "complete")
         .and(warp::post())
         .and(warp::body::json::<serde_json::Value>())
-        .and(warp::any().map(move || kc_.clone()))
+        .and(warp::any().map(move || keycloak_client.clone()))
         .and_then(|body: serde_json::Value, kc: Arc<KeycloakClient>| async move {
             // Extract data from the 2FA completion request
             let challenge_id = body.get("challenge_id").and_then(|v| v.as_str()).ok_or("No challenge_id")?;
@@ -991,5 +993,5 @@ pub fn auth_routes(
             }
         });
 
-    login.or(session_login).or(register).or(recover).or(me).or(logout).or(logout_all).or(sessions).or(applications).or(application_access).or(two_factor_setup).or(two_factor_verify).or(two_factor_methods).or(two_factor_remove).or(validate_2fa_challenge).or(complete_sso_auth).or(login_page).or(login_html).or(login_css).or(oidc_login).or(oidc_callback).or(api_sso).or(api_sso_auth).or(api_sso_resources).or(api_sso_callback).or(sso_login).or(sso_auth).or(sso_resources).or(sso_callback).or(fido2_register_start).or(fido2_register_finish).or(fido2_auth_start).or(fido2_auth_finish).or(api_v1_auth_login).or(api_v1_auth_callback).or(api_v1_auth_refresh).or(api_v1_auth_userinfo).or(api_v1_auth_logout).or(api_v1_auth_client_credentials)
+    login.or(session_login).or(register).or(recover).or(me).or(logout).or(logout_all).or(sessions).or(applications).or(application_access).or(two_factor_setup).or(two_factor_verify).or(two_factor_methods).or(two_factor_remove).or(validate_2fa_challenge).or(complete_sso_auth).or(login_page).or(login_css).or(oidc_login).or(oidc_callback).or(api_sso).or(api_sso_auth).or(api_sso_resources).or(api_sso_callback).or(sso_login).or(sso_auth).or(sso_resources).or(fido2_register_start).or(fido2_register_finish).or(fido2_auth_start).or(fido2_auth_finish).or(api_v1_auth_login).or(api_v1_auth_callback).or(api_v1_auth_refresh).or(api_v1_auth_userinfo).or(api_v1_auth_logout).or(api_v1_auth_client_credentials)
 }

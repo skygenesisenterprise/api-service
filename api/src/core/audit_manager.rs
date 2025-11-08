@@ -103,6 +103,10 @@ pub enum AuditEventType {
     RateLimitExceeded,
     EncryptionFailure,
     DecryptionFailure,
+    
+    // Access events
+    Access,
+    Security,
     CertificateValidationFailure,
 
     // API events

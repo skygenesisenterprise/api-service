@@ -51,18 +51,15 @@ pub async fn login(
         .map_err(|_| warp::reject::custom(crate::middlewares::auth::AuthError::VaultError))?;
 
     // Set session cookie if session_token is present
+    let reply = warp::reply::json(&response);
     if let Some(session_token) = response.session_token.clone() {
         let cookie = format!(
             "sky_genesis_session={}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800",
             session_token
         );
-        Ok(warp::reply::with_header(
-            warp::reply::json(&response),
-            "Set-Cookie",
-            cookie,
-        ))
+        Ok(warp::reply::with_header(reply, "Set-Cookie", cookie))
     } else {
-        Ok(warp::reply::json(&response))
+        Ok(reply)
     }
 }
 
@@ -80,7 +77,7 @@ pub async fn login_with_session(
     app_token: String,
 ) -> Result<impl Reply, warp::Rejection> {
     let response = auth_service.login_with_session(&session_token, &app_token).await
-        .map_err(|_| warp::reject::custom(crate::middlewares::auth::AuthError::InvalidToken))?;
+        .map_err(|_| warp::reject::custom(crate::middlewares::auth::AuthError::InvalidKey))?;
     Ok(warp::reply::json(&response))
 }
 
@@ -132,7 +129,7 @@ pub async fn get_me(
     token: String,
 ) -> Result<impl Reply, warp::Rejection> {
     let user = auth_service.get_me(&token).await
-        .map_err(|_| warp::reject::custom(crate::middlewares::auth::AuthError::InvalidToken))?;
+        .map_err(|_| warp::reject::custom(crate::middlewares::auth::AuthError::InvalidKey))?;
     Ok(warp::reply::json(&user))
 }
 

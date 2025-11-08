@@ -15,6 +15,10 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+
+pub mod tokens;
+pub mod key_utils;
 
 /// [TOKEN UTILS] JWT Token Management Utilities
 /// @MISSION Provide JWT token creation and validation utilities.
@@ -22,7 +26,7 @@ use uuid::Uuid;
 /// @COUNTERMEASURE Secure token signing and validation.
 /// @DEPENDENCY jsonwebtoken crate with RS256 algorithm.
 /// @INVARIANT All tokens are cryptographically signed.
-pub mod tokens {
+pub mod tokens_internal {
     use super::*;
 
     /// [JWT CLAIMS] Standard JWT Claims Structure
@@ -146,11 +150,11 @@ pub mod tokens {
         }
 
         // Decode header (first part)
-        let header_decoded = base64::decode_config(parts[0], base64::URL_SAFE_NO_PAD)?;
+        let header_decoded = URL_SAFE_NO_PAD.decode(parts[0])?;
         let header: serde_json::Value = serde_json::from_slice(&header_decoded)?;
 
         // Decode payload (second part)
-        let payload_decoded = base64::decode_config(parts[1], base64::URL_SAFE_NO_PAD)?;
+        let payload_decoded = URL_SAFE_NO_PAD.decode(parts[1])?;
         let payload: serde_json::Value = serde_json::from_slice(&payload_decoded)?;
 
         Ok(TokenInfo {
@@ -202,7 +206,7 @@ pub mod tokens {
 /// @COUNTERMEASURE Secure key generation and proper validation.
 /// @DEPENDENCY Cryptographic libraries and secure random sources.
 /// @INVARIANT All keys are generated with sufficient entropy.
-pub mod key_utils {
+pub mod key_utils_internal {
     use super::*;
     use rand::rngs::OsRng;
     use rand::RngCore;
@@ -217,7 +221,7 @@ pub mod key_utils {
     pub fn generate_api_key() -> String {
         let mut bytes = [0u8; 32];
         OsRng.fill_bytes(&mut bytes);
-        format!("sk_{}", base64::encode_config(&bytes, base64::URL_SAFE_NO_PAD))
+        format!("sk_{}", URL_SAFE_NO_PAD.encode(&bytes))
     }
 
     /// [GENERATE SECRET KEY] Generate Random Secret Key
@@ -252,8 +256,8 @@ pub mod key_utils {
     /// @PERFORMANCE ~100ms password hashing.
     /// @AUDIT Password hashing logged without sensitive data.
     pub fn hash_password(password: &str, salt: &str) -> Result<String, Box<dyn std::error::Error>> {
-        use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-        use argon2::password_hash::{rand_core::OsRng, SaltString};
+        use argon2::{Argon2, PasswordHasher};
+        use argon2::password_hash::SaltString;
 
         let salt = SaltString::encode_b64(salt.as_bytes())
             .map_err(|e| format!("Invalid salt: {}", e))?;
@@ -322,7 +326,7 @@ pub mod key_utils {
             return false;
         }
 
-        base64::decode_config(key_part, base64::URL_SAFE_NO_PAD).is_ok()
+        URL_SAFE_NO_PAD.decode(key_part).is_ok()
     }
 
     /// [EXTRACT KEY ID] Extract Key ID from API Key
@@ -339,7 +343,7 @@ pub mod key_utils {
 
         // Use first 8 characters of the key as ID for lookup
         let key_part = &api_key[3..];
-        let key_bytes = base64::decode_config(key_part, base64::URL_SAFE_NO_PAD)?;
+        let key_bytes = URL_SAFE_NO_PAD.decode(key_part)?;
         let key_id = format!("kid_{}", hex::encode(&key_bytes[..8]));
         Ok(key_id)
     }

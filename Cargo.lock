@@ -223,6 +223,7 @@ dependencies = [
  "snmp",
  "snmp-parser",
  "sqlx",
+ "ssh-key",
  "tantivy",
  "thiserror 2.0.17",
  "tokio",

@@ -14,7 +14,7 @@
 //  License: MIT (Open Source for Strategic Transparency)
 // ============================================================================
 
-use crate::models::key_model::{ApiKey, ApiKeyStatus, KeyType};
+use crate::models::key_model::{ApiKey, ApiKeyStatus};
 use std::collections::HashSet;
 
 /// [AUTHORIZATION SERVICE STRUCT] Core Authorization Engine

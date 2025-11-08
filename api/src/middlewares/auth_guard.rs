@@ -15,7 +15,8 @@
 // ============================================================================
 
 use warp::{Filter, Rejection};
-use crate::utils::tokens::validate_access_token;
+
+use crate::utils::tokens_internal::validate_access_token;
 use crate::middlewares::auth_middleware::Claims;
 
 /// [AUTH GUARD FILTER] JWT Bearer Token Authentication Middleware

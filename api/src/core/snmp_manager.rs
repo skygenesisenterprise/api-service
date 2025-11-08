@@ -13,9 +13,7 @@
 //  MANAGEMENT: Device monitoring, configuration retrieval, trap handling
 //  License: MIT (Open Source for Strategic Transparency)
 // ============================================================================
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
-use tokio::time::timeout;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use crate::core::vault::VaultClient;

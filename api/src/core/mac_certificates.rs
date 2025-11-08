@@ -15,13 +15,13 @@
 //  License: MIT (Open Source for Strategic Transparency)
 // ============================================================================
 
-use std::collections::HashMap;
+
 use uuid::Uuid;
 use chrono::{DateTime, Utc, Duration};
-use ring::signature::{Ed25519KeyPair, KeyPair, Signature, UnparsedPublicKey, ED25519};
+use ring::signature::{Ed25519KeyPair, KeyPair};
 use ring::rand::SystemRandom;
 use base64::{Engine as _, engine::general_purpose};
-use serde::{Deserialize, Serialize};
+
 
 use crate::models::data_model::{MacIdentity, MacCertificateInfo, MacSignatureInfo, CertificateStatus};
 use crate::core::vault::VaultClient;

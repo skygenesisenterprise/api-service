@@ -15,20 +15,15 @@
 //  License: MIT (Open Source for Strategic Transparency)
 // ============================================================================
 
-use std::sync::Arc;
-use tokio::sync::RwLock;
-use chrono::Utc;
-use serde_json::json;
 
-use crate::services::voip_service::{VoipService, VoipCall, VoipRoom, SignalingMessage, CallType, CallStatus, SignalingType, RoomSettings};
-use crate::core::voip::{SignalingServer, MediaServer, VoIPEngine};
-use crate::middlewares::voip_middleware::{VoipMiddleware, VoipRateLimiter, VoipCallValidator, VoipMediaValidator};
-use crate::models::voip::{VoipCall as VoipCallModel, VoipRoom as VoipRoomModel};
-use crate::queries::voip_queries::VoipQueries;
+
+
+
+
+
 
 /// [TEST MODULES] Organize tests by functionality
 mod voip_service_tests {
-    use super::*;
 
     #[tokio::test]
     async fn test_call_initiation() {
@@ -175,8 +170,7 @@ mod voip_service_tests {
 }
 
 mod voip_core_tests {
-    use super::*;
-    use crate::core::voip::{WebRTCPeerConnection, ConnectionState, IceCandidate};
+
 
     #[tokio::test]
     async fn test_signaling_server_peer_registration() {
@@ -278,7 +272,7 @@ mod voip_core_tests {
 }
 
 mod voip_middleware_tests {
-    use super::*;
+
 
     #[tokio::test]
     async fn test_rate_limiter() {
@@ -363,7 +357,7 @@ mod voip_middleware_tests {
 }
 
 mod voip_model_tests {
-    use super::*;
+
 
     #[test]
     fn test_call_creation() {
@@ -485,7 +479,7 @@ mod voip_model_tests {
 }
 
 mod voip_integration_tests {
-    use super::*;
+
 
     #[tokio::test]
     async fn test_complete_call_flow() {
@@ -571,7 +565,7 @@ mod voip_integration_tests {
 }
 
 mod voip_security_tests {
-    use super::*;
+
 
     #[tokio::test]
     async fn test_call_access_control() {

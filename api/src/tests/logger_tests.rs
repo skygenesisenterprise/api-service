@@ -14,13 +14,11 @@
 //  License: MIT (Open Source for Strategic Transparency)
 // ============================================================================
 
-use std::sync::Arc;
-use chrono::{Utc, Duration};
-use crate::core::vault::VaultClient;
-use crate::core::audit_manager::{AuditManager, AuditEvent, AuditEventType, AuditSeverity};
-use crate::services::logger_service::LoggerService;
-use crate::models::logger_model::{LogFilterRequest, LogExportRequest, ExportFormat, LoggerConfig};
-use crate::queries::logger_queries::LoggerQueries;
+
+
+
+
+
 
 /// [LOGGER SERVICE TESTS] Comprehensive Service Testing
 /// @MISSION Validate logger service functionality and security controls.

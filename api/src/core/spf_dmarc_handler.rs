@@ -15,7 +15,7 @@
 // ============================================================================
 
 use std::sync::Arc;
-use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use crate::core::audit_manager::{AuditManager, AuditEventType, AuditSeverity};
 

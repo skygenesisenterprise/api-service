@@ -17,10 +17,10 @@
 use warp::Filter;
 use std::sync::Arc;
 use uuid::Uuid;
-use serde::{Deserialize, Serialize};
+
 use serde_json::json;
 
-use crate::core::mac_core::MacCore;
+
 use crate::core::audit_manager::{AuditManager, AuditEventType, AuditSeverity};
 use crate::middlewares::auth_middleware::{Claims, jwt_auth};
 use crate::services::mac_service::MacService;

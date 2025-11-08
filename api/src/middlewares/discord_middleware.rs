@@ -17,7 +17,7 @@
 
 use crate::core::discord_core::DiscordCore;
 use crate::core::audit_manager::AuditManager;
-use crate::core::opentelemetry::Metrics;
+
 use std::sync::Arc;
 use warp::Filter;
 use chrono::Utc;

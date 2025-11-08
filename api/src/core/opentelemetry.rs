@@ -16,7 +16,7 @@
 
 use opentelemetry::{global, KeyValue};
 use opentelemetry::trace::{Tracer, Span, TracerProvider};
-use opentelemetry::metrics::{Counter, Histogram, UpDownCounter, Meter};
+
 use tokio::sync::OnceCell;
 
 /// [GLOBAL INITIALIZATION GUARD] Thread-Safe OTEL Setup
@@ -36,7 +36,7 @@ static OTEL_INIT: OnceCell<OtelComponents> = OnceCell::const_new();
 /// @AUDIT Component usage tracked for observability health.
 #[derive(Clone)]
 pub struct OtelComponents {
-    pub tracer: Box<dyn Tracer<Span = opentelemetry::trace::Span>>,
+    pub tracer: opentelemetry::trace::noop::NoopTracer,
     pub meter: opentelemetry::metrics::Meter,
 }
 
@@ -84,11 +84,11 @@ pub fn get_components() -> Option<&'static OtelComponents> {
 /// @DEPENDENCY Initialized tracer with service context.
 /// @PERFORMANCE Minimal overhead with lazy initialization.
 /// @AUDIT Span names logged for trace analysis.
-pub fn create_span(name: &str) -> opentelemetry::trace::Span {
+pub fn create_span(name: &str) -> opentelemetry::trace::noop::NoopSpan {
     if let Some(components) = get_components() {
         components.tracer.start(name)
     } else {
-        opentelemetry::trace::noop::NoopSpan::new().into()
+        opentelemetry::trace::noop::NoopSpan::new()
     }
 }
 
@@ -343,7 +343,7 @@ impl Metrics {
 /// @DEPENDENCY HTTP server middleware integration.
 /// @PERFORMANCE ~5μs span creation with attribute setting.
 /// @AUDIT HTTP spans used for request flow analysis.
-pub fn trace_request(name: &str) -> opentelemetry::trace::Span {
+pub fn trace_request(name: &str) -> opentelemetry::trace::noop::NoopSpan {
     let span = create_span(name);
     span.set_attribute(KeyValue::new("component", "http"));
     span
@@ -356,7 +356,7 @@ pub fn trace_request(name: &str) -> opentelemetry::trace::Span {
 /// @DEPENDENCY gRPC server middleware integration.
 /// @PERFORMANCE ~5μs span creation with service attribution.
 /// @AUDIT gRPC spans used for service mesh tracing.
-pub fn trace_grpc_request(service: &str, method: &str) -> opentelemetry::trace::Span {
+pub fn trace_grpc_request(service: &str, method: &str) -> opentelemetry::trace::noop::NoopSpan {
     let span = create_span(&format!("{}.{}", service, method));
     span.set_attribute(KeyValue::new("component", "grpc"));
     span.set_attribute(KeyValue::new("service", service.to_string()));
@@ -371,7 +371,7 @@ pub fn trace_grpc_request(service: &str, method: &str) -> opentelemetry::trace::
 /// @DEPENDENCY Vault client integration.
 /// @PERFORMANCE ~5μs span creation with security attribution.
 /// @AUDIT Vault spans used for security operation tracing.
-pub fn trace_vault_operation(operation: &str) -> opentelemetry::trace::Span {
+pub fn trace_vault_operation(operation: &str) -> opentelemetry::trace::noop::NoopSpan {
     let span = create_span(&format!("vault.{}", operation));
     span.set_attribute(KeyValue::new("component", "vault"));
     span.set_attribute(KeyValue::new("operation", operation.to_string()));
@@ -385,7 +385,7 @@ pub fn trace_vault_operation(operation: &str) -> opentelemetry::trace::Span {
 /// @DEPENDENCY Database client integration.
 /// @PERFORMANCE ~5μs span creation with query attribution.
 /// @AUDIT Database spans used for query performance analysis.
-pub fn trace_db_operation(table: &str, operation: &str) -> opentelemetry::trace::Span {
+pub fn trace_db_operation(table: &str, operation: &str) -> opentelemetry::trace::noop::NoopSpan {
     let span = create_span(&format!("db.{}.{}", table, operation));
     span.set_attribute(KeyValue::new("component", "database"));
     span.set_attribute(KeyValue::new("table", table.to_string()));

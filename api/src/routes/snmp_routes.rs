@@ -4,11 +4,11 @@
 use warp::Filter;
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
-use crate::core::snmp_manager::{SnmpManager, SnmpQueryRequest, SnmpQueryResponse, SnmpError};
-use crate::core::snmp_agent::{SnmpAgent, SgeMib};
+use crate::core::snmp_manager::{SnmpManager, SnmpQueryRequest, SnmpQueryResponse};
+use crate::core::snmp_agent::SnmpAgent;
 use crate::core::snmp_trap_listener::{SnmpTrapListener, SnmpTrap};
 use crate::middlewares::auth_middleware::{jwt_auth, Claims};
-use crate::core::vault::VaultClient;
+
 use crate::core::audit_manager::{AuditManager, AuditEventType, AuditSeverity};
 
 /// SNMP Query Request for REST API

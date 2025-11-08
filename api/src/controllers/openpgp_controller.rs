@@ -20,8 +20,8 @@ use crate::models::openpgp_model::*;
 use std::sync::Arc;
 
 /// Generate a new OpenPGP key pair
-pub async fn generate_key(
-    openpgp_service: Arc<OpenPGPService>,
+pub async fn generate_key<'a>(
+    openpgp_service: Arc<OpenPGPService<'a>>,
     request: GenerateKeyRequest,
 ) -> Result<impl Reply, warp::Rejection> {
     match openpgp_service.generate_key(&request.userid).await {
@@ -56,8 +56,8 @@ pub async fn generate_key(
 }
 
 /// Sign a message with a private key
-pub async fn sign_message(
-    openpgp_service: Arc<OpenPGPService>,
+pub async fn sign_message<'a>(
+    openpgp_service: Arc<OpenPGPService<'a>>,
     request: SignMessageRequest,
 ) -> Result<impl Reply, warp::Rejection> {
     match openpgp_service.sign_message(&request.message, &request.private_key).await {
@@ -75,8 +75,8 @@ pub async fn sign_message(
 }
 
 /// Verify a signature
-pub async fn verify_signature(
-    openpgp_service: Arc<OpenPGPService>,
+pub async fn verify_signature<'a>(
+    openpgp_service: Arc<OpenPGPService<'a>>,
     request: VerifySignatureRequest,
 ) -> Result<impl Reply, warp::Rejection> {
     match openpgp_service.verify_signature(&request.message, &request.signature, &request.public_key).await {
@@ -94,8 +94,8 @@ pub async fn verify_signature(
 }
 
 /// Encrypt a message
-pub async fn encrypt_message(
-    openpgp_service: Arc<OpenPGPService>,
+pub async fn encrypt_message<'a>(
+    openpgp_service: Arc<OpenPGPService<'a>>,
     request: EncryptMessageRequest,
 ) -> Result<impl Reply, warp::Rejection> {
     match openpgp_service.encrypt_message(&request.message, &request.public_key).await {
@@ -113,8 +113,8 @@ pub async fn encrypt_message(
 }
 
 /// Decrypt a message
-pub async fn decrypt_message(
-    openpgp_service: Arc<OpenPGPService>,
+pub async fn decrypt_message<'a>(
+    openpgp_service: Arc<OpenPGPService<'a>>,
     request: DecryptMessageRequest,
 ) -> Result<impl Reply, warp::Rejection> {
     match openpgp_service.decrypt_message(&request.encrypted_message, &request.private_key).await {

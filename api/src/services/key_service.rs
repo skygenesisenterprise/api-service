@@ -15,7 +15,7 @@
 // ============================================================================
 
 use crate::core::vault::VaultClient;
-use crate::models::key_model::{ApiKey, KeyType, CertificateInfo, CertificateType, ApiKeyStatus};
+use crate::models::key_model::{ApiKey, KeyType, CertificateType, ApiKeyStatus};
 use crate::queries::key_queries;
 use crate::utils::key_utils;
 use std::sync::Arc;

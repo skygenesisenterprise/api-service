@@ -585,6 +585,12 @@ impl From<reqwest::Error> for StalwartError {
     }
 }
 
+impl From<Box<dyn std::error::Error>> for StalwartError {
+    fn from(err: Box<dyn std::error::Error>) -> Self {
+        StalwartError::InvalidRequest
+    }
+}
+
 // JMAP types (simplified)
 #[derive(Serialize, Deserialize)]
 pub struct JmapRequest {

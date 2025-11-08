@@ -15,10 +15,10 @@
 // ============================================================================
 
 use std::sync::Arc;
-use chrono::{DateTime, Utc, Duration};
+use chrono::{Utc, Duration};
 use serde_json;
 use crate::core::vault::VaultClient;
-use crate::core::audit_manager::{AuditManager, AuditEvent, AuditEventType, AuditSeverity};
+use crate::core::audit_manager::{AuditManager, AuditEvent};
 use crate::queries::logger_queries::{LoggerQueries, LoggerQueryError};
 use crate::models::logger_model::{
     LoggerResponse, LogFilterRequest, LogSummary, TimeRange, LogQueryResult,

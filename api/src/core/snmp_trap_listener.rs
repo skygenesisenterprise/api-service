@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::collections::HashMap;
 use snmp_parser::SnmpMessage;
-use chrono::{Utc, Duration};
+use chrono::Utc;
 use crate::core::vault::VaultClient;
 use crate::core::audit_manager::{AuditManager, AuditEventType, AuditSeverity, AuditEvent};
 

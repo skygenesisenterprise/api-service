@@ -20,7 +20,7 @@ use tokio::sync::RwLock;
 use crate::core::stalwart_client::StalwartClient;
 use crate::core::vault::VaultClient;
 use crate::core::encryption_manager::{EncryptionManager, EncryptionMethod};
-use crate::core::audit_manager::{AuditManager, AuditEventType, AuditSeverity};
+use crate::core::audit_manager::{AuditManager, AuditEventType};
 use crate::models::user::User;
 use crate::models::mail::*;
 

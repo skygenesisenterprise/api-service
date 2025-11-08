@@ -17,12 +17,12 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
+
 use sqlx::PgPool;
 use rand::Rng;
-use sha2::{Sha256, Digest};
+use sha2::Digest;
 
-use crate::models::data_model::{MacIdentity, MacStatus, MacCertificateInfo, MacSignatureInfo};
+use crate::models::data_model::{MacIdentity, MacStatus};
 use crate::core::vault::VaultClient;
 use crate::core::mac_certificates::MacCertificatesCore;
 

@@ -18,10 +18,8 @@
 use warp::{Filter, Rejection};
 use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::sync::Arc;
 use crate::core::keycloak::KeycloakClient;
-use rustls::pki_types::CertificateDer;
 
 /// [JWT CLAIMS STRUCT] Decoded JWT Token Payload
 /// @MISSION Structure JWT claims for user identity and permissions.
@@ -250,6 +248,7 @@ pub enum ApiError {
     Unauthorized(String),
     NotFound(String),
     Conflict(String),
+    ValidationError(String),
 }
 
 impl warp::reject::Reject for ApiError {}

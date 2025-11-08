@@ -16,11 +16,9 @@
 
 use warp::Filter;
 use std::sync::Arc;
-use uuid::Uuid;
-use serde::{Deserialize, Serialize};
-use crate::controllers::mac_controller::{
-    RegisterMacRequest, UpdateMacRequest
-};
+
+use serde::Deserialize;
+
 use crate::controllers::mac_controller;
 use crate::services::mac_service::MacService;
 use crate::core::audit_manager::AuditManager;

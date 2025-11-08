@@ -18,10 +18,10 @@ use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio_rustls::{TlsConnector, TlsAcceptor, rustls};
 use rustls::{ClientConfig, ServerConfig, RootCertStore};
-use rustls::pki_types::{CertificateDer, PrivateKeyDer, ServerName, UnixTime};
-use rustls::server::ClientHello;
+use rustls::pki_types::{CertificateDer, PrivateKeyDer, ServerName};
+
 use crate::core::vault::VaultClient;
-use std::time::Duration;
+
 
 #[derive(Debug)]
 pub enum TransportError {

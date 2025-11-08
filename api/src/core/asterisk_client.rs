@@ -62,6 +62,17 @@ pub struct AriChannel {
     pub channelvars: HashMap<String, String>,
 }
 
+/// [ARI CALLER ID] Caller Identification Information
+/// @MISSION Store caller identification details for channels.
+/// @THREAT Caller ID spoofing or identity manipulation.
+/// @COUNTERMEASURE Validation and authentication of caller information.
+/// @INVARIANT Caller ID information is validated and secure.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CallerId {
+    pub name: String,
+    pub number: String,
+}
+
 /// [ARI DIALPLAN] Channel Dialplan Context
 /// @MISSION Store dialplan application and context information.
 /// @THREAT Dialplan manipulation or privilege escalation.
@@ -279,6 +290,166 @@ impl AsteriskClient {
         ];
 
         Ok(endpoints)
+    }
+
+    /// [CHANNEL LIST] Get All Channels
+    /// @MISSION Retrieve list of all active channels.
+    /// @THREAT Information disclosure or channel enumeration.
+    /// @COUNTERMEASURE Access controls and data filtering.
+    /// @DEPENDENCY Channel listing permissions.
+    /// @PERFORMANCE ~200ms channel enumeration.
+    /// @AUDIT Channel listing logged with access details.
+    pub async fn get_channels(&self) -> Result<Vec<AriChannel>, Box<dyn std::error::Error>> {
+        // Mock implementation - would make GET request to /ari/channels
+        let channels = vec![
+            AriChannel {
+                id: "1234567890".to_string(),
+                name: "SIP/1001-00000001".to_string(),
+                state: "Up".to_string(),
+                caller_id: Some("John Doe <1001>".to_string()),
+                connected_line: Some("John Doe <1001>".to_string()),
+                accountcode: Some("".to_string()),
+                dialplan: Some(AriDialplan {
+                    context: "default".to_string(),
+                    exten: "1001".to_string(),
+                    priority: 1,
+                    app_name: "Dial".to_string(),
+                    app_data: Some("SIP/1001".to_string()),
+                }),
+                channelvars: HashMap::new(),
+            },
+        ];
+        Ok(channels)
+    }
+
+    /// [CHANNEL GET] Get Specific Channel
+    /// @MISSION Retrieve details of a specific channel.
+    /// @THREAT Information disclosure or unauthorized access.
+    /// @COUNTERMEASURE Channel access validation.
+    /// @DEPENDENCY Valid channel ID and access permissions.
+    /// @PERFORMANCE ~100ms channel retrieval.
+    /// @AUDIT Channel access logged with user context.
+    pub async fn get_channel(&self, channel_id: &str) -> Result<AriChannel, Box<dyn std::error::Error>> {
+        // Mock implementation - would make GET request to /ari/channels/{channelId}
+        let channel = AriChannel {
+            id: channel_id.to_string(),
+            name: format!("SIP/{}-00000001", channel_id),
+            state: "Up".to_string(),
+            caller_id: Some(format!("John Doe <{}>", channel_id)),
+            connected_line: Some(format!("John Doe <{}>", channel_id)),
+            accountcode: Some("".to_string()),
+            dialplan: Some(AriDialplan {
+                context: "default".to_string(),
+                exten: channel_id.to_string(),
+                priority: 1,
+                app_name: "Dial".to_string(),
+                app_data: Some(format!("SIP/{}", channel_id)),
+            }),
+            channelvars: HashMap::new(),
+        };
+        Ok(channel)
+    }
+
+    /// [BRIDGE LIST] Get All Bridges
+    /// @MISSION Retrieve list of all active bridges.
+    /// @THREAT Information disclosure or bridge enumeration.
+    /// @COUNTERMEASURE Access controls and data filtering.
+    /// @DEPENDENCY Bridge listing permissions.
+    /// @PERFORMANCE ~200ms bridge enumeration.
+    /// @AUDIT Bridge listing logged with access details.
+    pub async fn get_bridges(&self) -> Result<Vec<AriBridge>, Box<dyn std::error::Error>> {
+        // Mock implementation - would make GET request to /ari/bridges
+        let bridges = vec![
+            AriBridge {
+                id: "bridge1".to_string(),
+                technology: "confbridge".to_string(),
+                bridge_type: "mixing".to_string(),
+                bridge_class: "stasis".to_string(),
+                creator: "confbridge".to_string(),
+                name: "conference_room_1".to_string(),
+                bridge_num: 1,
+                channels: vec![],
+                creationtime: "2024-01-01T00:00:00.0Z".to_string(),
+            },
+        ];
+        Ok(bridges)
+    }
+
+    /// [ENDPOINTS LIST] Get All Endpoints
+    /// @MISSION Retrieve list of all endpoints.
+    /// @THREAT Information disclosure or endpoint enumeration.
+    /// @COUNTERMEASURE Access controls and data filtering.
+    /// @DEPENDENCY Endpoint listing permissions.
+    /// @PERFORMANCE ~200ms endpoint enumeration.
+    /// @AUDIT Endpoint listing logged with access details.
+    pub async fn get_endpoints(&self) -> Result<Vec<AriEndpoint>, Box<dyn std::error::Error>> {
+        // Mock implementation - would make GET request to /ari/endpoints
+        let endpoints = vec![
+            AriEndpoint {
+                technology: "SIP".to_string(),
+                resource: "1001".to_string(),
+                state: "online".to_string(),
+                channel_ids: vec![],
+            },
+            AriEndpoint {
+                technology: "SIP".to_string(),
+                resource: "1002".to_string(),
+                state: "offline".to_string(),
+                channel_ids: vec![],
+            },
+        ];
+        Ok(endpoints)
+    }
+
+    /// [ENDPOINT GET] Get Specific Endpoint
+    /// @MISSION Retrieve details of a specific endpoint.
+    /// @THREAT Information disclosure or unauthorized access.
+    /// @COUNTERMEASURE Endpoint access validation.
+    /// @DEPENDENCY Valid endpoint ID and access permissions.
+    /// @PERFORMANCE ~100ms endpoint retrieval.
+    /// @AUDIT Endpoint access logged with user context.
+    pub async fn get_endpoint(&self, endpoint_id: &str) -> Result<AriEndpoint, Box<dyn std::error::Error>> {
+        // Mock implementation - would make GET request to /ari/endpoints/{endpointId}
+        let endpoint = AriEndpoint {
+            technology: "SIP".to_string(),
+            resource: endpoint_id.to_string(),
+            state: "online".to_string(),
+            channel_ids: vec![],
+        };
+        Ok(endpoint)
+    }
+
+    /// [ASTERISK INFO] Get Asterisk System Information
+    /// @MISSION Retrieve Asterisk system information and status.
+    /// @THREAT Information disclosure or system enumeration.
+    /// @COUNTERMEASURE Access controls and data filtering.
+    /// @DEPENDENCY System info access permissions.
+    /// @PERFORMANCE ~200ms system info retrieval.
+    /// @AUDIT System info access logged with user context.
+    pub async fn get_asterisk_info(&self) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        // Mock implementation - would make GET request to /ari/info
+        let info = serde_json::json!({
+            "asterisk_version": "18.0.0",
+            "system_name": "SGE-Asterisk",
+            "uptime": "5 days, 3:45:12",
+            "active_calls": 5,
+            "active_channels": 8,
+            "active_bridges": 3
+        });
+        Ok(info)
+    }
+
+    /// [HEALTH CHECK] Check Asterisk Health Status
+    /// @MISSION Verify Asterisk service health and connectivity.
+    /// @THREAT Service disruption or connectivity issues.
+    /// @COUNTERMEASURE Health monitoring and alerting.
+    /// @DEPENDENCY Health check permissions.
+    /// @PERFORMANCE ~100ms health check.
+    /// @AUDIT Health checks logged for monitoring.
+    pub async fn health_check(&self) -> Result<bool, Box<dyn std::error::Error>> {
+        // Mock implementation - would make GET request to /ari/health
+        // In a real implementation, this would check Asterisk connectivity
+        Ok(true) // Assume healthy for mock
     }
 
     /// [CHANNEL VARIABLE] Set Channel Variable

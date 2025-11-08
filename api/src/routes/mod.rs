@@ -59,6 +59,7 @@ use crate::middlewares::auth_middleware;
 
 pub fn routes(
     vault_manager: Arc<VaultManager>,
+    vault_client: Arc<VaultClient>,
     key_service: Arc<KeyService>,
     auth_service: Arc<AuthService>,
     session_service: Arc<SessionService>,

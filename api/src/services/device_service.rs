@@ -16,9 +16,9 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use sqlx::PgPool;
 
 use crate::models::data_model::{

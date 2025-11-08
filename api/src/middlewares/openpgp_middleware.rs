@@ -15,10 +15,10 @@
 // ============================================================================
 
 use warp::{Filter, Rejection};
-use serde::{Deserialize, Serialize};
+
 use std::sync::Arc;
 use crate::services::openpgp_service::OpenPGPService;
-use crate::models::openpgp_model::{OpenPGPKey, OpenPGPKeyStatus};
+use crate::models::openpgp_model::OpenPGPKeyStatus;
 
 /// [OPENPGP VALIDATION ERRORS] Custom rejection types for PGP validation
 /// @MISSION Define specific error types for PGP validation failures.

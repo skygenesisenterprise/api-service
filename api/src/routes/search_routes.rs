@@ -107,7 +107,7 @@ fn auth_guard(
     auth_service: Arc<AuthService>,
 ) -> impl Filter<Extract = (AuthContext,), Error = warp::Rejection> + Clone {
     use crate::middlewares::auth_middleware::jwt_auth;
-    use crate::core::keycloak::KeycloakClient;
+
     use std::sync::Arc;
 
     // For now, use a dummy Keycloak client

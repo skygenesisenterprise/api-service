@@ -19,7 +19,7 @@ use crate::models::voip::{
     VoipCall, VoipRoom, SignalingMessage, MediaSession, VoipRecording, CallStatus, CallType,
     SignalingType, SessionType, RoomSettings
 };
-use chrono::{DateTime, Utc, Duration};
+use chrono::{Utc, Duration};
 use serde_json::Value;
 use sqlx::PgPool;
 

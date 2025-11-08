@@ -21,7 +21,7 @@ use crate::core::opentelemetry::Metrics;
 use crate::models::discord_model::*;
 use std::sync::Arc;
 use chrono::Utc;
-use hmac::{Hmac, Mac};
+use hmac::Mac;
 use sha256::digest;
 use serde_json;
 use reqwest::Client;

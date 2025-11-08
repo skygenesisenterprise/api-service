@@ -15,7 +15,7 @@
 //  License: MIT (Open Source for Strategic Transparency)
 // ============================================================================
 
-use warp::Reply;
+use warp::{Reply, reply};
 use crate::services::voip_service::{VoipService, VoipCall, VoipRoom, SignalingMessage, CallType, RoomSettings, UserExtension, DeviceRegistration, PresenceStatus, EndpointType, PresenceState, FederatedOffice, FederationLink, FederationRoute, FederationLinkType, AsteriskFederationConfig};
 use crate::core::asterisk_client::{AsteriskClient, AriChannel, AriBridge, AriEndpoint};
 use std::sync::Arc;
@@ -148,7 +148,7 @@ pub async fn initiate_call(
     match voip_service.initiate_call(&user_id, req.participants, req.call_type).await {
         Ok(call) => {
             let response = warp::reply::json(&call);
-            Ok(warp::reply::with_status(response, StatusCode::CREATED))
+            Ok(reply::with_status(response, StatusCode::CREATED))
         }
         Err(err) => {
             let error_response = ErrorResponse {
@@ -156,7 +156,7 @@ pub async fn initiate_call(
                 message: err,
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST))
+            Ok(reply::with_status(response, StatusCode::BAD_REQUEST))
         }
     }
 }
@@ -181,7 +181,7 @@ pub async fn accept_call(
     call_id: String,
 ) -> Result<impl Reply, warp::Rejection> {
     match voip_service.accept_call(&call_id, &user_id).await {
-        Ok(_) => Ok(warp::reply::with_status("Call accepted", StatusCode::OK)),
+        Ok(_) => Ok(reply::with_status("Call accepted", StatusCode::OK)),
         Err(err) => {
             let error_response = ErrorResponse {
                 error: "Call acceptance failed".to_string(),
@@ -218,7 +218,7 @@ pub async fn end_call(
     call_id: String,
 ) -> Result<impl Reply, warp::Rejection> {
     match voip_service.end_call(&call_id, &user_id).await {
-        Ok(_) => Ok(warp::reply::with_status("Call ended", StatusCode::OK)),
+        Ok(_) => Ok(reply::with_status("Call ended", StatusCode::OK)),
         Err(err) => {
             let error_response = ErrorResponse {
                 error: "Call termination failed".to_string(),
@@ -254,7 +254,7 @@ pub async fn get_call(
     match voip_service.get_call(&call_id).await {
         Ok(call) => {
             let response = warp::reply::json(&call);
-            Ok(warp::reply::with_status(response, StatusCode::OK))
+            Ok(reply::with_status(response, StatusCode::OK))
         }
         Err(err) => {
             let error_response = ErrorResponse {
@@ -262,7 +262,7 @@ pub async fn get_call(
                 message: err,
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::NOT_FOUND))
+            Ok(reply::with_status(response, StatusCode::NOT_FOUND))
         }
     }
 }
@@ -284,7 +284,7 @@ pub async fn list_active_calls(
 ) -> Result<impl Reply, warp::Rejection> {
     let calls = voip_service.get_active_calls(&user_id).await;
     let response = warp::reply::json(&calls);
-    Ok(warp::reply::with_status(response, StatusCode::OK))
+    Ok(reply::with_status(response, StatusCode::OK))
 }
 
 /// [CREATE ROOM HANDLER] Create a new conference room
@@ -309,7 +309,7 @@ pub async fn create_room(
     match voip_service.create_room(&user_id, &req.name, req.max_participants, req.settings).await {
         Ok(room) => {
             let response = warp::reply::json(&room);
-            Ok(warp::reply::with_status(response, StatusCode::CREATED))
+            Ok(reply::with_status(response, StatusCode::CREATED))
         }
         Err(err) => {
             let error_response = ErrorResponse {
@@ -317,7 +317,7 @@ pub async fn create_room(
                 message: err,
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST))
+            Ok(reply::with_status(response, StatusCode::BAD_REQUEST))
         }
     }
 }
@@ -341,7 +341,7 @@ pub async fn join_room(
     room_id: String,
 ) -> Result<impl Reply, warp::Rejection> {
     match voip_service.join_room(&room_id, &user_id).await {
-        Ok(_) => Ok(warp::reply::with_status("Joined room", StatusCode::OK)),
+        Ok(_) => Ok(reply::with_status("Joined room", StatusCode::OK)),
         Err(err) => {
             let error_response = ErrorResponse {
                 error: "Join room failed".to_string(),
@@ -377,7 +377,7 @@ pub async fn get_room(
     match voip_service.get_room(&room_id).await {
         Ok(room) => {
             let response = warp::reply::json(&room);
-            Ok(warp::reply::with_status(response, StatusCode::OK))
+            Ok(reply::with_status(response, StatusCode::OK))
         }
         Err(err) => {
             let error_response = ErrorResponse {
@@ -385,7 +385,7 @@ pub async fn get_room(
                 message: err,
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::NOT_FOUND))
+            Ok(reply::with_status(response, StatusCode::NOT_FOUND))
         }
     }
 }
@@ -407,7 +407,7 @@ pub async fn list_active_rooms(
 ) -> Result<impl Reply, warp::Rejection> {
     let rooms = voip_service.get_active_rooms(&user_id).await;
     let response = warp::reply::json(&rooms);
-    Ok(warp::reply::with_status(response, StatusCode::OK))
+    Ok(reply::with_status(response, StatusCode::OK))
 }
 
 /// [SIGNALING HANDLER] Send WebRTC signaling message
@@ -444,7 +444,7 @@ pub async fn send_signaling(
                 message: format!("Unknown signaling type: {}", req.message_type),
             };
             let response = warp::reply::json(&error_response);
-            return Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST));
+            return Ok(reply::with_status(response, StatusCode::BAD_REQUEST));
         }
     };
 
@@ -458,14 +458,14 @@ pub async fn send_signaling(
     };
 
     match voip_service.send_signaling_message(message).await {
-        Ok(_) => Ok(warp::reply::with_status("Signaling message sent", StatusCode::OK)),
+        Ok(_) => Ok(reply::with_status("Signaling message sent", StatusCode::OK)),
         Err(err) => {
             let error_response = ErrorResponse {
                 error: "Signaling failed".to_string(),
                 message: err,
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST))
+            Ok(reply::with_status(response, StatusCode::BAD_REQUEST))
         }
     }
 }
@@ -489,7 +489,7 @@ pub async fn get_signaling(
     match voip_service.get_signaling_messages(&call_id, &user_id).await {
         Ok(messages) => {
             let response = warp::reply::json(&messages);
-            Ok(warp::reply::with_status(response, StatusCode::OK))
+            Ok(reply::with_status(response, StatusCode::OK))
         }
         Err(err) => {
             let error_response = ErrorResponse {
@@ -497,7 +497,7 @@ pub async fn get_signaling(
                 message: err,
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST))
+            Ok(reply::with_status(response, StatusCode::BAD_REQUEST))
         }
     }
 }
@@ -523,7 +523,7 @@ pub async fn get_asterisk_channels(
     match asterisk_client.get_channels().await {
         Ok(channels) => {
             let response = warp::reply::json(&channels);
-            Ok(warp::reply::with_status(response, StatusCode::OK))
+            Ok(reply::with_status(response, StatusCode::OK))
         }
         Err(err) => {
             let error_response = ErrorResponse {
@@ -531,7 +531,7 @@ pub async fn get_asterisk_channels(
                 message: err,
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::INTERNAL_SERVER_ERROR))
+            Ok(reply::with_status(response, StatusCode::INTERNAL_SERVER_ERROR))
         }
     }
 }
@@ -557,15 +557,15 @@ pub async fn get_asterisk_channel(
     match asterisk_client.get_channel(&channel_id).await {
         Ok(channel) => {
             let response = warp::reply::json(&channel);
-            Ok(warp::reply::with_status(response, StatusCode::OK))
+            Ok(reply::with_status(response, StatusCode::OK))
         }
         Err(err) => {
             let error_response = ErrorResponse {
                 error: "Failed to retrieve Asterisk channel".to_string(),
-                message: err,
+                message: err.to_string(),
             };
             let response = warp::reply::json(&error_response);
-            let status = if err.contains("not found") {
+            let status = if err.to_string().contains("not found") {
                 StatusCode::NOT_FOUND
             } else {
                 StatusCode::INTERNAL_SERVER_ERROR
@@ -594,7 +594,7 @@ pub async fn get_asterisk_bridges(
     match asterisk_client.get_bridges().await {
         Ok(bridges) => {
             let response = warp::reply::json(&bridges);
-            Ok(warp::reply::with_status(response, StatusCode::OK))
+            Ok(reply::with_status(response, StatusCode::OK))
         }
         Err(err) => {
             let error_response = ErrorResponse {
@@ -602,7 +602,7 @@ pub async fn get_asterisk_bridges(
                 message: err,
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::INTERNAL_SERVER_ERROR))
+            Ok(reply::with_status(response, StatusCode::INTERNAL_SERVER_ERROR))
         }
     }
 }
@@ -626,7 +626,7 @@ pub async fn get_asterisk_endpoints(
     match asterisk_client.get_endpoints().await {
         Ok(endpoints) => {
             let response = warp::reply::json(&endpoints);
-            Ok(warp::reply::with_status(response, StatusCode::OK))
+            Ok(reply::with_status(response, StatusCode::OK))
         }
         Err(err) => {
             let error_response = ErrorResponse {
@@ -634,7 +634,7 @@ pub async fn get_asterisk_endpoints(
                 message: err,
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::INTERNAL_SERVER_ERROR))
+            Ok(reply::with_status(response, StatusCode::INTERNAL_SERVER_ERROR))
         }
     }
 }
@@ -661,15 +661,15 @@ pub async fn get_asterisk_endpoint(
     match asterisk_client.get_endpoint(&tech, &resource).await {
         Ok(endpoint) => {
             let response = warp::reply::json(&endpoint);
-            Ok(warp::reply::with_status(response, StatusCode::OK))
+            Ok(reply::with_status(response, StatusCode::OK))
         }
         Err(err) => {
             let error_response = ErrorResponse {
                 error: "Failed to retrieve Asterisk endpoint".to_string(),
-                message: err,
+                message: err.to_string(),
             };
             let response = warp::reply::json(&error_response);
-            let status = if err.contains("not found") {
+            let status = if err.to_string().contains("not found") {
                 StatusCode::NOT_FOUND
             } else {
                 StatusCode::INTERNAL_SERVER_ERROR
@@ -698,7 +698,7 @@ pub async fn get_asterisk_info(
     match asterisk_client.get_asterisk_info().await {
         Ok(info) => {
             let response = warp::reply::json(&info);
-            Ok(warp::reply::with_status(response, StatusCode::OK))
+            Ok(reply::with_status(response, StatusCode::OK))
         }
         Err(err) => {
             let error_response = ErrorResponse {
@@ -706,7 +706,7 @@ pub async fn get_asterisk_info(
                 message: err,
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::INTERNAL_SERVER_ERROR))
+            Ok(reply::with_status(response, StatusCode::INTERNAL_SERVER_ERROR))
         }
     }
 }
@@ -728,14 +728,14 @@ pub async fn asterisk_health_check(
     asterisk_client: Arc<AsteriskClient>,
 ) -> Result<impl Reply, warp::Rejection> {
     match asterisk_client.health_check().await {
-        Ok(true) => Ok(warp::reply::with_status("Asterisk is healthy", StatusCode::OK)),
+        Ok(true) => Ok(reply::with_status("Asterisk is healthy", StatusCode::OK)),
         Ok(false) => {
             let error_response = ErrorResponse {
                 error: "Asterisk unhealthy".to_string(),
                 message: "Asterisk PBX is not responding".to_string(),
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::SERVICE_UNAVAILABLE))
+            Ok(reply::with_status(response, StatusCode::SERVICE_UNAVAILABLE))
         }
         Err(err) => {
             let error_response = ErrorResponse {
@@ -743,7 +743,7 @@ pub async fn asterisk_health_check(
                 message: err,
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::INTERNAL_SERVER_ERROR))
+            Ok(reply::with_status(response, StatusCode::INTERNAL_SERVER_ERROR))
         }
     }
 }
@@ -771,7 +771,7 @@ pub async fn assign_user_extension(
     match voip_service.assign_user_extension(&user_id, &req.extension, req.display_name).await {
         Ok(extension) => {
             let response = warp::reply::json(&extension);
-            Ok(warp::reply::with_status(response, StatusCode::CREATED))
+            Ok(reply::with_status(response, StatusCode::CREATED))
         }
         Err(err) => {
             let status = if err.contains("already assigned") {
@@ -806,7 +806,7 @@ pub async fn get_user_extension(
     match voip_service.get_user_extension(&user_id).await {
         Some(extension) => {
             let response = warp::reply::json(&extension);
-            Ok(warp::reply::with_status(response, StatusCode::OK))
+            Ok(reply::with_status(response, StatusCode::OK))
         }
         None => {
             let error_response = ErrorResponse {
@@ -814,7 +814,7 @@ pub async fn get_user_extension(
                 message: "User has no assigned extension".to_string(),
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::NOT_FOUND))
+            Ok(reply::with_status(response, StatusCode::NOT_FOUND))
         }
     }
 }
@@ -845,12 +845,12 @@ pub async fn get_extensions_by_country(
             message: format!("Country code '{}' is not valid", country_code),
         };
         let response = warp::reply::json(&error_response);
-        return Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST));
+        return Ok(reply::with_status(response, StatusCode::BAD_REQUEST));
     }
 
     let extensions = voip_service.get_extensions_by_country(&country_code).await;
     let response = warp::reply::json(&extensions);
-    Ok(warp::reply::with_status(response, StatusCode::OK))
+    Ok(reply::with_status(response, StatusCode::OK))
 }
 
 /// [GET ALL EXTENSIONS WITH COUNTRY INFO] Get all extensions with country information
@@ -882,7 +882,7 @@ pub async fn get_all_extensions_with_country_info(
         .collect();
 
     let response = warp::reply::json(&response_data);
-    Ok(warp::reply::with_status(response, StatusCode::OK))
+    Ok(reply::with_status(response, StatusCode::OK))
 }
 
 /// [GET COUNTRY CODES] Get list of supported country codes
@@ -901,7 +901,7 @@ pub async fn get_country_codes() -> Result<impl Reply, warp::Rejection> {
         .collect();
 
     let response = warp::reply::json(&country_codes);
-    Ok(warp::reply::with_status(response, StatusCode::OK))
+    Ok(reply::with_status(response, StatusCode::OK))
 }
 
 /// [PARSE EXTENSION STRUCTURE] Parse and analyze extension structure
@@ -927,7 +927,7 @@ pub async fn parse_extension_structure(
             message: format!("Extension '{}' does not follow the expected format", extension),
         };
         let response = warp::reply::json(&error_response);
-        return Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST));
+        return Ok(reply::with_status(response, StatusCode::BAD_REQUEST));
     }
 
     let structure = crate::services::voip_service::parse_extension_structure(&extension);
@@ -940,7 +940,7 @@ pub async fn parse_extension_structure(
     };
 
     let response = warp::reply::json(&response_data);
-    Ok(warp::reply::with_status(response, StatusCode::OK))
+    Ok(reply::with_status(response, StatusCode::OK))
 }
 
 /// [REGISTER FEDERATED OFFICE] Register a new office in the federation
@@ -969,7 +969,7 @@ pub async fn register_federated_office(
     ).await {
         Ok(office) => {
             let response = warp::reply::json(&office);
-            Ok(warp::reply::with_status(response, StatusCode::CREATED))
+            Ok(reply::with_status(response, StatusCode::CREATED))
         }
         Err(err) => {
             let status = if err.contains("already exists") {
@@ -1003,7 +1003,7 @@ pub async fn get_federated_offices(
 ) -> Result<impl Reply, warp::Rejection> {
     let offices = voip_service.get_federated_offices().await;
     let response = warp::reply::json(&offices);
-    Ok(warp::reply::with_status(response, StatusCode::OK))
+    Ok(reply::with_status(response, StatusCode::OK))
 }
 
 /// [CREATE FEDERATION LINK] Create secure link between offices
@@ -1031,7 +1031,7 @@ pub async fn create_federation_link(
     ).await {
         Ok(link) => {
             let response = warp::reply::json(&link);
-            Ok(warp::reply::with_status(response, StatusCode::CREATED))
+            Ok(reply::with_status(response, StatusCode::CREATED))
         }
         Err(err) => {
             let error_response = ErrorResponse {
@@ -1039,7 +1039,7 @@ pub async fn create_federation_link(
                 message: err,
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST))
+            Ok(reply::with_status(response, StatusCode::BAD_REQUEST))
         }
     }
 }
@@ -1060,7 +1060,7 @@ pub async fn get_federation_links(
 ) -> Result<impl Reply, warp::Rejection> {
     let links = voip_service.get_federation_links().await;
     let response = warp::reply::json(&links);
-    Ok(warp::reply::with_status(response, StatusCode::OK))
+    Ok(reply::with_status(response, StatusCode::OK))
 }
 
 /// [CREATE FEDERATION ROUTE] Define routing rule for inter-office calls
@@ -1088,7 +1088,7 @@ pub async fn create_federation_route(
     ).await {
         Ok(route) => {
             let response = warp::reply::json(&route);
-            Ok(warp::reply::with_status(response, StatusCode::CREATED))
+            Ok(reply::with_status(response, StatusCode::CREATED))
         }
         Err(err) => {
             let error_response = ErrorResponse {
@@ -1096,7 +1096,7 @@ pub async fn create_federation_route(
                 message: err,
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST))
+            Ok(reply::with_status(response, StatusCode::BAD_REQUEST))
         }
     }
 }
@@ -1131,17 +1131,17 @@ pub async fn register_device(
                 message: "Supported types: sip, webrtc, mobile, desktop".to_string(),
             };
             let response = warp::reply::json(&error_response);
-            return Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST));
+            return Ok(reply::with_status(response, StatusCode::BAD_REQUEST));
         }
     };
 
     match voip_service.register_device(&user_id, &req.device_name, endpoint_type, &req.endpoint_uri).await {
         Ok(device) => {
             let response = warp::reply::json(&device);
-            Ok(warp::reply::with_status(response, StatusCode::CREATED))
+            Ok(reply::with_status(response, StatusCode::CREATED))
         }
         Err(err) => {
-            let status = if err.contains("already exists") {
+            let status = if err.to_string().contains("already exists") {
                 StatusCode::CONFLICT
             } else {
                 StatusCode::BAD_REQUEST
@@ -1151,7 +1151,7 @@ pub async fn register_device(
                 message: err,
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST))
+            Ok(reply::with_status(response, StatusCode::BAD_REQUEST))
         }
     }
 }
@@ -1171,7 +1171,7 @@ pub async fn get_user_devices(
 ) -> Result<impl Reply, warp::Rejection> {
     let devices = voip_service.get_user_devices(&user_id).await;
     let response = warp::reply::json(&devices);
-    Ok(warp::reply::with_status(response, StatusCode::OK))
+    Ok(reply::with_status(response, StatusCode::OK))
 }
 
 /// [UPDATE DEVICE PRESENCE] Update device online status
@@ -1191,14 +1191,14 @@ pub async fn update_device_presence(
     is_online: bool,
 ) -> Result<impl Reply, warp::Rejection> {
     match voip_service.update_device_presence(&user_id, &device_id, is_online).await {
-        Ok(()) => Ok(warp::reply::with_status("Presence updated", StatusCode::OK)),
+        Ok(()) => Ok(reply::with_status("Presence updated", StatusCode::OK)),
         Err(err) => {
             let error_response = ErrorResponse {
                 error: "Presence update failed".to_string(),
                 message: err,
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::NOT_FOUND))
+            Ok(reply::with_status(response, StatusCode::NOT_FOUND))
         }
     }
 }
@@ -1231,19 +1231,19 @@ pub async fn update_presence_status(
                 message: "Supported statuses: online, away, busy, offline, do_not_disturb".to_string(),
             };
             let response = warp::reply::json(&error_response);
-            return Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST));
+            return Ok(reply::with_status(response, StatusCode::BAD_REQUEST));
         }
     };
 
     match voip_service.update_presence_status(&user_id, status, req.status_message, req.current_device).await {
-        Ok(()) => Ok(warp::reply::with_status("Presence updated", StatusCode::OK)),
+        Ok(()) => Ok(reply::with_status("Presence updated", StatusCode::OK)),
         Err(err) => {
             let error_response = ErrorResponse {
                 error: "Presence update failed".to_string(),
                 message: err,
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::BAD_REQUEST))
+            Ok(reply::with_status(response, StatusCode::BAD_REQUEST))
         }
     }
 }
@@ -1265,7 +1265,7 @@ pub async fn get_presence_status(
     match voip_service.get_presence_status(&user_id).await {
         Some(presence) => {
             let response = warp::reply::json(&presence);
-            Ok(warp::reply::with_status(response, StatusCode::OK))
+            Ok(reply::with_status(response, StatusCode::OK))
         }
         None => {
             let error_response = ErrorResponse {
@@ -1273,7 +1273,7 @@ pub async fn get_presence_status(
                 message: "User has not set presence status".to_string(),
             };
             let response = warp::reply::json(&error_response);
-            Ok(warp::reply::with_status(response, StatusCode::NOT_FOUND))
+            Ok(reply::with_status(response, StatusCode::NOT_FOUND))
         }
     }
 }

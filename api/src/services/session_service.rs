@@ -1,6 +1,6 @@
 use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+
 use uuid::Uuid;
 use chrono::{Utc, Duration};
 use crate::models::user::User;

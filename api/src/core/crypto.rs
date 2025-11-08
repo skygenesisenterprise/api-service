@@ -19,7 +19,7 @@ use argon2::{Argon2, Params};
 use chacha20poly1305::{ChaCha20Poly1305, Key as ChaChaKey, Nonce as ChaChaNonce};
 use chacha20poly1305::aead::{Aead as ChaChaAead, KeyInit as ChaChaKeyInit};
 use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier};
-use ed25519_dalek::pkcs8::{spki::der::EncodePem, KeypairBytes};
+
 use hkdf::Hkdf;
 use p384::ecdsa::{SigningKey as EcdsaP384SigningKey, VerifyingKey as EcdsaP384VerifyingKey, signature::{Signer as EcdsaSigner, Verifier as EcdsaVerifier}};
 use rand::rngs::OsRng;
@@ -27,7 +27,7 @@ use rand::RngCore;
 use sha2::{Sha512, Digest as Sha2Digest};
 use sha3::{Sha3_512, Digest as Sha3Digest};
 use x25519_dalek::{EphemeralSecret, PublicKey as X25519PublicKey, SharedSecret};
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use zeroize::ZeroizeOnDrop;
 
 use std::fmt;
 

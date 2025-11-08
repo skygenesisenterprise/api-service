@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 use std::collections::HashMap;
-use chrono::{Utc, Duration};
+use chrono::Utc;
 use serde::{Serialize, Deserialize};
 use crate::core::vault::VaultClient;
 use crate::core::opentelemetry::Metrics;

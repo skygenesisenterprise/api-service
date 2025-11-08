@@ -64,6 +64,7 @@ xmpp = "0.6"
 # SSH
 russh = "0.54"
 russh-keys = "0.49"
+ssh-key = { version = "0.6", features = ["std", "encryption"] }
 
 # gRPC / QUIC
 tonic = "0.14"

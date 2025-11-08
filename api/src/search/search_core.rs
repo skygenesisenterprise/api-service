@@ -28,9 +28,9 @@ pub struct SearchItem {
     pub metadata: Option<HashMap<String, String>>,
 }
 
-pub struct SearchEngine;
+pub struct AetherSearchEngine;
 
-impl SearchEngine {
+impl AetherSearchEngine {
     pub fn new() -> Self {
         Self
     }
@@ -48,7 +48,7 @@ impl SearchEngine {
     }
 }
 
-impl Default for SearchEngine {
+impl Default for AetherSearchEngine {
     fn default() -> Self {
         Self::new()
     }

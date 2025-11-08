@@ -17,12 +17,13 @@
 use warp::Reply;
 use std::sync::Arc;
 use uuid::Uuid;
+
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::models::data_model::{MacIdentity, MacStatus};
 use crate::services::mac_service::MacService;
-use crate::core::audit_manager::{AuditManager, AuditEventType, AuditSeverity};
+use crate::core::audit_manager::{AuditManager, AuditEventType, AuditSeverity, AuditEvent};
 use crate::middlewares::auth_middleware::ApiError;
 
 /// [MAC REGISTER REQUEST] API Request for Registering New MAC Identity
@@ -90,18 +91,25 @@ pub async fn register_mac(
     })?;
 
     // Audit MAC registration
-    audit_manager.audit_event(
-        AuditEventType::Security,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "mac_api",
-        &format!("MAC '{}' registered with ID {}", mac.sge_mac, mac.id),
-        Some(json!({
+    audit_manager.log_event(AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::Security,
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: None,
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "mac_api".to_string(),
+        action: format!("MAC '{}' registered with ID {}", mac.sge_mac, mac.id),
+        details: json!({
             "mac_id": mac.id,
             "sge_mac": mac.sge_mac,
             "organization_id": organization_id
-        })),
-    ).await;
+        }),
+        hmac_signature: None,
+    }).await;
 
     Ok(warp::reply::json(&mac))
 }
@@ -133,19 +141,26 @@ pub async fn list_macs(
     })?;
 
     // Audit MAC listing
-    audit_manager.audit_event(
-        AuditEventType::Access,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "mac_api",
-        &format!("Listed {} MAC identities for organization", macs.len()),
-        Some(json!({
+    audit_manager.log_event(AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::Access,
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: None,
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "mac_api".to_string(),
+        action: format!("Listed {} MAC identities for organization", macs.len()),
+        details: json!({
             "organization_id": organization_id,
             "page": page,
             "per_page": per_page,
             "total_count": total_count
-        })),
-    ).await;
+        }),
+        hmac_signature: None,
+    }).await;
 
     let response = MacListResponse {
         macs,
@@ -175,18 +190,25 @@ pub async fn get_mac(
         })?;
 
     // Audit MAC access
-    audit_manager.audit_event(
-        AuditEventType::Access,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "mac_api",
-        &format!("Accessed MAC '{}' details", mac.sge_mac),
-        Some(json!({
+    audit_manager.log_event(AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::Access,
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: None,
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "mac_api".to_string(),
+        action: format!("Accessed MAC '{}' details", mac.sge_mac),
+        details: json!({
             "mac_id": mac.id,
             "sge_mac": mac.sge_mac,
             "organization_id": organization_id
-        })),
-    ).await;
+        }),
+        hmac_signature: None,
+    }).await;
 
     Ok(warp::reply::json(&mac))
 }
@@ -215,18 +237,25 @@ pub async fn update_mac(
     })?;
 
     // Audit MAC update
-    audit_manager.audit_event(
-        AuditEventType::Security,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "mac_api",
-        &format!("MAC '{}' updated", updated_mac.sge_mac),
-        Some(json!({
+    audit_manager.log_event(AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::Security,
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: None,
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "mac_api".to_string(),
+        action: format!("MAC '{}' updated", updated_mac.sge_mac),
+        details: json!({
             "mac_id": updated_mac.id,
             "sge_mac": updated_mac.sge_mac,
             "organization_id": organization_id
-        })),
-    ).await;
+        }),
+        hmac_signature: None,
+    }).await;
 
     Ok(warp::reply::json(&updated_mac))
 }
@@ -253,17 +282,24 @@ pub async fn delete_mac(
         })?;
 
     // Audit MAC deletion
-    audit_manager.audit_event(
-        AuditEventType::Security,
-        AuditSeverity::Warning,
-        Some(&user_id.to_string()),
-        "mac_api",
-        &format!("MAC '{}' deleted", mac_name),
-        Some(json!({
+    audit_manager.log_event(AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::Security,
+        severity: AuditSeverity::Medium,
+        user_id: Some(user_id.to_string()),
+        tenant_id: None,
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "mac_api".to_string(),
+        action: format!("MAC '{}' deleted", mac_name),
+        details: json!({
             "sge_mac": address,
             "organization_id": organization_id
-        })),
-    ).await;
+        }),
+        hmac_signature: None,
+    }).await;
 
     Ok(warp::reply::json(&json!({"status": "mac_deleted"})))
 }
@@ -286,19 +322,26 @@ pub async fn resolve_ip(
         })?;
 
     // Audit IP resolution
-    audit_manager.audit_event(
-        AuditEventType::Access,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "mac_api",
-        &format!("Resolved IP {} to MAC {}", ip, mac.sge_mac),
-        Some(json!({
+    audit_manager.log_event(AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::Access,
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: None,
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "mac_api".to_string(),
+        action: format!("Resolved IP {} to MAC {}", ip, mac.sge_mac),
+        details: json!({
             "ip_address": ip,
             "mac_id": mac.id,
             "sge_mac": mac.sge_mac,
             "organization_id": organization_id
-        })),
-    ).await;
+        }),
+        hmac_signature: None,
+    }).await;
 
     Ok(warp::reply::json(&mac))
 }
@@ -321,19 +364,26 @@ pub async fn get_mac_by_fingerprint(
         })?;
 
     // Audit fingerprint lookup
-    audit_manager.audit_event(
-        AuditEventType::Access,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "mac_api",
-        &format!("Accessed MAC '{}' via fingerprint", mac.sge_mac),
-        Some(json!({
+    audit_manager.log_event(AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::Access,
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: None,
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "mac_api".to_string(),
+        action: format!("Accessed MAC '{}' via fingerprint", mac.sge_mac),
+        details: json!({
             "fingerprint": fingerprint,
             "mac_id": mac.id,
             "sge_mac": mac.sge_mac,
             "organization_id": organization_id
-        })),
-    ).await;
+        }),
+        hmac_signature: None,
+    }).await;
 
     Ok(warp::reply::json(&mac))
 }
@@ -377,20 +427,27 @@ pub async fn register_mac_with_certificate(
     })?;
 
     // Audit certificate-backed registration
-    audit_manager.audit_event(
-        AuditEventType::Security,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "mac_api",
-        &format!("MAC '{}' registered with certificate", mac.sge_mac),
-        Some(json!({
+    audit_manager.log_event(AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::Security,
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: None,
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "mac_api".to_string(),
+        action: format!("MAC '{}' registered with certificate", mac.sge_mac),
+        details: json!({
             "mac_id": mac.id,
             "sge_mac": mac.sge_mac,
             "has_certificate": mac.certificate.is_some(),
             "has_signature": mac.signature.is_some(),
             "organization_id": organization_id
-        })),
-    ).await;
+        }),
+        hmac_signature: None,
+    }).await;
 
     Ok(warp::reply::json(&mac))
 }
@@ -418,19 +475,26 @@ pub async fn verify_mac_integrity(
         })?;
 
     // Audit integrity verification
-    audit_manager.audit_event(
-        AuditEventType::Security,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "mac_api",
-        &format!("MAC integrity verification: {} - {}", mac.sge_mac, if is_valid { "VALID" } else { "INVALID" }),
-        Some(json!({
+    audit_manager.log_event(AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::Security,
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: None,
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "mac_api".to_string(),
+        action: format!("MAC integrity verification: {} - {}", mac.sge_mac, if is_valid { "VALID" } else { "INVALID" }),
+        details: json!({
             "mac_id": mac.id,
             "sge_mac": mac.sge_mac,
             "is_valid": is_valid,
             "organization_id": organization_id
-        })),
-    ).await;
+        }),
+        hmac_signature: None,
+    }).await;
 
     Ok(warp::reply::json(&json!({
         "mac_address": address,
@@ -465,19 +529,26 @@ pub async fn renew_mac_certificate(
     })?;
 
     // Audit certificate renewal
-    audit_manager.audit_event(
-        AuditEventType::Security,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "mac_api",
-        &format!("MAC certificate renewed: {}", updated_mac.sge_mac),
-        Some(json!({
+    audit_manager.log_event(AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::Security,
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: None,
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "mac_api".to_string(),
+        action: format!("MAC certificate renewed: {}", updated_mac.sge_mac),
+        details: json!({
             "mac_id": updated_mac.id,
             "sge_mac": updated_mac.sge_mac,
             "validity_days": validity_days,
             "organization_id": organization_id
-        })),
-    ).await;
+        }),
+        hmac_signature: None,
+    }).await;
 
     Ok(warp::reply::json(&updated_mac))
 }
@@ -501,18 +572,25 @@ pub async fn revoke_mac_certificate(
         })?;
 
     // Audit certificate revocation
-    audit_manager.audit_event(
-        AuditEventType::Security,
-        AuditSeverity::Warning,
-        Some(&user_id.to_string()),
-        "mac_api",
-        &format!("MAC certificate revoked: {}", address),
-        Some(json!({
+    audit_manager.log_event(AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::Security,
+        severity: AuditSeverity::Medium,
+        user_id: Some(user_id.to_string()),
+        tenant_id: None,
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "mac_api".to_string(),
+        action: format!("MAC certificate revoked: {}", address),
+        details: json!({
             "sge_mac": address,
             "revocation_reason": reason,
             "organization_id": organization_id
-        })),
-    ).await;
+        }),
+        hmac_signature: None,
+    }).await;
 
     Ok(warp::reply::json(&json!({"status": "certificate_revoked"})))
 }
@@ -540,19 +618,26 @@ pub async fn get_mac_certificate_chain(
         })?;
 
     // Audit certificate chain access
-    audit_manager.audit_event(
-        AuditEventType::Access,
-        AuditSeverity::Info,
-        Some(&user_id.to_string()),
-        "mac_api",
-        &format!("MAC certificate chain retrieved: {}", mac.sge_mac),
-        Some(json!({
+    audit_manager.log_event(AuditEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        event_type: AuditEventType::Access,
+        severity: AuditSeverity::Low,
+        user_id: Some(user_id.to_string()),
+        tenant_id: None,
+        session_id: None,
+        ip_address: None,
+        user_agent: None,
+        resource: "mac_api".to_string(),
+        action: format!("MAC certificate chain retrieved: {}", mac.sge_mac),
+        details: json!({
             "mac_id": mac.id,
             "sge_mac": mac.sge_mac,
             "chain_length": chain.len(),
             "organization_id": organization_id
-        })),
-    ).await;
+        }),
+        hmac_signature: None,
+    }).await;
 
     Ok(warp::reply::json(&json!({
         "mac_address": address,

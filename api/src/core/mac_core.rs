@@ -14,9 +14,7 @@
 //  License: MIT (Open Source for Strategic Transparency)
 // ============================================================================
 
-use std::collections::HashMap;
 use uuid::Uuid;
-use rand::Rng;
 use sha2::{Sha256, Digest};
 use regex::Regex;
 use lazy_static::lazy_static;

@@ -14,17 +14,12 @@
 //  License: MIT (Open Source for Strategic Transparency)
 // ============================================================================
 
-use std::sync::Arc;
-use uuid::Uuid;
-use chrono::Utc;
-use serde_json::json;
 
-use crate::models::data_model::{MacIdentity, MacStatus};
-use crate::services::mac_service::MacService;
-use crate::core::mac_core::MacCore;
-use crate::core::vault::VaultClient;
-use crate::core::audit_manager::AuditManager;
-use crate::queries::mac_queries::MacQueries;
+
+
+
+
+
 
 /// Test MAC core functionality
 #[cfg(test)]

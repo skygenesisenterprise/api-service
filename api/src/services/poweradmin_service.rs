@@ -14,7 +14,7 @@
 //  License: MIT (Open Source for Strategic Transparency)
 // ============================================================================
 
-use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use reqwest::Client;
 use crate::core::vault::VaultClient;

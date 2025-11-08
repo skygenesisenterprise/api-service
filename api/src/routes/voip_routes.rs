@@ -53,7 +53,8 @@ pub fn voip_routes(
         });
 
     let get_call = voip_base.clone()
-        .and(warp::path("calls" / String))
+        .and(warp::path("calls"))
+        .and(warp::path::param::<String>())
         .and(warp::path::end())
         .and(warp::get())
         .and_then(|call_id: String, user_id: String, vs: Arc<VoipService>| async move {
@@ -63,7 +64,9 @@ pub fn voip_routes(
         });
 
     let accept_call = voip_base.clone()
-        .and(warp::path("calls" / String / "accept"))
+        .and(warp::path("calls"))
+        .and(warp::path::param::<String>())
+        .and(warp::path("accept"))
         .and(warp::path::end())
         .and(warp::post())
         .and_then(|call_id: String, user_id: String, vs: Arc<VoipService>| async move {
@@ -71,7 +74,9 @@ pub fn voip_routes(
         });
 
     let end_call = voip_base.clone()
-        .and(warp::path("calls" / String / "end"))
+        .and(warp::path("calls"))
+        .and(warp::path::param::<String>())
+        .and(warp::path("end"))
         .and(warp::path::end())
         .and(warp::post())
         .and_then(|call_id: String, user_id: String, vs: Arc<VoipService>| async move {
@@ -80,7 +85,9 @@ pub fn voip_routes(
 
     // Signaling routes
     let send_signaling = voip_base.clone()
-        .and(warp::path("calls" / String / "signaling"))
+        .and(warp::path("calls"))
+        .and(warp::path::param::<String>())
+        .and(warp::path("signaling"))
         .and(warp::path::end())
         .and(warp::post())
         .and(warp::body::json())
@@ -89,7 +96,9 @@ pub fn voip_routes(
         });
 
     let get_signaling = voip_base.clone()
-        .and(warp::path("calls" / String / "signaling"))
+        .and(warp::path("calls"))
+        .and(warp::path::param::<String>())
+        .and(warp::path("signaling"))
         .and(warp::path::end())
         .and(warp::get())
         .and_then(|call_id: String, user_id: String, vs: Arc<VoipService>| async move {
@@ -115,7 +124,8 @@ pub fn voip_routes(
         });
 
     let get_room = voip_base.clone()
-        .and(warp::path("rooms" / String))
+        .and(warp::path("rooms"))
+        .and(warp::path::param::<String>())
         .and(warp::path::end())
         .and(warp::get())
         .and_then(|room_id: String, user_id: String, vs: Arc<VoipService>| async move {
@@ -125,7 +135,9 @@ pub fn voip_routes(
         });
 
     let join_room = voip_base.clone()
-        .and(warp::path("rooms" / String / "join"))
+        .and(warp::path("rooms"))
+        .and(warp::path::param::<String>())
+        .and(warp::path("join"))
         .and(warp::path::end())
         .and(warp::post())
         .and_then(|room_id: String, user_id: String, vs: Arc<VoipService>| async move {
@@ -272,7 +284,9 @@ pub fn voip_routes(
         });
 
     let update_device_presence = voip_base.clone()
-        .and(warp::path("devices" / String / "presence"))
+        .and(warp::path("devices"))
+        .and(warp::path::param::<String>())
+        .and(warp::path("presence"))
         .and(warp::path::end())
         .and(warp::put())
         .and(warp::body::json())

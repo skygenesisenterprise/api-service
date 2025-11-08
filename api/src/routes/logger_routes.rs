@@ -17,6 +17,7 @@ use warp::Filter;
 use std::sync::Arc;
 use crate::services::logger_service::LoggerService;
 use crate::models::logger_model::LogFilterRequest;
+use chrono::{DateTime, Utc};
 
 /// [LOGGER ROUTES] Audit Log Retrieval Endpoints
 /// @MISSION Provide secure access to audit logs with route filtering capabilities.
@@ -27,6 +28,7 @@ use crate::models::logger_model::LogFilterRequest;
 /// @AUDIT All log access requests are audited for compliance.
 pub fn logger_routes(
     logger_service: Arc<LoggerService>,
+    audit_manager: Arc<crate::core::audit_manager::AuditManager>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     // Main logger endpoint - retrieve all API action logs
     let get_logs = warp::path!("api" / "v1" / "logger")
@@ -254,9 +256,9 @@ struct SummaryQueryParams {
         .and(warp::get())
         .and(warp::query::<LoggerQueryParams>())
         .and_then({
-            let audit_manager = Arc::clone(&audit_manager);
+            let logger_service = Arc::clone(&logger_service);
             move |route: String, params: LoggerQueryParams| {
-                let audit_manager = Arc::clone(&audit_manager);
+                let logger_service = Arc::clone(&logger_service);
                 async move {
                     match audit_manager.query_events(
                         params.user_id.as_deref(),
@@ -304,9 +306,9 @@ struct SummaryQueryParams {
     let get_logged_routes = warp::path!("api" / "v1" / "logger" / "routes")
         .and(warp::get())
         .and_then({
-            let audit_manager = Arc::clone(&audit_manager);
+            let logger_service = Arc::clone(&logger_service);
             move || {
-                let audit_manager = Arc::clone(&audit_manager);
+                let logger_service = Arc::clone(&logger_service);
                 async move {
                     match audit_manager.query_events(
                         None,
