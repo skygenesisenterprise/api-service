@@ -103,12 +103,13 @@ pub async fn register_mac(
         user_agent: None,
         resource: "mac_api".to_string(),
         action: format!("MAC '{}' registered with ID {}", mac.sge_mac, mac.id),
+        status: "success".to_string(),
         details: json!({
             "mac_id": mac.id,
             "sge_mac": mac.sge_mac,
             "organization_id": organization_id
         }),
-        hmac_signature: None,
+        hmac_signature: "pending".to_string(),
     }).await;
 
     Ok(warp::reply::json(&mac))
@@ -153,13 +154,14 @@ pub async fn list_macs(
         user_agent: None,
         resource: "mac_api".to_string(),
         action: format!("Listed {} MAC identities for organization", macs.len()),
+        status: "success".to_string(),
         details: json!({
             "organization_id": organization_id,
             "page": page,
             "per_page": per_page,
             "total_count": total_count
         }),
-        hmac_signature: None,
+        hmac_signature: "pending".to_string(),
     }).await;
 
     let response = MacListResponse {
@@ -202,12 +204,13 @@ pub async fn get_mac(
         user_agent: None,
         resource: "mac_api".to_string(),
         action: format!("Accessed MAC '{}' details", mac.sge_mac),
+        status: "success".to_string(),
         details: json!({
             "mac_id": mac.id,
             "sge_mac": mac.sge_mac,
             "organization_id": organization_id
         }),
-        hmac_signature: None,
+        hmac_signature: "pending".to_string(),
     }).await;
 
     Ok(warp::reply::json(&mac))
@@ -249,12 +252,13 @@ pub async fn update_mac(
         user_agent: None,
         resource: "mac_api".to_string(),
         action: format!("MAC '{}' updated", updated_mac.sge_mac),
+        status: "success".to_string(),
         details: json!({
             "mac_id": updated_mac.id,
             "sge_mac": updated_mac.sge_mac,
             "organization_id": organization_id
         }),
-        hmac_signature: None,
+        hmac_signature: "pending".to_string(),
     }).await;
 
     Ok(warp::reply::json(&updated_mac))
@@ -294,11 +298,12 @@ pub async fn delete_mac(
         user_agent: None,
         resource: "mac_api".to_string(),
         action: format!("MAC '{}' deleted", mac_name),
+        status: "success".to_string(),
         details: json!({
             "sge_mac": address,
             "organization_id": organization_id
         }),
-        hmac_signature: None,
+        hmac_signature: "pending".to_string(),
     }).await;
 
     Ok(warp::reply::json(&json!({"status": "mac_deleted"})))
@@ -334,13 +339,14 @@ pub async fn resolve_ip(
         user_agent: None,
         resource: "mac_api".to_string(),
         action: format!("Resolved IP {} to MAC {}", ip, mac.sge_mac),
+        status: "success".to_string(),
         details: json!({
             "ip_address": ip,
             "mac_id": mac.id,
             "sge_mac": mac.sge_mac,
             "organization_id": organization_id
         }),
-        hmac_signature: None,
+        hmac_signature: "pending".to_string(),
     }).await;
 
     Ok(warp::reply::json(&mac))
@@ -376,13 +382,14 @@ pub async fn get_mac_by_fingerprint(
         user_agent: None,
         resource: "mac_api".to_string(),
         action: format!("Accessed MAC '{}' via fingerprint", mac.sge_mac),
+        status: "success".to_string(),
         details: json!({
             "fingerprint": fingerprint,
             "mac_id": mac.id,
             "sge_mac": mac.sge_mac,
             "organization_id": organization_id
         }),
-        hmac_signature: None,
+        hmac_signature: "pending".to_string(),
     }).await;
 
     Ok(warp::reply::json(&mac))
@@ -439,6 +446,7 @@ pub async fn register_mac_with_certificate(
         user_agent: None,
         resource: "mac_api".to_string(),
         action: format!("MAC '{}' registered with certificate", mac.sge_mac),
+        status: "success".to_string(),
         details: json!({
             "mac_id": mac.id,
             "sge_mac": mac.sge_mac,
@@ -446,7 +454,7 @@ pub async fn register_mac_with_certificate(
             "has_signature": mac.signature.is_some(),
             "organization_id": organization_id
         }),
-        hmac_signature: None,
+        hmac_signature: "pending".to_string(),
     }).await;
 
     Ok(warp::reply::json(&mac))
@@ -487,13 +495,14 @@ pub async fn verify_mac_integrity(
         user_agent: None,
         resource: "mac_api".to_string(),
         action: format!("MAC integrity verification: {} - {}", mac.sge_mac, if is_valid { "VALID" } else { "INVALID" }),
+        status: "success".to_string(),
         details: json!({
             "mac_id": mac.id,
             "sge_mac": mac.sge_mac,
             "is_valid": is_valid,
             "organization_id": organization_id
         }),
-        hmac_signature: None,
+        hmac_signature: "pending".to_string(),
     }).await;
 
     Ok(warp::reply::json(&json!({
@@ -523,7 +532,7 @@ pub async fn renew_mac_certificate(
         organization_id,
         &organization_name,
         validity_days as i64,
-        &user_id,
+        &user_id.to_string(),
     ).await.map_err(|e| {
         warp::reject::custom(ApiError::InternalError(e.to_string()))
     })?;
@@ -541,13 +550,14 @@ pub async fn renew_mac_certificate(
         user_agent: None,
         resource: "mac_api".to_string(),
         action: format!("MAC certificate renewed: {}", updated_mac.sge_mac),
+        status: "success".to_string(),
         details: json!({
             "mac_id": updated_mac.id,
             "sge_mac": updated_mac.sge_mac,
             "validity_days": validity_days,
             "organization_id": organization_id
         }),
-        hmac_signature: None,
+        hmac_signature: "pending".to_string(),
     }).await;
 
     Ok(warp::reply::json(&updated_mac))
@@ -566,7 +576,7 @@ pub async fn revoke_mac_certificate(
     user_id: Uuid,
     reason: String,
 ) -> Result<impl Reply, warp::Rejection> {
-    mac_service.revoke_mac_certificate(&address, organization_id, &reason, &user_id).await
+    mac_service.revoke_mac_certificate(&address, organization_id, &reason, &user_id.to_string()).await
         .map_err(|e| {
             warp::reject::custom(ApiError::InternalError(e.to_string()))
         })?;
@@ -584,12 +594,13 @@ pub async fn revoke_mac_certificate(
         user_agent: None,
         resource: "mac_api".to_string(),
         action: format!("MAC certificate revoked: {}", address),
+        status: "success".to_string(),
         details: json!({
             "sge_mac": address,
             "revocation_reason": reason,
             "organization_id": organization_id
         }),
-        hmac_signature: None,
+        hmac_signature: "pending".to_string(),
     }).await;
 
     Ok(warp::reply::json(&json!({"status": "certificate_revoked"})))
@@ -630,13 +641,14 @@ pub async fn get_mac_certificate_chain(
         user_agent: None,
         resource: "mac_api".to_string(),
         action: format!("MAC certificate chain retrieved: {}", mac.sge_mac),
+        status: "success".to_string(),
         details: json!({
             "mac_id": mac.id,
             "sge_mac": mac.sge_mac,
             "chain_length": chain.len(),
             "organization_id": organization_id
         }),
-        hmac_signature: None,
+        hmac_signature: "pending".to_string(),
     }).await;
 
     Ok(warp::reply::json(&json!({

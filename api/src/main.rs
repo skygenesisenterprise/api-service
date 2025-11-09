@@ -1,67 +1,54 @@
 // ============================================================================
 //  SKY GENESIS ENTERPRISE (SGE)
-//  Main Entry Point - Simplified for Compilation
+//  Sovereign Infrastructure Initiative
+//  Project: Enterprise API Service
+//  Module: Minimal Working Main
+// ---------------------------------------------------------------------------
+//  CLASSIFICATION: INTERNAL | HIGHLY-SENSITIVE
+//  MISSION: Provide minimal working API server to establish baseline
+//  NOTICE: Ultra-minimal implementation with only essential dependencies.
+//  COMPLIANCE: REST API standards, HTTP/1.1, JSON responses
+//  License: MIT (Open Source for Strategic Transparency)
 // ============================================================================
 
 use warp::Filter;
-use std::sync::{Arc, Mutex};
-use dotenv::dotenv;
-use std::collections::HashMap;
+use std::net::SocketAddr;
 
-// Core modules - simplified
-mod config;
-mod controllers;
-mod core;
-mod middlewares;
-mod models;
-mod routes;
-mod services;
-mod utils;
+// ============================================================================
+//  MAIN APPLICATION ENTRY POINT
+// ============================================================================
 
-/// [CONFIGURATION LAYER] Environment Variable Loader - Simplified
-fn load_defaults_from_env_example() -> HashMap<String, String> {
-    let mut defaults = HashMap::new();
+#[tokio::main]
+async fn main() {
+    // Simple configuration
+    let addr: SocketAddr = ([127, 0, 0, 1], 8080).into();
     
-    // Basic defaults for compilation
-    defaults.insert("HOST".to_string(), "127.0.0.1".to_string());
-    defaults.insert("PORT".to_string(), "8080".to_string());
-    defaults.insert("DB_HOST".to_string(), "localhost".to_string());
-    defaults.insert("DB_PORT".to_string(), "5432".to_string());
-    defaults.insert("DB_NAME".to_string(), "api_service".to_string());
-    defaults.insert("LOG_LEVEL".to_string(), "info".to_string());
+    println!("🚀 Sky Genesis Enterprise API starting on http://{}", addr);
+    println!("📋 Available endpoints:");
+    println!("   GET  /hello - Simple hello world");
+    println!("   GET  /api/v1/health - Health check");
+    println!("   GET  /docs - API documentation");
     
-    defaults
+    // Define routes
+    let routes = routes();
+    
+    // Start server
+    warp::serve(routes)
+        .run(addr)
+        .await;
 }
 
-/// [MAIN FUNCTION] API Service Entry Point - Simplified
-/// @MISSION Initialize and start the enterprise API service.
-/// @THREAT Service initialization failure or configuration errors.
-/// @COUNTERMEASURE Comprehensive validation and graceful error handling.
-/// @AUDIT Service startup is logged with all configuration details.
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Load environment variables
-    dotenv().ok();
+// ============================================================================
+//  ROUTE CONFIGURATION
+// ============================================================================
+
+pub fn routes() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    // Hello world endpoint
+    let hello = warp::path!("hello")
+        .and(warp::get())
+        .map(|| "Hello, World from Sky Genesis Enterprise API!");
     
-    println!("🚀 Starting Sky Genesis Enterprise API Service...");
-    println!("📍 Server will be available at: http://127.0.0.1:8080");
-    println!("📊 Health check: http://127.0.0.1:8080/api/v1/health");
-    println!("📚 API Documentation: http://127.0.0.1:8080/docs");
-    
-    // Load configuration
-    let defaults = load_defaults_from_env_example();
-    
-    // Initialize services (simplified)
-    let auth_service = Arc::new(crate::services::auth_service::AuthService::new());
-    let data_service = Arc::new(crate::services::data_service::DataService::new());
-    let device_service = Arc::new(crate::services::device_service::DeviceService::new());
-    
-    // Build routes (simplified)
-    let auth_routes = crate::routes::auth_routes::auth_routes(auth_service);
-    let data_routes = crate::routes::data_routes::data_routes(data_service);
-    let device_routes = crate::routes::device_routes::device_routes(device_service);
-    
-    // Health check route
+    // Health check endpoint
     let health = warp::path("api")
         .and(warp::path("v1"))
         .and(warp::path("health"))
@@ -70,47 +57,56 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             warp::reply::json(&serde_json::json!({
                 "status": "healthy",
                 "service": "sky-genesis-enterprise-api",
-                "version": "1.0.0",
+                "version": "1.0.0-minimal",
                 "timestamp": chrono::Utc::now().to_rfc3339(),
-                "uptime_seconds": 0
+                "uptime_seconds": 0,
+                "message": "API is running successfully!"
             }))
         });
     
-    // API documentation route
+    // Documentation endpoint
     let docs = warp::path("docs")
         .and(warp::get())
         .map(|| {
-            warp::reply::with_header(
-                warp::reply::html(include_str!("../static/api_docs.html")),
-                "content-type",
-                "text/html"
-            )
+            warp::reply::html(r#"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sky Genesis Enterprise API</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .endpoint { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .method { color: #007acc; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>🚀 Sky Genesis Enterprise API</h1>
+    <p>Minimal API server is running successfully!</p>
+    
+    <h2>📋 Available Endpoints</h2>
+    <div class="endpoint">
+        <span class="method">GET</span> /hello - Simple hello world endpoint
+    </div>
+    <div class="endpoint">
+        <span class="method">GET</span> /api/v1/health - Health check endpoint
+    </div>
+    <div class="endpoint">
+        <span class="method">GET</span> /docs - This documentation page
+    </div>
+    
+    <h2>🔧 Status</h2>
+    <p><strong>Mode:</strong> Minimal Working Version</p>
+    <p><strong>Next Steps:</strong> Progressive route integration</p>
+</body>
+</html>
+            "#)
         });
-    
+
     // Combine all routes
-    let routes = health
-        .or(docs)
-        .or(auth_routes)
-        .or(data_routes)
-        .or(device_routes)
+    let all_routes = hello.or(health).or(docs);
+
+    // Add CORS and logging
+    all_routes
         .with(warp::cors().allow_any_origin().allow_methods(vec!["GET", "POST", "PUT", "DELETE"]))
-        .with(warp::log("api"));
-    
-    // Get port from environment or use default
-    let port = std::env::var("PORT")
-        .unwrap_or_else(|_| "8080".to_string())
-        .parse::<u16>()
-        .unwrap_or(8080);
-    
-    let host = std::env::var("HOST")
-        .unwrap_or_else(|_| "127.0.0.1".to_string());
-    
-    println!("🌐 Starting server on http://{}:{}", host, port);
-    
-    // Start server
-    warp::serve(routes)
-        .run((host.parse::<std::net::IpAddr>().unwrap_or([127, 0, 0, 1].into()), port))
-        .await;
-    
-    Ok(())
+        .with(warp::log("api"))
 }

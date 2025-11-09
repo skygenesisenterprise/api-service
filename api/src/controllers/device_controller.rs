@@ -23,7 +23,7 @@ pub async fn list_devices(
     per_page: u32,
 ) -> Result<impl Reply, warp::Rejection> {
     // Simplified implementation for compilation
-    let devices = vec![];
+    let devices: Vec<serde_json::Value> = vec![];
     let total_count = 0;
     
     Ok(warp::reply::json(&json!({

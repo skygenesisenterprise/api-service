@@ -59,7 +59,7 @@ pub async fn login(
         );
         Ok(warp::reply::with_header(reply, "Set-Cookie", cookie))
     } else {
-        Ok(reply)
+        Ok(warp::reply::with_header(reply, "Content-Type", "application/json"))
     }
 }
 

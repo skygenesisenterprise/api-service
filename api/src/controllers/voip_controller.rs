@@ -187,13 +187,12 @@ pub async fn accept_call(
                 error: "Call acceptance failed".to_string(),
                 message: err,
             };
-            let response = warp::reply::json(&error_response);
             let status = if err.contains("not found") {
                 StatusCode::NOT_FOUND
             } else {
                 StatusCode::FORBIDDEN
             };
-            Ok(warp::reply::with_status(response, status))
+            Ok(warp::reply::with_status(warp::reply::json(&error_response), status))
         }
     }
 }
@@ -224,13 +223,12 @@ pub async fn end_call(
                 error: "Call termination failed".to_string(),
                 message: err,
             };
-            let response = warp::reply::json(&error_response);
             let status = if err.contains("not found") {
                 StatusCode::NOT_FOUND
             } else {
                 StatusCode::FORBIDDEN
             };
-            Ok(warp::reply::with_status(response, status))
+            Ok(warp::reply::with_status(warp::reply::json(&error_response), status))
         }
     }
 }

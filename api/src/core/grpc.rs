@@ -169,9 +169,10 @@ pub struct MailServiceImpl {
     // Dependencies would be injected here
 }
 
+use crate::core::grpc::sky_genesis::{SendEmailRequest, SendEmailResponse, GetEmailRequest, GetEmailResponse};
+
 #[tonic::async_trait]
 impl crate::core::grpc::sky_genesis::mail_service_server::MailService for MailServiceImpl {
-    use crate::core::grpc::sky_genesis::{SendEmailRequest, SendEmailResponse, GetEmailRequest, GetEmailResponse};
     /// [EMAIL SENDING] Secure Message Transmission
     /// @MISSION Send encrypted emails with delivery tracking.
     /// @THREAT Email spoofing, content tampering, or delivery failures.
@@ -241,9 +242,10 @@ pub struct SearchServiceImpl {
     // Dependencies would be injected here
 }
 
+use crate::core::grpc::sky_genesis::{SearchRequest, SearchResponse, IndexDocumentRequest, IndexDocumentResponse};
+
 #[tonic::async_trait]
 impl crate::core::grpc::sky_genesis::search_service_server::SearchService for SearchServiceImpl {
-    use crate::core::grpc::sky_genesis::{SearchRequest, SearchResponse, IndexDocumentRequest, IndexDocumentResponse};
     /// [FULL-TEXT SEARCH] Secure Query Processing
     /// @MISSION Execute encrypted search queries with relevance ranking.
     /// @THREAT Query injection, result poisoning, or privacy leakage.

@@ -1,24 +1,11 @@
-// Services Rust module
+// Services Rust module (Ultra-minimal Working Version)
 
-pub mod vault_service;
-pub mod vault_manager;
-pub mod key_service;
-pub mod auth_service;
-pub mod security_service;
-pub mod session_service;
-pub mod application_service;
-pub mod two_factor_service;
-pub mod authorization_service;
-pub mod data_service;
-pub mod monitoring_service;
-pub mod grafana_service;
-pub mod openpgp_service;
-pub mod device_service;
-pub mod mac_service;
-pub mod voip_service;
-pub mod discord_service;
-pub mod git_service;
-pub mod logger_service;
-pub mod poweradmin_service;
-pub mod mail_service;
-pub mod search_service;
+// All services temporarily disabled to create a working baseline
+// Services will be progressively re-enabled as dependencies are fixed
+
+// pub mod key_service;
+// pub mod auth_service;
+// pub mod security_service;
+// pub mod session_service;
+// pub mod data_service;
+// pub mod device_service;

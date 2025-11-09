@@ -1,0 +1,20 @@
+   Compiling api v1.0.0 (/home/liam/Bureau/enterprise/api-service/api)
+warning: api@1.0.0: protoc not found, skipping proto compilation
+warning: unused import: `std::convert::Infallible`
+  --> api/src/main.rs:15:5
+   |
+15 | use std::convert::Infallible;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `api` (bin "api") generated 1 warning (run `cargo fix --bin "api"` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.98s
+warning: the following packages contain code that will be rejected by a future version of Rust: num-bigint-dig v0.8.5, quick-xml v0.17.2, russh v0.54.6
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 3`
+     Running `/home/liam/Bureau/enterprise/api-service/target/debug/api`
+🚀 Sky Genesis Enterprise API starting on http://127.0.0.1:8080
+📋 Available endpoints:
+   GET  /hello - Simple hello world
+   GET  /api/v1/health - Health check
+   GET  /docs - API documentation
