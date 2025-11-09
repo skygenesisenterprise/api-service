@@ -1,4 +1,8 @@
+<div align="center">
+
 # 🔐 Sky Genesis Enterprise API Backend
+
+---
 
 [![Rust](https://img.shields.io/badge/Rust-1.70+-000000?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
 [![Warp](https://img.shields.io/badge/Warp-0.3-000000?style=for-the-badge)](https://crates.io/crates/warp)
@@ -10,6 +14,8 @@
 [![Coverage](https://img.shields.io/badge/Coverage-85%25-yellow?style=for-the-badge)](https://github.com/skygenesisenterprise/api-service/coverage)
 
 > **High-performance Rust backend API** with advanced security, certificate-coupled authentication, and enterprise-grade reliability.
+
+</div>
 
 ## 📈 Backend Evolution & Milestones
 
@@ -593,6 +599,10 @@ This project is licensed under the **MIT License** - see the [LICENSE](../LICENS
 
 ---
 
+<div align="center">
+
 **🔒 Secure • 🚀 Performant • 🏢 Enterprise-Ready**
 
 *Sky Genesis Enterprise API Backend - Powering the next generation of enterprise applications.*
+
+</div>

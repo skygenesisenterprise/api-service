@@ -1,6 +1,28 @@
-// Routes Rust module (Minimal working version)
+// Routes Rust module (Progressive integration)
 
 use warp::Filter;
+use serde_json;
+mod test_routes;
+mod mail_routes;
+mod mac_routes;
+mod logger_routes;
+mod security_routes;
+mod auth_routes; 
+// mod data_routes;
+// mod devices_routes;
+// mod openpgp_routes;
+// mod voip_routes;
+// mod grafana_routes;
+// mod poweradmin_routes 
+// mod grpc_routes;
+// mod oauth2_routes;
+// mod sftp_routes;
+// mod snmp_routes;
+// mod ssh_routes;
+// mod webhook_routes;
+// mod monitoring_routes;
+// mod opentelemetry_routes;  
+
 
 pub fn routes() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     // Ultra-minimal routes for testing compilation
@@ -44,7 +66,7 @@ pub fn routes() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejecti
             "#)
         });
 
-    let all_routes = hello.or(health).or(docs);
+    let all_routes = hello.or(health).or(docs).or(test_routes::test_routes()).or(mail_routes::mail_routes()).or(mac_routes::mac_routes()).or(logger_routes::logger_routes()).or(security_routes::security_routes()).or(auth_routes::auth_routes());
 
     all_routes
         .with(warp::cors().allow_any_origin().allow_methods(vec!["GET", "POST", "PUT", "DELETE"]))

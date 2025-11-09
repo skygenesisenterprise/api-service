@@ -4,6 +4,7 @@
 //! Simplified version for testing compilation.
 
 use warp::Filter;
+use base64::{Engine as _, engine::general_purpose};
 
 /// Security routes configuration (simplified)
 pub fn security_routes() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -95,7 +96,7 @@ async fn generate_random_endpoint(
 
     Ok(warp::reply::json(&serde_json::json!({
         "status": "success",
-        "data": base64::encode(&bytes),
+        "data": general_purpose::STANDARD.encode(&bytes),
         "length": length,
         "note": "Using simple PRNG - replace with CSPRNG in production"
     })))

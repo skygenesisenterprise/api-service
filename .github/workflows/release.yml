@@ -148,92 +148,86 @@ jobs:
         cargo publish
       continue-on-error: true
 
-    # Extract version from release tag
-    - name: Extract version from tag
-      id: extract-version
+    # Extract version and type from release tag
+    - name: Extract version and type from tag
+      id: extract-info
       run: |
-        # Extract version from tag (e.g., "v1.2.6-api" -> "1.2.6")
+        # Extract version and type from tag
+        # Supports both formats: "web-v1.2.6" and "api-web-v1.2.6"
         TAG="${{ github.ref_name }}"
-        VERSION=$(echo "$TAG" | sed 's/^v\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/')
+        
+        # Detect tag type and extract version
+        if [[ "$TAG" =~ ^api-web-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+          TYPE="web"
+          VERSION="${BASH_REMATCH[1]}"
+          IMAGE_NAME="api-web"
+          DOCKERFILE="Dockerfile.frontend"
+        elif [[ "$TAG" =~ ^web-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+          TYPE="web"
+          VERSION="${BASH_REMATCH[1]}"
+          IMAGE_NAME="api-web"
+          DOCKERFILE="Dockerfile.frontend"
+        elif [[ "$TAG" =~ ^api-cli-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+          TYPE="cli"
+          VERSION="${BASH_REMATCH[1]}"
+          IMAGE_NAME="api-cli"
+          DOCKERFILE="Dockerfile.cli"
+        elif [[ "$TAG" =~ ^cli-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+          TYPE="cli"
+          VERSION="${BASH_REMATCH[1]}"
+          IMAGE_NAME="api-cli"
+          DOCKERFILE="Dockerfile.cli"
+        elif [[ "$TAG" =~ ^api-service-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+          TYPE="service"
+          VERSION="${BASH_REMATCH[1]}"
+          IMAGE_NAME="api-service"
+          DOCKERFILE="Dockerfile.api"
+        elif [[ "$TAG" =~ ^api-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+          TYPE="all-in-one"
+          VERSION="${BASH_REMATCH[1]}"
+          IMAGE_NAME="api"
+          DOCKERFILE="Dockerfile.all-in-one"
+        else
+          echo "Unsupported tag format. Expected formats:"
+          echo "  - api-web-vX.X.X or web-vX.X.X (for web interface)"
+          echo "  - api-cli-vX.X.X or cli-vX.X.X (for CLI)"
+          echo "  - api-service-vX.X.X (for API service backend)"
+          echo "  - api-vX.X.X (for All-in-One image)"
+          exit 1
+        fi
+        
         echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "type=$TYPE" >> $GITHUB_OUTPUT
+        echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+        echo "dockerfile=$DOCKERFILE" >> $GITHUB_OUTPUT
         echo "Tag: $TAG"
-        echo "Version extracted: $VERSION"
+        echo "Type: $TYPE"
+        echo "Version: $VERSION"
+        echo "Image Name: $IMAGE_NAME"
+        echo "Dockerfile: $DOCKERFILE"
 
     # Publish Docker images
-    - name: Login to Docker Hub
+    - name: Login to GitHub Container Registry
       uses: docker/login-action@v3
       with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+        registry: ghcr.io
+        username: ${{ secrets.GITHUB_USERNAME }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    # Build and push API image
-    - name: Build and push API image
+    # Build and push image based on tag type
+    - name: Build and push ${{ steps.extract-info.outputs.type }} image
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./infrastructure/docker/Dockerfile.api
+        file: ./infrastructure/docker/${{ steps.extract-info.outputs.dockerfile }}
         push: true
         tags: |
-          skygenesisenterprise/api-service:latest
-          skygenesisenterprise/api-service:${{ steps.extract-version.outputs.version }}
+          ghcr.io/skygenesisenterprise/${{ steps.extract-info.outputs.image_name }}:latest
+          ghcr.io/skygenesisenterprise/${{ steps.extract-info.outputs.image_name }}:${{ steps.extract-info.outputs.version }}
         labels: |
-          org.opencontainers.image.title=Sky Genesis API Service
-          org.opencontainers.image.description=Rust-based API service with SSH server
-          org.opencontainers.image.version=${{ steps.extract-version.outputs.version }}
-        platforms: linux/amd64,linux/arm64
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    # Build and push frontend image
-    - name: Build and push frontend image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./infrastructure/docker/Dockerfile.frontend
-        push: true
-        tags: |
-          skygenesisenterprise/api-client:latest
-          skygenesisenterprise/api-client:${{ steps.extract-version.outputs.version }}
-        labels: |
-          org.opencontainers.image.title=Sky Genesis API Client
-          org.opencontainers.image.description=Next.js frontend application
-          org.opencontainers.image.version=${{ steps.extract-version.outputs.version }}
-        platforms: linux/amd64,linux/arm64
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    # Build and push CLI image
-    - name: Build and push CLI image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./infrastructure/docker/Dockerfile.cli
-        push: true
-        tags: |
-          skygenesisenterprise/api-cli:latest
-          skygenesisenterprise/api-cli:${{ steps.extract-version.outputs.version }}
-        labels: |
-          org.opencontainers.image.title=Sky Genesis API CLI
-          org.opencontainers.image.description=Rust-based CLI with SSH server
-          org.opencontainers.image.version=${{ steps.extract-version.outputs.version }}
-        platforms: linux/amd64,linux/arm64
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    # Build and push All-in-One image
-    - name: Build and push All-in-One image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./infrastructure/docker/Dockerfile.all-in-one
-        push: true
-        tags: |
-          skygenesisenterprise/api:latest
-          skygenesisenterprise/api:${{ steps.extract-version.outputs.version }}
-        labels: |
-          org.opencontainers.image.title=Sky Genesis API All-in-One
-          org.opencontainers.image.description=Complete Sky Genesis stack with API, frontend, and CLI in single container
-          org.opencontainers.image.version=${{ steps.extract-version.outputs.version }}
+          org.opencontainers.image.title=Sky Genesis ${{ steps.extract-info.outputs.type == 'web' && 'Web Client' || steps.extract-info.outputs.type == 'cli' && 'CLI' || steps.extract-info.outputs.type == 'service' && 'API Service' || 'All-in-One' }}
+          org.opencontainers.image.description=${{ steps.extract-info.outputs.type == 'web' && 'Next.js frontend application' || steps.extract-info.outputs.type == 'cli' && 'Rust-based CLI with SSH server' || steps.extract-info.outputs.type == 'service' && 'Rust-based API service with SSH server' || 'Complete Sky Genesis stack with API, frontend, and CLI in single container' }}
+          org.opencontainers.image.version=${{ steps.extract-info.outputs.version }}
         platforms: linux/amd64,linux/arm64
         cache-from: type=gha
         cache-to: type=gha,mode=max
@@ -244,43 +238,24 @@ jobs:
       with:
         version: '0.50.1'
 
-    - name: Scan API image for vulnerabilities
+    - name: Scan ${{ steps.extract-info.outputs.type }} image for vulnerabilities
       run: |
-        trivy image --exit-code 1 --no-progress --format sarif --output api-scan.sarif skygenesisenterprise/api-service:${{ steps.extract-version.outputs.version }}
-
-    - name: Scan frontend image for vulnerabilities
-      run: |
-        trivy image --exit-code 1 --no-progress --format sarif --output frontend-scan.sarif skygenesisenterprise/api-client:${{ steps.extract-version.outputs.version }}
-
-    - name: Scan CLI image for vulnerabilities
-      run: |
-        trivy image --exit-code 1 --no-progress --format sarif --output cli-scan.sarif skygenesisenterprise/api-cli:${{ steps.extract-version.outputs.version }}
-
-    - name: Scan All-in-One image for vulnerabilities
-      run: |
-        trivy image --exit-code 1 --no-progress --format sarif --output all-in-one-scan.sarif skygenesisenterprise/api:${{ steps.extract-version.outputs.version }}
+        trivy image --exit-code 1 --no-progress --format sarif --output ${{ steps.extract-info.outputs.type }}-scan.sarif ghcr.io/skygenesisenterprise/${{ steps.extract-info.outputs.image_name }}:${{ steps.extract-info.outputs.version }}
 
     # Upload security scan results
     - name: Upload security scan results
       uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
-        sarif_file: |
-          api-scan.sarif
-          frontend-scan.sarif
-          cli-scan.sarif
-          all-in-one-scan.sarif
+        sarif_file: ${{ steps.extract-info.outputs.type }}-scan.sarif
 
     # Sign images
     - name: Install cosign
       uses: sigstore/cosign-installer@v3
 
-    - name: Sign Docker images
+    - name: Sign Docker image
       run: |
-        cosign sign skygenesisenterprise/api-service:${{ steps.extract-version.outputs.version }}
-        cosign sign skygenesisenterprise/api-client:${{ steps.extract-version.outputs.version }}
-        cosign sign skygenesisenterprise/api-cli:${{ steps.extract-version.outputs.version }}
-        cosign sign skygenesisenterprise/api:${{ steps.extract-version.outputs.version }}
+        cosign sign ghcr.io/skygenesisenterprise/${{ steps.extract-info.outputs.image_name }}:${{ steps.extract-info.outputs.version }}
       env:
         COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
 
@@ -288,10 +263,6 @@ jobs:
     - name: Generate SLSA provenance
       uses: slsa-framework/slsa-github-generator@v1
       with:
-        base64-subjects: |
-          skygenesisenterprise/api-service:${{ steps.extract-version.outputs.version }}
-          skygenesisenterprise/api-client:${{ steps.extract-version.outputs.version }}
-          skygenesisenterprise/api-cli:${{ steps.extract-version.outputs.version }}
-          skygenesisenterprise/api:${{ steps.extract-version.outputs.version }}
+        base64-subjects: ghcr.io/skygenesisenterprise/${{ steps.extract-info.outputs.image_name }}:${{ steps.extract-info.outputs.version }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
