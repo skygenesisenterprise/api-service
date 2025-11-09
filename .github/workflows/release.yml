@@ -56,22 +56,35 @@ jobs:
 
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
+      if: steps.extract-info.outputs.type == 'web' || steps.extract-info.outputs.type == 'all-in-one'
 
     # Build artifacts
     - name: Build frontend
       run: pnpm run build
+      if: steps.extract-info.outputs.type == 'web' || steps.extract-info.outputs.type == 'all-in-one'
 
     - name: Build backend
       run: cargo build --release
+      if: steps.extract-info.outputs.type == 'service' || steps.extract-info.outputs.type == 'cli' || steps.extract-info.outputs.type == 'all-in-one'
+
+    - name: Build CLI
+      run: cargo build --release --bin api-cli
+      if: steps.extract-info.outputs.type == 'cli' || steps.extract-info.outputs.type == 'all-in-one'
 
     # Create release archives
     - name: Create release archives
       run: |
         # API binary
         tar -czf api-service-${{ github.ref_name }}-linux-x64.tar.gz target/release/api-service
+        if: steps.extract-info.outputs.type == 'service' || steps.extract-info.outputs.type == 'all-in-one'
 
         # Frontend build
         tar -czf frontend-${{ github.ref_name }}.tar.gz app/.next public package.json
+        if: steps.extract-info.outputs.type == 'web' || steps.extract-info.outputs.type == 'all-in-one'
+
+        # CLI binary
+        tar -czf api-cli-${{ github.ref_name }}-linux-x64.tar.gz target/release/api-cli
+        if: steps.extract-info.outputs.type == 'cli' || steps.extract-info.outputs.type == 'all-in-one'
 
         # Source code
         tar -czf source-${{ github.ref_name }}.tar.gz --exclude='.git' --exclude='target' --exclude='node_modules' .
@@ -110,8 +123,12 @@ jobs:
       uses: actions/attest-build-provenance@v3
       with:
         subject-path: |
-          api-service-*.tar.gz
-          frontend-*.tar.gz
+          ${{ steps.extract-info.outputs.type == 'service' && 'api-service-*.tar.gz' || '' }}
+          ${{ steps.extract-info.outputs.type == 'web' && 'frontend-*.tar.gz' || '' }}
+          ${{ steps.extract-info.outputs.type == 'cli' && 'api-cli-*.tar.gz' || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && 'api-service-*.tar.gz' || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && 'frontend-*.tar.gz' || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && 'api-cli-*.tar.gz' || '' }}
           source-*.tar.gz
           release-sbom.json
 
@@ -120,10 +137,18 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          api-service-*.tar.gz
-          api-service-*.tar.gz.asc
-          frontend-*.tar.gz
-          frontend-*.tar.gz.asc
+          ${{ steps.extract-info.outputs.type == 'service' && 'api-service-*.tar.gz' || '' }}
+          ${{ steps.extract-info.outputs.type == 'service' && 'api-service-*.tar.gz.asc' || '' }}
+          ${{ steps.extract-info.outputs.type == 'web' && 'frontend-*.tar.gz' || '' }}
+          ${{ steps.extract-info.outputs.type == 'web' && 'frontend-*.tar.gz.asc' || '' }}
+          ${{ steps.extract-info.outputs.type == 'cli' && 'api-cli-*.tar.gz' || '' }}
+          ${{ steps.extract-info.outputs.type == 'cli' && 'api-cli-*.tar.gz.asc' || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && 'api-service-*.tar.gz' || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && 'api-service-*.tar.gz.asc' || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && 'frontend-*.tar.gz' || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && 'frontend-*.tar.gz.asc' || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && 'api-cli-*.tar.gz' || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && 'api-cli-*.tar.gz.asc' || '' }}
           source-*.tar.gz
           source-*.tar.gz.asc
           release-sbom.json
@@ -174,6 +199,7 @@ jobs:
         npm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
         npm publish
       continue-on-error: true
+      if: steps.extract-info.outputs.type == 'web' || steps.extract-info.outputs.type == 'all-in-one'
 
     # Publish to crates.io (if applicable)
     - name: Publish to crates.io
@@ -181,6 +207,7 @@ jobs:
         cargo login ${{ secrets.CRATES_IO_TOKEN }}
         cargo publish
       continue-on-error: true
+      if: steps.extract-info.outputs.type == 'service' || steps.extract-info.outputs.type == 'cli' || steps.extract-info.outputs.type == 'all-in-one'
 
     # Extract version and type from release tag
     - name: Extract version and type from tag
@@ -275,13 +302,27 @@ jobs:
     - name: Scan ${{ steps.extract-info.outputs.type }} image for vulnerabilities
       run: |
         trivy image --exit-code 1 --no-progress --format sarif --output ${{ steps.extract-info.outputs.type }}-scan.sarif ghcr.io/skygenesisenterprise/${{ steps.extract-info.outputs.image_name }}:${{ steps.extract-info.outputs.version }}
+      if: steps.extract-info.outputs.type != 'all-in-one'
+
+    - name: Scan all images for vulnerabilities (All-in-One)
+      run: |
+        trivy image --exit-code 1 --no-progress --format sarif --output service-scan.sarif ghcr.io/skygenesisenterprise/api-service:${{ steps.extract-info.outputs.version }}
+        trivy image --exit-code 1 --no-progress --format sarif --output web-scan.sarif ghcr.io/skygenesisenterprise/api-web:${{ steps.extract-info.outputs.version }}
+        trivy image --exit-code 1 --no-progress --format sarif --output cli-scan.sarif ghcr.io/skygenesisenterprise/api-cli:${{ steps.extract-info.outputs.version }}
+        trivy image --exit-code 1 --no-progress --format sarif --output all-in-one-scan.sarif ghcr.io/skygenesisenterprise/api:${{ steps.extract-info.outputs.version }}
+      if: steps.extract-info.outputs.type == 'all-in-one'
 
     # Upload security scan results
     - name: Upload security scan results
       uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
-        sarif_file: ${{ steps.extract-info.outputs.type }}-scan.sarif
+        sarif_file: |
+          ${{ steps.extract-info.outputs.type != 'all-in-one' && steps.extract-info.outputs.type + '-scan.sarif' || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && 'service-scan.sarif' || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && 'web-scan.sarif' || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && 'cli-scan.sarif' || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && 'all-in-one-scan.sarif' || '' }}
 
     # Sign images
     - name: Install cosign
@@ -290,6 +331,15 @@ jobs:
     - name: Sign Docker image
       run: |
         cosign sign ghcr.io/skygenesisenterprise/${{ steps.extract-info.outputs.image_name }}:${{ steps.extract-info.outputs.version }}
+      if: steps.extract-info.outputs.type != 'all-in-one'
+
+    - name: Sign all Docker images (All-in-One)
+      run: |
+        cosign sign ghcr.io/skygenesisenterprise/api-service:${{ steps.extract-info.outputs.version }}
+        cosign sign ghcr.io/skygenesisenterprise/api-web:${{ steps.extract-info.outputs.version }}
+        cosign sign ghcr.io/skygenesisenterprise/api-cli:${{ steps.extract-info.outputs.version }}
+        cosign sign ghcr.io/skygenesisenterprise/api:${{ steps.extract-info.outputs.version }}
+      if: steps.extract-info.outputs.type == 'all-in-one'
       env:
         COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
 
@@ -297,6 +347,6 @@ jobs:
     - name: Generate SLSA provenance
       uses: slsa-framework/slsa-github-generator@v1
       with:
-        base64-subjects: ghcr.io/skygenesisenterprise/${{ steps.extract-info.outputs.image_name }}:${{ steps.extract-info.outputs.version }}
+        base64-subjects: ${{ steps.extract-info.outputs.type != 'all-in-one' && 'ghcr.io/skygenesisenterprise/' + steps.extract-info.outputs.image_name + ':' + steps.extract-info.outputs.version || 'ghcr.io/skygenesisenterprise/api-service:' + steps.extract-info.outputs.version + '\nghcr.io/skygenesisenterprise/api-web:' + steps.extract-info.outputs.version + '\nghcr.io/skygenesisenterprise/api-cli:' + steps.extract-info.outputs.version + '\nghcr.io/skygenesisenterprise/api:' + steps.extract-info.outputs.version }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
