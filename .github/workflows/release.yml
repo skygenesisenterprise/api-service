@@ -171,14 +171,23 @@ jobs:
       uses: actions/attest-build-provenance@v3
       with:
         subject-path: |
-          ${{ steps.extract-info.outputs.type == 'service' && 'api-service-*.tar.gz' || '' }}
-          ${{ steps.extract-info.outputs.type == 'web' && 'frontend-*.tar.gz' || '' }}
-          ${{ steps.extract-info.outputs.type == 'cli' && 'api-cli-*.tar.gz' || '' }}
-          ${{ steps.extract-info.outputs.type == 'all-in-one' && 'api-service-*.tar.gz' || '' }}
-          ${{ steps.extract-info.outputs.type == 'all-in-one' && 'frontend-*.tar.gz' || '' }}
-          ${{ steps.extract-info.outputs.type == 'all-in-one' && 'api-cli-*.tar.gz' || '' }}
-          source-*.tar.gz
+          ${{ steps.extract-info.outputs.type == 'service' && format('api-service-{0}-linux-x64.tar.gz', github.ref_name) || '' }}
+          ${{ steps.extract-info.outputs.type == 'service' && format('api-service-{0}-windows-x64.tar.gz', github.ref_name) || '' }}
+          ${{ steps.extract-info.outputs.type == 'service' && format('api-service-{0}-macos-x64.tar.gz', github.ref_name) || '' }}
+          ${{ steps.extract-info.outputs.type == 'web' && format('frontend-{0}.tar.gz', github.ref_name) || '' }}
+          ${{ steps.extract-info.outputs.type == 'cli' && format('api-cli-{0}-linux-x64.tar.gz', github.ref_name) || '' }}
+          ${{ steps.extract-info.outputs.type == 'cli' && format('api-cli-{0}-windows-x64.tar.gz', github.ref_name) || '' }}
+          ${{ steps.extract-info.outputs.type == 'cli' && format('api-cli-{0}-macos-x64.tar.gz', github.ref_name) || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && format('api-service-{0}-linux-x64.tar.gz', github.ref_name) || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && format('api-service-{0}-windows-x64.tar.gz', github.ref_name) || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && format('api-service-{0}-macos-x64.tar.gz', github.ref_name) || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && format('frontend-{0}.tar.gz', github.ref_name) || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && format('api-cli-{0}-linux-x64.tar.gz', github.ref_name) || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && format('api-cli-{0}-windows-x64.tar.gz', github.ref_name) || '' }}
+          ${{ steps.extract-info.outputs.type == 'all-in-one' && format('api-cli-{0}-macos-x64.tar.gz', github.ref_name) || '' }}
+          ${{ format('source-{0}.tar.gz', github.ref_name) }}
           release-sbom.json
+      continue-on-error: true
 
     # Upload artifacts
     - name: Upload release assets
