@@ -166,7 +166,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
-name = "api"
+name = "api-cli"
+version = "1.0.0"
+dependencies = [
+ "anyhow",
+ "base64 0.21.7",
+ "chrono",
+ "clap",
+ "dirs",
+ "lazy_static",
+ "openidconnect 3.5.0",
+ "opentelemetry 0.20.0",
+ "opentelemetry-otlp 0.13.0",
+ "ratatui",
+ "reqwest 0.11.27",
+ "ring",
+ "serde",
+ "serde_json",
+ "ssh2",
+ "thiserror 1.0.69",
+ "tokio",
+ "toml 0.8.23",
+ "tonic 0.9.2",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "uuid 1.18.1",
+ "vaultrs",
+]
+
+[[package]]
+name = "api-service"
 version = "1.0.0"
 dependencies = [
  "aes-gcm",
@@ -1104,36 +1134,6 @@ name = "clap_lex"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1d728cc89cf3aee9ff92b05e62b19ee65a02b5702cff7d5a377e32c6ae29d8d"
-
-[[package]]
-name = "cli"
-version = "1.0.0"
-dependencies = [
- "anyhow",
- "base64 0.21.7",
- "chrono",
- "clap",
- "dirs",
- "lazy_static",
- "openidconnect 3.5.0",
- "opentelemetry 0.20.0",
- "opentelemetry-otlp 0.13.0",
- "ratatui",
- "reqwest 0.11.27",
- "ring",
- "serde",
- "serde_json",
- "ssh2",
- "thiserror 1.0.69",
- "tokio",
- "toml 0.8.23",
- "tonic 0.9.2",
- "tracing",
- "tracing-subscriber",
- "url",
- "uuid 1.18.1",
- "vaultrs",
-]
 
 [[package]]
 name = "cmac"

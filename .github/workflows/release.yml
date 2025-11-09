@@ -53,6 +53,8 @@ jobs:
 
     - name: Setup Rust
       uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        targets: x86_64-unknown-linux-gnu,x86_64-pc-windows-gnu,x86_64-apple-darwin
 
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
@@ -63,30 +65,70 @@ jobs:
       run: pnpm run build
       if: steps.extract-info.outputs.type == 'web' || steps.extract-info.outputs.type == 'all-in-one'
 
-    - name: Build backend
-      run: cargo build --release
-      if: steps.extract-info.outputs.type == 'service' || steps.extract-info.outputs.type == 'cli' || steps.extract-info.outputs.type == 'all-in-one'
+    - name: Build backend (Linux)
+      run: cargo build --release --target x86_64-unknown-linux-gnu
+      if: steps.extract-info.outputs.type == 'service' || steps.extract-info.outputs.type == 'all-in-one'
 
-    - name: Build CLI
-      run: cargo build --release --bin api-cli
+    - name: Build backend (Windows)
+      run: cargo build --release --target x86_64-pc-windows-gnu
+      if: steps.extract-info.outputs.type == 'service' || steps.extract-info.outputs.type == 'all-in-one'
+
+    - name: Build backend (macOS)
+      run: cargo build --release --target x86_64-apple-darwin
+      if: steps.extract-info.outputs.type == 'service' || steps.extract-info.outputs.type == 'all-in-one'
+
+    - name: Build CLI (Linux)
+      run: cargo build --release --target x86_64-unknown-linux-gnu --bin api-cli
+      if: steps.extract-info.outputs.type == 'cli' || steps.extract-info.outputs.type == 'all-in-one'
+
+    - name: Build CLI (Windows)
+      run: cargo build --release --target x86_64-pc-windows-gnu --bin api-cli
+      if: steps.extract-info.outputs.type == 'cli' || steps.extract-info.outputs.type == 'all-in-one'
+
+    - name: Build CLI (macOS)
+      run: cargo build --release --target x86_64-apple-darwin --bin api-cli
       if: steps.extract-info.outputs.type == 'cli' || steps.extract-info.outputs.type == 'all-in-one'
 
     # Create release archives
     - name: Create release archives
       run: |
-        # API binary
-        tar -czf api-service-${{ github.ref_name }}-linux-x64.tar.gz target/release/api-service
-        if: steps.extract-info.outputs.type == 'service' || steps.extract-info.outputs.type == 'all-in-one'
+        # API Service binary (api-service-vX.X.X) - Multi-platform
+        tar -czf api-service-${{ github.ref_name }}-linux-x64.tar.gz -C target/x86_64-unknown-linux-gnu/release api
+        if: steps.extract-info.outputs.type == 'service'
+        tar -czf api-service-${{ github.ref_name }}-windows-x64.tar.gz -C target/x86_64-pc-windows-gnu/release api.exe
+        if: steps.extract-info.outputs.type == 'service'
+        tar -czf api-service-${{ github.ref_name }}-macos-x64.tar.gz -C target/x86_64-apple-darwin/release api
+        if: steps.extract-info.outputs.type == 'service'
 
-        # Frontend build
+        # Web Client archive (api-web-vX.X.X)
         tar -czf frontend-${{ github.ref_name }}.tar.gz app/.next public package.json
-        if: steps.extract-info.outputs.type == 'web' || steps.extract-info.outputs.type == 'all-in-one'
+        if: steps.extract-info.outputs.type == 'web'
 
-        # CLI binary
-        tar -czf api-cli-${{ github.ref_name }}-linux-x64.tar.gz target/release/api-cli
-        if: steps.extract-info.outputs.type == 'cli' || steps.extract-info.outputs.type == 'all-in-one'
+        # CLI binary (api-cli-vX.X.X) - Multi-platform
+        tar -czf api-cli-${{ github.ref_name }}-linux-x64.tar.gz -C target/x86_64-unknown-linux-gnu/release api-cli
+        if: steps.extract-info.outputs.type == 'cli'
+        tar -czf api-cli-${{ github.ref_name }}-windows-x64.tar.gz -C target/x86_64-pc-windows-gnu/release api-cli.exe
+        if: steps.extract-info.outputs.type == 'cli'
+        tar -czf api-cli-${{ github.ref_name }}-macos-x64.tar.gz -C target/x86_64-apple-darwin/release api-cli
+        if: steps.extract-info.outputs.type == 'cli'
 
-        # Source code
+        # All-in-One archives (api-vX.X.X) - Multi-platform
+        tar -czf api-service-${{ github.ref_name }}-linux-x64.tar.gz -C target/x86_64-unknown-linux-gnu/release api
+        if: steps.extract-info.outputs.type == 'all-in-one'
+        tar -czf api-service-${{ github.ref_name }}-windows-x64.tar.gz -C target/x86_64-pc-windows-gnu/release api.exe
+        if: steps.extract-info.outputs.type == 'all-in-one'
+        tar -czf api-service-${{ github.ref_name }}-macos-x64.tar.gz -C target/x86_64-apple-darwin/release api
+        if: steps.extract-info.outputs.type == 'all-in-one'
+        tar -czf frontend-${{ github.ref_name }}.tar.gz app/.next public package.json
+        if: steps.extract-info.outputs.type == 'all-in-one'
+        tar -czf api-cli-${{ github.ref_name }}-linux-x64.tar.gz -C target/x86_64-unknown-linux-gnu/release api-cli
+        if: steps.extract-info.outputs.type == 'all-in-one'
+        tar -czf api-cli-${{ github.ref_name }}-windows-x64.tar.gz -C target/x86_64-pc-windows-gnu/release api-cli.exe
+        if: steps.extract-info.outputs.type == 'all-in-one'
+        tar -czf api-cli-${{ github.ref_name }}-macos-x64.tar.gz -C target/x86_64-apple-darwin/release api-cli
+        if: steps.extract-info.outputs.type == 'all-in-one'
+
+        # Source code (toujours inclus)
         tar -czf source-${{ github.ref_name }}.tar.gz --exclude='.git' --exclude='target' --exclude='node_modules' .
 
     # Generate SBOM
