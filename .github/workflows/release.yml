@@ -318,7 +318,7 @@ jobs:
       if: always()
       with:
         sarif_file: |
-          ${{ steps.extract-info.outputs.type != 'all-in-one' && steps.extract-info.outputs.type + '-scan.sarif' || '' }}
+          ${{ steps.extract-info.outputs.type != 'all-in-one' && format('{0}-scan.sarif', steps.extract-info.outputs.type) || '' }}
           ${{ steps.extract-info.outputs.type == 'all-in-one' && 'service-scan.sarif' || '' }}
           ${{ steps.extract-info.outputs.type == 'all-in-one' && 'web-scan.sarif' || '' }}
           ${{ steps.extract-info.outputs.type == 'all-in-one' && 'cli-scan.sarif' || '' }}
@@ -347,6 +347,6 @@ jobs:
     - name: Generate SLSA provenance
       uses: slsa-framework/slsa-github-generator@v1
       with:
-        base64-subjects: ${{ steps.extract-info.outputs.type != 'all-in-one' && 'ghcr.io/skygenesisenterprise/' + steps.extract-info.outputs.image_name + ':' + steps.extract-info.outputs.version || 'ghcr.io/skygenesisenterprise/api-service:' + steps.extract-info.outputs.version + '\nghcr.io/skygenesisenterprise/api-web:' + steps.extract-info.outputs.version + '\nghcr.io/skygenesisenterprise/api-cli:' + steps.extract-info.outputs.version + '\nghcr.io/skygenesisenterprise/api:' + steps.extract-info.outputs.version }}
+        base64-subjects: ${{ steps.extract-info.outputs.type != 'all-in-one' && format('ghcr.io/skygenesisenterprise/{0}:{1}', steps.extract-info.outputs.image_name, steps.extract-info.outputs.version) || format('ghcr.io/skygenesisenterprise/api-service:{0}\nghcr.io/skygenesisenterprise/api-web:{0}\nghcr.io/skygenesisenterprise/api-cli:{0}\nghcr.io/skygenesisenterprise/api:{0}', steps.extract-info.outputs.version) }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
