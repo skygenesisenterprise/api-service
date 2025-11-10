@@ -405,7 +405,7 @@ jobs:
 
     # Generate SLSA provenance for all images
     - name: Generate SLSA provenance
-      uses: slsa-framework/slsa-github-generator/.github/actions/container@v1.10.0
+      uses: slsa-framework/slsa-github-generator/.github/actions/container@v2.1.0
       with:
         base64-subjects: ${{ steps.extract-info.outputs.type != 'all-in-one' && format('ghcr.io/skygenesisenterprise/{0}:{1}', steps.extract-info.outputs.image_name, steps.extract-info.outputs.version) || format('ghcr.io/skygenesisenterprise/api-service:{0}\nghcr.io/skygenesisenterprise/api-web:{0}\nghcr.io/skygenesisenterprise/api-cli:{0}\nghcr.io/skygenesisenterprise/api:{0}', steps.extract-info.outputs.version) }}
       env:
