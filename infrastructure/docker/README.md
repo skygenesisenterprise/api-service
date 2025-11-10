@@ -21,21 +21,21 @@ docker/
 
 ```bash
 # Start full development stack
-docker-compose up -d
+docker compose up -d
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Stop services
-docker-compose down
+docker compose down
 ```
 
 ### Production Build
 
 ```bash
 # Build production images
-docker build -f infrastructure/docker/Dockerfile.api -t sky-genesis/api:latest .
-docker build -f infrastructure/docker/Dockerfile.frontend -t sky-genesis/frontend:latest .
+docker build -f infrastructure/docker/Dockerfile.api -t skygenesisenterprise/api-service:latest .
+docker build -f infrastructure/docker/Dockerfile.frontend -t skygenesisenterprise/api-web:latest .
 
 # Run production stack
 docker-compose -f infrastructure/docker/docker-compose.prod.yml up -d
@@ -192,7 +192,7 @@ version: '3.8'
 
 services:
   api:
-    image: sky-genesis/api:latest
+    image: skygenesisenterprise/api:latest
     ports:
       - "8080:8080"
     environment:

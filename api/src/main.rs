@@ -13,7 +13,6 @@
 
 use std::net::SocketAddr;
 mod routes;
-mod auth_routes;
 
 // ============================================================================
 //  MAIN APPLICATION ENTRY POINT
