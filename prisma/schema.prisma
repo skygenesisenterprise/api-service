@@ -37,7 +37,8 @@ model ApiKey {
   id           String   @id @default(cuid())
   key          String   @unique
   name         String
-  category     String   // client, server, database
+  type         String   @default("client") // client, server, database
+  status       String   @default("development") // development, production
   permissions  String   // JSON string of permissions array
   organizationId String  @map("organization_id")
   userId       String?  @map("user_id")

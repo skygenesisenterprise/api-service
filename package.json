@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": " pnpm run dev:frontend && pnpm run dev:backend",
     "dev:backend": "tsx api/src/server.ts",
     "dev:frontend": "next dev",
     "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",

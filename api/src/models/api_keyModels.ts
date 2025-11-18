@@ -1,45 +1,54 @@
-export enum ApiKeyCategory {
-  CLIENT = 'client',
-  SERVER = 'server',
-  DATABASE = 'database'
+export enum ApiKeyType {
+   CLIENT = 'client',
+   SERVER = 'server',
+   DATABASE = 'database'
+}
+
+export enum ApiKeyStatus {
+   DEVELOPMENT = 'development',
+   PRODUCTION = 'production'
 }
 
 export enum ApiKeyPermission {
-  READ = 'read',
-  WRITE = 'write',
-  DELETE = 'delete',
-  ADMIN = 'admin'
+   READ = 'read',
+   WRITE = 'write',
+   DELETE = 'delete',
+   ADMIN = 'admin'
 }
 
 export interface IApiKey {
-  id: string;
-  key: string;
-  name: string;
-  category: ApiKeyCategory;
-  permissions: ApiKeyPermission[];
-  organizationId: string;
-  userId?: string;
-  isActive: boolean;
-  expiresAt?: Date;
-  lastUsedAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
+   id: string;
+   key: string;
+   name: string;
+   type: ApiKeyType;
+   status: ApiKeyStatus;
+   permissions: ApiKeyPermission[];
+   organizationId: string;
+   userId?: string;
+   isActive: boolean;
+   expiresAt?: Date;
+   lastUsedAt?: Date;
+   createdAt: Date;
+   updatedAt: Date;
 }
 
 export interface ICreateApiKeyRequest {
-  name: string;
-  category: ApiKeyCategory;
-  permissions: ApiKeyPermission[];
-  organizationId: string;
-  userId?: string;
-  expiresAt?: Date;
+   name: string;
+   type: ApiKeyType;
+   status: ApiKeyStatus;
+   permissions: ApiKeyPermission[];
+   organizationId: string;
+   userId?: string;
+   expiresAt?: Date;
 }
 
 export interface IUpdateApiKeyRequest {
-  name?: string;
-  permissions?: ApiKeyPermission[];
-  isActive?: boolean;
-  expiresAt?: Date;
+   name?: string;
+   type?: ApiKeyType;
+   status?: ApiKeyStatus;
+   permissions?: ApiKeyPermission[];
+   isActive?: boolean;
+   expiresAt?: Date;
 }
 
 export interface IApiKeyService {

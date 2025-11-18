@@ -1,0 +1,438 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useAuth } from "../context/JwtAuthContext"
+import DashboardPageLayout from "../components/DashboardPageLayout"
+import { MetricCard, MetricGrid } from "../components/ui/metric-cards"
+import { ChartContainer, DataTable, StatusBadge } from "../components/ui/data-components"
+import { 
+  Key, 
+  Shield, 
+  Activity, 
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  TrendingUp,
+  Database,
+  Zap,
+  Globe,
+  Users,
+  Server,
+  Cpu,
+  HardDrive,
+  Wifi,
+  ArrowUp,
+  ArrowDown,
+  MoreHorizontal,
+  RefreshCw,
+  Download,
+  Calendar,
+  Eye,
+  Settings,
+  Plus,
+  Filter,
+  Search
+} from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend
+} from "recharts"
+import { DashboardService, DashboardStats, ActivityItem, SystemMetric } from "../lib/dashboardService"
+
+export default function DashboardPage() {
+  const { token, isAuthenticated, user } = useAuth()
+  const [stats, setStats] = useState<DashboardStats>({
+    totalUsers: 0,
+    activeUsers: 0,
+    totalApiKeys: 0,
+    activeApiKeys: 0,
+    totalOrganizations: 0,
+    recentLogins: 0,
+    systemHealth: 'healthy',
+    apiCallsToday: 0,
+    storageUsed: 0,
+    storageTotal: 100
+  })
+  const [loading, setLoading] = useState(true)
+  const [activities, setActivities] = useState<ActivityItem[]>([])
+  const [systemMetrics, setSystemMetrics] = useState<SystemMetric[]>([])
+  const [apiCallsData, setApiCallsData] = useState<any[]>([])
+  const [categoryData, setCategoryData] = useState<any[]>([])
+  const [selectedTimeRange, setSelectedTimeRange] = useState('7d')
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      setLoading(true)
+      try {
+        const dashboardService = new DashboardService()
+        
+        if (isAuthenticated && token) {
+          // Charger les données réelles depuis l'API
+          const statsData = await dashboardService.getDashboardStats()
+          setStats(statsData)
+
+          const activitiesData = await dashboardService.getRecentActivities()
+          setActivities(activitiesData)
+
+          const apiCallsData = await dashboardService.getApiCallsData()
+          setApiCallsData(apiCallsData)
+
+          const categoryData = await dashboardService.getApiKeysByType()
+          setCategoryData(categoryData)
+
+          const systemMetricsData = await dashboardService.getSystemMetrics()
+          setSystemMetrics(systemMetricsData)
+        } else {
+          // Mode développement : données de démonstration
+          setStats({
+            totalUsers: 1,
+            activeUsers: 1,
+            totalApiKeys: 3,
+            activeApiKeys: 2,
+            totalOrganizations: 1,
+            recentLogins: 5,
+            systemHealth: 'healthy',
+            apiCallsToday: 1247,
+            storageUsed: 45,
+            storageTotal: 100
+          })
+          setActivities([
+            { id: '1', action: 'Clé API Créée', entity: 'sk_client_demo', time: 'Il y a 2 minutes', type: 'success', user: 'Test User' },
+            { id: '2', action: 'Connexion réussie', entity: 'test@example.com', time: 'Il y a 15 minutes', type: 'info', user: 'Test User' },
+          ])
+          setApiCallsData([
+            { name: 'Lun', calls: 240, requests: 140 },
+            { name: 'Mar', calls: 198, requests: 221 },
+            { name: 'Mer', calls: 380, requests: 200 },
+            { name: 'Jeu', calls: 290, requests: 180 },
+            { name: 'Ven', calls: 480, requests: 281 },
+            { name: 'Sam', calls: 380, requests: 250 },
+            { name: 'Dim', calls: 430, requests: 210 },
+          ])
+          setCategoryData([
+            { name: 'Client', value: 2, color: '#3b82f6' },
+            { name: 'Serveur', value: 1, color: '#10b981' },
+          ])
+          setSystemMetrics([
+            { name: 'CPU', value: 25, status: 'good', unit: '%' },
+            { name: 'Mémoire', value: 45, status: 'good', unit: '%' },
+            { name: 'Stockage', value: 45, status: 'good', unit: '%' },
+            { name: 'Réseau', value: 12, status: 'good', unit: 'Mbps' },
+          ])
+        }
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadDashboardData()
+  }, [isAuthenticated, token])
+
+  const getHealthIcon = (health: string) => {
+    switch (health) {
+      case 'healthy': return <CheckCircle className="w-5 h-5 text-green-500" />
+      case 'warning': return <AlertTriangle className="w-5 h-5 text-yellow-500" />
+      case 'error': return <AlertTriangle className="w-5 h-5 text-red-500" />
+      default: return <Clock className="w-5 h-5 text-gray-500" />
+    }
+  }
+
+  const getMetricStatus = (value: number, thresholds: { warning: number, critical: number }) => {
+    if (value >= thresholds.critical) return 'error'
+    if (value >= thresholds.warning) return 'warning'
+    return 'success'
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="text-gray-600 text-lg font-medium">Chargement du tableau de bord...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <DashboardPageLayout>
+      <div className="space-y-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Tableau de Bord {isAuthenticated ? 'Enterprise' : 'Démo'}
+              </h1>
+              <p className="text-gray-600 mt-2">
+                {isAuthenticated 
+                  ? `Bienvenue, ${user?.fullName || user?.email || 'Utilisateur'}`
+                  : 'Mode démonstration - Connectez-vous pour voir les données réelles'
+                }
+              </p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                <RefreshCw className="w-5 h-5" />
+              </button>
+              <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                <Settings className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Metrics Grid */}
+        <MetricGrid columns={4}>
+          <MetricCard
+            title="Utilisateurs"
+            value={stats.totalUsers}
+            change={stats.activeUsers}
+            changeType="increase"
+            icon={<Users className="w-6 h-6" />}
+            description="Utilisateurs actifs"
+            status="success"
+            loading={loading}
+          />
+          <MetricCard
+            title="Clés API"
+            value={stats.totalApiKeys}
+            change={stats.activeApiKeys}
+            changeType="increase"
+            icon={<Key className="w-6 h-6" />}
+            description="Clés actives"
+            status="success"
+            loading={loading}
+          />
+          <MetricCard
+            title="Organisations"
+            value={stats.totalOrganizations}
+            icon={<Globe className="w-6 h-6" />}
+            description="Total organisations"
+            status="info"
+            loading={loading}
+          />
+          <MetricCard
+            title="Appels API"
+            value={stats.apiCallsToday}
+            change={12.5}
+            changeType="increase"
+            icon={<Zap className="w-6 h-6" />}
+            description="Aujourd'hui"
+            status="success"
+            trend="up"
+            loading={loading}
+          />
+        </MetricGrid>
+
+        {/* Charts Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* API Calls Chart */}
+          <ChartContainer
+            title="Tendances des Appels API"
+            description="Appels et requêtes sur les 7 derniers jours"
+            actions={
+              <div className="flex items-center space-x-2">
+                <select 
+                  value={selectedTimeRange}
+                  onChange={(e) => setSelectedTimeRange(e.target.value)}
+                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="7d">7 jours</option>
+                  <option value="30d">30 jours</option>
+                  <option value="90d">90 jours</option>
+                </select>
+                <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                  <Download className="w-4 h-4" />
+                </button>
+              </div>
+            }
+          >
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={apiCallsData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="name" stroke="#6b7280" />
+                <YAxis stroke="#6b7280" />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                  labelStyle={{ color: '#f3f4f6' }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="calls" 
+                  stackId="1"
+                  stroke="#3b82f6" 
+                  fill="#3b82f6" 
+                  fillOpacity={0.6}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="requests" 
+                  stackId="1"
+                  stroke="#10b981" 
+                  fill="#10b981" 
+                  fillOpacity={0.8}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+
+          {/* API Keys Distribution */}
+          <ChartContainer
+            title="Distribution des Clés API"
+            description="Répartition par type"
+          >
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={categoryData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, value, percent, cx }) => {
+                    const cxValue = typeof cx === 'number' ? cx : 50
+                    const percentValue = typeof percent === 'number' ? percent : 0
+                    return (
+                      <text 
+                        fill="#8884d8" 
+                        textAnchor={cxValue > 50 ? 'start' : 'end'} 
+                        dominantBaseline="middle"
+                      >
+                        {`${name}: ${value} (${(percentValue * 100).toFixed(0)}%)`}
+                      </text>
+                    )
+                  }}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {categoryData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        </div>
+
+        {/* System Metrics */}
+        <ChartContainer
+          title="Métriques Système"
+          description="Performance en temps réel"
+          actions={
+            <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+              <Eye className="w-4 h-4" />
+            </button>
+          }
+        >
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            {systemMetrics.map((metric, index) => (
+              <motion.div
+                key={metric.name}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-all"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium text-gray-700">{metric.name}</h3>
+                  <StatusBadge status={getMetricStatus(metric.value, { warning: 70, critical: 90 })}>
+                    {metric.status}
+                  </StatusBadge>
+                </div>
+                <div className="flex items-baseline">
+                  <span className="text-2xl font-bold text-gray-900">{metric.value}</span>
+                  <span className="ml-2 text-sm text-gray-600">{metric.unit}</span>
+                </div>
+                <div className="mt-3">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <motion.div
+                      className={`h-2 rounded-full ${
+                        metric.status === 'good' ? 'bg-green-500' :
+                        metric.status === 'warning' ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${metric.value}%` }}
+                      transition={{ duration: 1, delay: 0.2 }}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </ChartContainer>
+
+        {/* Recent Activities */}
+        <ChartContainer
+          title="Activités Récentes"
+          description="Dernières activités du système"
+          actions={
+            <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+          }
+        >
+          <DataTable
+            title="Activités"
+            data={activities}
+            columns={[
+              {
+                key: 'action',
+                title: 'Action',
+                render: (value) => (
+                  <span className="font-medium text-gray-900">{value}</span>
+                )
+              },
+              {
+                key: 'entity',
+                title: 'Entité',
+                render: (value) => (
+                  <span className="text-gray-600 font-mono text-sm">{value}</span>
+                )
+              },
+              {
+                key: 'time',
+                title: 'Temps',
+                render: (value) => (
+                  <span className="text-gray-600">{value}</span>
+                )
+              },
+              {
+                key: 'type',
+                title: 'Statut',
+                render: (value) => (
+                  <StatusBadge status={value} />
+                )
+              }
+            ]}
+            searchable={true}
+            loading={loading}
+          />
+        </ChartContainer>
+      </div>
+    </DashboardPageLayout>
+  )
+}

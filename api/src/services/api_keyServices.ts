@@ -5,34 +5,36 @@ import {
   ICreateApiKeyRequest, 
   IUpdateApiKeyRequest, 
   IApiKeyService,
-  ApiKeyCategory,
+  ApiKeyType,
+  ApiKeyStatus,
   ApiKeyPermission 
 } from '../models/api_keyModels';
 
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: process.env.DATABASE_URL || 'file:./dev.db',
+      url: process.env.DATABASE_URL || 'file:./prisma/dev.db',
     },
   },
 });
 
 export class ApiKeyService implements IApiKeyService {
-  private generateApiKey(category: ApiKeyCategory): string {
+  private generateApiKey(type: ApiKeyType): string {
     const timestamp = Date.now().toString(36);
     const randomBytesStr = randomBytes(24).toString('hex');
-    return `sk_${category}_${timestamp}_${randomBytesStr}`;
+    return `sk_${type}_${timestamp}_${randomBytesStr}`;
   }
 
   async createApiKey(data: ICreateApiKeyRequest): Promise<IApiKey> {
-    const apiKey = this.generateApiKey(data.category);
+    const apiKey = this.generateApiKey(data.type);
     
     const createdKey = await prisma.apiKey.create({
       data: {
         key: apiKey,
         name: data.name,
-        category: data.category,
-        permissions: data.permissions,
+        type: data.type,
+        status: data.status,
+        permissions: JSON.stringify(data.permissions),
         organizationId: data.organizationId,
         userId: data.userId,
         expiresAt: data.expiresAt,
@@ -40,7 +42,10 @@ export class ApiKeyService implements IApiKeyService {
       },
     });
 
-    return createdKey as IApiKey;
+    return {
+      ...createdKey,
+      permissions: JSON.parse(createdKey.permissions),
+    } as IApiKey;
   }
 
   async getApiKeyById(id: string): Promise<IApiKey | null> {
@@ -48,7 +53,12 @@ export class ApiKeyService implements IApiKeyService {
       where: { id },
     });
     
-    return apiKey as IApiKey | null;
+    if (!apiKey) return null;
+    
+    return {
+      ...apiKey,
+      permissions: JSON.parse(apiKey.permissions),
+    } as IApiKey;
   }
 
   async getApiKeyByKey(key: string): Promise<IApiKey | null> {
@@ -56,7 +66,12 @@ export class ApiKeyService implements IApiKeyService {
       where: { key },
     });
     
-    return apiKey as IApiKey | null;
+    if (!apiKey) return null;
+    
+    return {
+      ...apiKey,
+      permissions: JSON.parse(apiKey.permissions),
+    } as IApiKey;
   }
 
   async getApiKeysByOrganization(organizationId: string): Promise<IApiKey[]> {
@@ -65,22 +80,33 @@ export class ApiKeyService implements IApiKeyService {
       orderBy: { createdAt: 'desc' },
     });
     
-    return apiKeys as IApiKey[];
+    return apiKeys.map(key => ({
+      ...key,
+      permissions: JSON.parse(key.permissions),
+    })) as IApiKey[];
   }
 
   async updateApiKey(id: string, data: IUpdateApiKeyRequest): Promise<IApiKey> {
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+
+    if (data.name) updateData.name = data.name;
+    if (data.type) updateData.type = data.type;
+    if (data.status) updateData.status = data.status;
+    if (data.permissions) updateData.permissions = JSON.stringify(data.permissions);
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.expiresAt) updateData.expiresAt = data.expiresAt;
+
     const updatedKey = await prisma.apiKey.update({
       where: { id },
-      data: {
-        ...(data.name && { name: data.name }),
-        ...(data.permissions && { permissions: data.permissions }),
-        ...(data.isActive !== undefined && { isActive: data.isActive }),
-        ...(data.expiresAt && { expiresAt: data.expiresAt }),
-        updatedAt: new Date(),
-      },
+      data: updateData,
     });
     
-    return updatedKey as IApiKey;
+    return {
+      ...updatedKey,
+      permissions: JSON.parse(updatedKey.permissions),
+    } as IApiKey;
   }
 
   async deleteApiKey(id: string): Promise<void> {

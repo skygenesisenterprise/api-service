@@ -23,7 +23,7 @@ export const config = {
 export const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: config.database.url,
+      url: 'file:../prisma/dev.db',
     },
   },
 });
