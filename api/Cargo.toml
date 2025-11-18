@@ -95,7 +95,7 @@ tower-http = "0.6"
 
 # OpenPGP
 # sequoia-openpgp = "2.0"  # Commented out due to nettle-sys compilation issues
-pgp = "0.17"
+pgp = "0.18"
 
 # Search indexing
 tantivy = "0.25"
