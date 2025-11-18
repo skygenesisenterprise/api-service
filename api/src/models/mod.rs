@@ -16,6 +16,8 @@
 
 /// [KEY MODEL MODULE] API key and certificate data structures
 pub mod key_model;
+/// [API KEYS MODEL MODULE] Enhanced API key management with types (client, server, database)
+pub mod api_keys;
 /// [USER MODEL MODULE] User account and authentication models
 pub mod user;
 /// [MAIL MODEL MODULE] Email and messaging data structures

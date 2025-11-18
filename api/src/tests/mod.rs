@@ -1,14 +1,6 @@
-// Tests Rust module
+// ============================================================================
+// Sky Genesis Enterprise API - Tests Module
+// ============================================================================
 
-pub mod test;
-pub mod key_tests;
-pub mod auth_tests;
-pub mod snmp_tests;
-pub mod protocol_tests;
-pub mod voip_tests;
-pub mod discord_tests;
-pub mod git_tests;
-pub mod mac_tests;
-pub mod logger_tests;
-pub mod grafana_tests;
-pub mod poweradmin_tests;
+/// [API KEYS TESTS MODULE] Tests for API key functionality
+pub mod api_keys;

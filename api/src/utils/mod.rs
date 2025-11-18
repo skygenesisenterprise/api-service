@@ -1,50 +1,9 @@
 // ============================================================================
-//  SKY GENESIS ENTERPRISE (SGE)
-//  Sovereign Infrastructure Initiative
-//  Project: Enterprise API Service
-//  Module: Utility Functions
-// // ----------------------------------------------------------------------------
-//  CLASSIFICATION: INTERNAL | UTILITY
-//  MISSION: Provide common utility functions across the application.
-//  NOTICE: This module contains reusable utility functions.
-//  INTEGRATION: Various modules across the application
-//  License: MIT (Open Source for Strategic Transparency)
+// Sky Genesis Enterprise API - Utils Module
 // ============================================================================
 
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
-use serde::{Deserialize, Serialize};
-use std::time::{SystemTime, UNIX_EPOCH};
-use uuid::Uuid;
-use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
-
-pub mod tokens;
-pub mod key_utils;
-
-/// [TOKEN UTILS] JWT Token Management Utilities
-/// @MISSION Provide JWT token creation and validation utilities.
-/// @THREAT Token manipulation or forgery.
-/// @COUNTERMEASURE Secure token signing and validation.
-/// @DEPENDENCY jsonwebtoken crate with RS256 algorithm.
-/// @INVARIANT All tokens are cryptographically signed.
-pub mod tokens_internal {
-    use super::*;
-
-    /// [JWT CLAIMS] Standard JWT Claims Structure
-    /// @MISSION Define standard JWT claims structure.
-    /// @THREAT Claims manipulation or privilege escalation.
-    /// @COUNTERMEASURE Claims validation and type safety.
-        /// @INVARIANT Claims are validated before use.
-    #[derive(Debug, Serialize, Deserialize)]
-    pub struct Claims {
-        pub sub: String,        // Subject (user ID)
-        pub iss: String,        // Issuer
-        pub aud: String,        // Audience
-        pub exp: usize,         // Expiration time
-        pub iat: usize,         // Issued at
-        pub jti: String,        // JWT ID
-        pub scope: Vec<String>, // Permission scopes
-        pub org: String,        // Organization ID
-    }
+/// [API KEYS UTILS MODULE] Utilities for API key management
+pub mod api_keys;
 
     /// [CREATE TOKEN] Generate JWT Access Token
     /// @MISSION Create signed JWT token for user authentication.

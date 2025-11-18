@@ -48,19 +48,19 @@ else
     echo "WARNING: DATABASE_URL not set, skipping PostgreSQL check"
 fi
 
-# Wait for Vault
+# Wait for Vault (optional)
 if [ -n "$VAULT_ADDR" ]; then
     # Extract host and port from VAULT_ADDR
     VAULT_HOST=$(echo "$VAULT_ADDR" | sed -n 's|.*://\([^:]*\):\([^/]*\).*|\1|p')
     VAULT_PORT=$(echo "$VAULT_ADDR" | sed -n 's|.*://\([^:]*\):\([^/]*\).*|\2|p')
-
+    
     if [ -n "$VAULT_HOST" ] && [ -n "$VAULT_PORT" ]; then
-        wait_for_service "$VAULT_HOST" "$VAULT_PORT" "Vault"
+        wait_for_service "$VAULT_HOST" "$VAULT_PORT" "Vault" || echo "WARNING: Vault not ready, but continuing..."
     else
         echo "WARNING: Could not parse VAULT_ADDR for Vault check"
     fi
 else
-    echo "WARNING: VAULT_ADDR not set, skipping Vault check"
+    echo "INFO: VAULT_ADDR not set, skipping Vault check"
 fi
 
 # Wait for Redis

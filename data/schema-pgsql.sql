@@ -50,6 +50,7 @@ CREATE TABLE api_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
     key_value TEXT UNIQUE NOT NULL,
+    key_type VARCHAR(20) NOT NULL CHECK (key_type IN ('client', 'server', 'database')),
     label VARCHAR(255),
     permissions TEXT[],
     quota_limit INTEGER DEFAULT 100000,
@@ -60,7 +61,23 @@ CREATE TABLE api_keys (
     certificate_type VARCHAR(50), -- 'RSA', 'ECDSA', or NULL for no certificate
     certificate_fingerprint VARCHAR(128), -- SHA256 fingerprint for certificate verification
     private_key_path TEXT, -- Path in vault where private key is stored
-    created_at TIMESTAMP DEFAULT now()
+    -- Database-specific fields
+    db_type VARCHAR(50), -- 'postgresql', 'mysql', 'mariadb', 'mongodb', etc.
+    db_host VARCHAR(255),
+    db_port INTEGER,
+    db_name VARCHAR(255),
+    db_username VARCHAR(255),
+    db_password_encrypted TEXT, -- Encrypted database password
+    -- Server-specific fields
+    server_endpoint TEXT, -- URL or IP for server keys
+    server_region VARCHAR(50),
+    -- Client-specific fields
+    client_origin VARCHAR(255), -- Allowed origins for client keys
+    client_scopes TEXT[], -- OAuth-like scopes for client keys
+    expires_at TIMESTAMP, -- Optional expiration for client keys
+    last_used_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
 );
 
 CREATE TABLE api_routes (

@@ -1,8 +1,6 @@
-// Services Rust module (Ultra-minimal Working Version)
+// Services Rust module (Progressive integration)
 
-// All services temporarily disabled to create a working baseline
-// Services will be progressively re-enabled as dependencies are fixed
-
+pub mod api_keys;
 // pub mod key_service;
 // pub mod auth_service;
 // pub mod security_service;

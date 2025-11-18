@@ -1,35 +1,6 @@
 // ============================================================================
-//  SKY GENESIS ENTERPRISE (SGE)
-//  Sovereign Infrastructure Initiative
-//  Project: Enterprise API Service
-//  Module: Queries Module
-// ---------------------------------------------------------------------------
-//  CLASSIFICATION: INTERNAL | SENSITIVE
-//  MISSION: Organize database query abstractions for secure data access,
-//  providing type-safe database operations with audit logging and
-//  tenant isolation.
-//  NOTICE: Queries implement database abstraction with prepared statements,
-//  connection pooling, and security controls for all data operations.
-//  DB STANDARDS: PostgreSQL, Prepared Statements, Connection Pooling
-//  COMPLIANCE: Data Security, Audit Requirements, Tenant Isolation
-//  License: MIT (Open Source for Strategic Transparency)
+// Sky Genesis Enterprise API - Queries Module
 // ============================================================================
 
-/// [GENERIC QUERY MODULE] Common database query utilities
-pub mod query;
-/// [KEY QUERIES MODULE] API key database operations
-pub mod key_queries;
-/// [VOIP QUERIES MODULE] VoIP call and conference database operations
-pub mod voip_queries;
-/// [DISCORD QUERIES MODULE] Discord bot database operations
-pub mod discord_queries;
-/// [GIT QUERIES MODULE] GitHub integration database operations
-pub mod git_queries;
-/// [MAC QUERIES MODULE] MAC identity database operations
-pub mod mac_queries;
-/// [LOGGER QUERIES MODULE] Logger database operations
-pub mod logger_queries;
-/// [GRAFANA QUERIES MODULE] Grafana dashboard and datasource database operations
-pub mod grafana_queries;
-/// [POWERADMIN QUERIES MODULE] PowerAdmin DNS zone and record database operations
-pub mod poweradmin_queries;
+/// [API KEYS QUERIES MODULE] Database queries for API key management
+pub mod api_keys;

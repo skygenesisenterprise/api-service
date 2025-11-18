@@ -1,31 +1,16 @@
-// Routes Rust module (Progressive integration)
+// ============================================================================
+// Sky Genesis Enterprise API - Routes Module
+// ============================================================================
 
 use warp::Filter;
 use serde_json;
-mod test_routes;
-mod mail_routes;
-mod mac_routes;
-mod logger_routes;
-mod security_routes;
-mod auth_routes; 
-// mod data_routes;
-// mod devices_routes;
-// mod openpgp_routes;
-// mod voip_routes;
-// mod grafana_routes;
-// mod poweradmin_routes 
-// mod grpc_routes;
-// mod oauth2_routes;
-// mod sftp_routes;
-// mod snmp_routes;
-// mod ssh_routes;
-// mod webhook_routes;
-// mod monitoring_routes;
-// mod opentelemetry_routes;  
+use std::sync::Arc;
+use crate::services::api_keys::ApiKeyService;
 
+mod api_keys;
 
 pub fn routes() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    // Ultra-minimal routes for testing compilation
+    // Basic routes
     let hello = warp::path!("hello")
         .and(warp::get())
         .map(|| "Hello, World!");
@@ -60,15 +45,37 @@ pub fn routes() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejecti
     <ul>
         <li><a href="/hello">Hello World</a></li>
         <li><a href="/api/v1/health">Health Check</a></li>
+        <li><a href="/api/v1/keys">API Keys Management</a></li>
     </ul>
 </body>
 </html>
             "#)
         });
 
-    let all_routes = hello.or(health).or(docs).or(test_routes::test_routes()).or(mail_routes::mail_routes()).or(mac_routes::mac_routes()).or(logger_routes::logger_routes()).or(security_routes::security_routes()).or(auth_routes::auth_routes());
+    // API Key routes (placeholder - would need database connection)
+    let api_keys_routes = warp::path("api")
+        .and(warp::path("v1"))
+        .and(warp::path("keys"))
+        .and(warp::path::end())
+        .and(warp::get())
+        .map(|| {
+            warp::reply::json(&serde_json::json!({
+                "success": true,
+                "message": "API Keys endpoint - database connection needed",
+                "endpoints": [
+                    "POST /api/v1/keys/client/{org_id}",
+                    "POST /api/v1/keys/server/{org_id}",
+                    "POST /api/v1/keys/database/{org_id}",
+                    "GET /api/v1/keys/{org_id}",
+                    "GET /api/v1/keys/{key_id}/{org_id}",
+                    "PUT /api/v1/keys/{key_id}/{org_id}",
+                    "POST /api/v1/keys/{key_id}/revoke/{org_id}",
+                    "DELETE /api/v1/keys/{key_id}/{org_id}"
+                ]
+            }))
+        });
 
-    all_routes
+    hello.or(health).or(docs).or(api_keys_routes)
         .with(warp::cors().allow_any_origin().allow_methods(vec!["GET", "POST", "PUT", "DELETE"]))
         .with(warp::log("api"))
 }

@@ -1,21 +1,22 @@
 # ============================================================================
-# Sky Genesis Enterprise API - Docker Compose (Corrected)
+# Sky Genesis Enterprise API - Docker Compose (All-in-One)
 # ============================================================================
 
 version: '3.8'
 
 services:
   # ================================
-  # API Service (Rust Backend)
+  # All-in-One Service (API + Frontend)
   # ================================
-  api:
+  sky-genesis:
     build:
-      context: ../..
-      dockerfile: infrastructure/docker/Dockerfile.api
-    container_name: sky-genesis-api
+      context: ..
+      dockerfile: infrastructure/docker/Dockerfile.all-in-one
+    container_name: sky-genesis-all-in-one
     ports:
-      - "8080:8080"
-      - "2222:2222"
+      - "8080:8080"  # API Backend
+      - "3000:3000"  # Frontend (via nginx)
+      - "2222:2222"  # SSH Access
     environment:
       # Database Configuration
       - DATABASE_URL=postgresql://postgres:password@postgres:5432/api_service
@@ -25,16 +26,23 @@ services:
       - RUST_LOG=info
       - APP_ENV=development
       - PORT=8080
-      # SSH Configuration (optional)
+      # SSH Configuration
       - SSH_HOST=0.0.0.0
       - SSH_PORT=2222
       - SSH_DOMAIN=skygenesisenterprise.com
       - SSH_MAX_CONNECTIONS=50
+      # Frontend Configuration
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+      - NEXT_PUBLIC_APP_NAME=Sky Genesis Enterprise
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - ../api:/api:cached
+      - ../app:/app:cached
+      - ../cli:/cli:cached
     networks:
       - sky-genesis
     restart: unless-stopped
@@ -43,43 +51,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
-
-  # ================================
-  # Frontend Service (Next.js Admin Portal)
-  # ================================
-  frontend:
-    build:
-      context: ../..
-      dockerfile: infrastructure/docker/Dockerfile.frontend
-    container_name: sky-genesis-frontend
-    ports:
-      - "3000:3000"
-    environment:
-      # API Configuration
-      - API_URL=http://api:8080
-      - NEXT_PUBLIC_API_URL=http://localhost:8080
-      - NEXT_PUBLIC_APP_NAME=Sky Genesis Enterprise
-      - NEXT_PUBLIC_APP_VERSION=1.0.0
-      # Next.js Configuration
-      - NODE_ENV=development
-      - NEXT_TELEMETRY_DISABLED=1
-    depends_on:
-      api:
-        condition: service_healthy
-    volumes:
-      - ../app:/app:cached
-      - /app/node_modules
-      - /app/.next
-    networks:
-      - sky-genesis
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      start_period: 60s
 
   # ================================
   # Database (PostgreSQL)
