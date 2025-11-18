@@ -12,7 +12,7 @@ node_modules
 *.db
 # testing
 /coverage
-
+ 
 # next.js
 /.next/
 /out/
