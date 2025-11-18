@@ -45,39 +45,58 @@ COPY api/src ./src
 RUN cargo build --release --locked
 
 # ------------------------------
-# Frontend Builder Stage
-# ------------------------------
-FROM node:18-alpine AS frontend-builder
-
-# Install security updates and build tools
-RUN apk update && apk upgrade && apk add --no-cache libc6-compat git
-
-# Create non-root user for build
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
-
-# Set working directory
-WORKDIR /app
-
-# Copy dependencies from cache if available
-COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
-
-# Copy package files
-COPY --chown=nextjs:nodejs package*.json pnpm-lock.yaml ./
-
-# Switch to non-root user
-USER nextjs
-
-# Copy source code
-COPY --chown=nextjs:nodejs app/ ./app/
-COPY --chown=nextjs:nodejs next.config.ts ./
-COPY --chown=nextjs:nodejs tsconfig.json ./
-COPY --chown=nextjs:nodejs tailwind.config.js ./
-COPY --chown=nextjs:nodejs postcss.config.mjs ./
-
-# Build application with production optimizations
-ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
+  # Frontend Dependencies Stage
+  # ------------------------------
+  FROM node:18-alpine AS frontend-deps
+  
+  # Install security updates
+  RUN apk update && apk upgrade && apk add --no-cache libc6-compat
+  
+  # Set working directory
+  WORKDIR /app
+  
+  # Copy package files for better caching
+  COPY package*.json pnpm-lock.yaml ./
+  
+  # Install dependencies with security audit
+  RUN npm ci --only=production --frozen-lockfile && \
+      npm audit --audit-level high --production && \
+      npm cache clean --force
+  
+  # ------------------------------
+  # Frontend Builder Stage
+  # ------------------------------
+  FROM node:18-alpine AS frontend-builder
+  
+  # Install security updates and build tools
+  RUN apk update && apk upgrade && apk add --no-cache libc6-compat git
+  
+  # Create non-root user for build
+  RUN addgroup -g 1001 -S nodejs && \
+      adduser -S nextjs -u 1001
+  
+  # Set working directory
+  WORKDIR /app
+  
+  # Copy dependencies from deps stage
+  COPY --from=frontend-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
+  
+  # Copy package files
+  COPY --chown=nextjs:nodejs package*.json pnpm-lock.yaml ./
+  
+  # Switch to non-root user
+  USER nextjs
+  
+  # Copy source code
+  COPY --chown=nextjs:nodejs app/ ./app/
+  COPY --chown=nextjs:nodejs next.config.ts ./
+  COPY --chown=nextjs:nodejs tsconfig.json ./
+  COPY --chown=nextjs:nodejs tailwind.config.js ./
+  COPY --chown=nextjs:nodejs postcss.config.mjs ./
+  
+  # Build application with production optimizations
+  ENV NEXT_TELEMETRY_DISABLED=1
+  RUN npm run build
 
 # ------------------------------
 # CLI Builder Stage
