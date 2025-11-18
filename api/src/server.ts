@@ -28,6 +28,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // API routes
+app.use('/api/v1/auth', require('./routes/authRoutes').default);
 app.use('/api/v1/api-keys', authenticateApiKey, require('./routes/api_keyRoutes').default);
 
 // 404 handler

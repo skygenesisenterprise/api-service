@@ -14,6 +14,7 @@ export default function AuthForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
 
   // Set page title
   useEffect(() => {
@@ -23,18 +24,52 @@ export default function AuthForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError("")
 
     if (step === "email") {
-      // Simulate email validation
-      await new Promise((resolve) => setTimeout(resolve, 800))
+      // Validate email format
+      if (!email || !email.includes("@")) {
+        setError("Please enter a valid email address")
+        setIsLoading(false)
+        return
+      }
+      
+      // Move to password step
       setStep("password")
+      setIsLoading(false)
     } else {
-      // Simulate login
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      console.log("Login with:", { email, password })
-    }
+      // Perform actual login
+      try {
+        const response = await fetch("http://localhost:8080/api/v1/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        })
 
-    setIsLoading(false)
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || "Login failed")
+        }
+
+        // Store token in localStorage
+        localStorage.setItem("authToken", data.data.token)
+        localStorage.setItem("refreshToken", data.data.refreshToken)
+        localStorage.setItem("user", JSON.stringify(data.data.user))
+
+        // Redirect to dashboard or home
+        window.location.href = "/dashboard"
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred during login")
+      } finally {
+        setIsLoading(false)
+      }
+    }
   }
 
   const handleBack = () => {
@@ -42,7 +77,7 @@ export default function AuthForm() {
     setPassword("")
   }
 
-  const handleSocialLogin = (provider: string) => {
+   const handleSocialLogin = (provider: string) => {
     if (provider === 'keycloak') {
       // Use NextAuth signIn for Keycloak SSO
       window.location.href = '/api/auth/signin/keycloak'
@@ -50,6 +85,15 @@ export default function AuthForm() {
       console.log(`Login with ${provider}`)
     }
   }
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const token = localStorage.getItem("authToken")
+    if (token) {
+      // User is already logged in, redirect to dashboard
+      window.location.href = "/dashboard"
+    }
+  }, [])
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-black">
@@ -135,9 +179,16 @@ export default function AuthForm() {
                 <Label htmlFor="password" className="text-sm font-medium text-black">
                   Password
                 </Label>
-                <button type="button" className="text-sm text-gray-500 hover:text-black transition-colors">
-                  Forgot password?
-                </button>
+               <button 
+                 type="button" 
+                 className="text-sm text-gray-500 hover:text-black transition-colors"
+                 onClick={() => {
+                   // TODO: Implement forgot password functionality
+                   console.log("Forgot password clicked")
+                 }}
+               >
+                 Forgot password?
+               </button>
               </div>
               <Input
                 id="password"
@@ -162,13 +213,19 @@ export default function AuthForm() {
             </div>
           )}
 
-          <Button
-            type="submit"
-            className="w-full bg-black hover:bg-gray-800 text-white font-medium"
-            disabled={isLoading}
-          >
-            {isLoading ? "Loading..." : step === "email" ? "Continue" : "Sign in"}
-          </Button>
+           {error && (
+             <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm">
+               {error}
+             </div>
+           )}
+
+           <Button
+             type="submit"
+             className="w-full bg-black hover:bg-gray-800 text-white font-medium"
+             disabled={isLoading}
+           >
+             {isLoading ? "Loading..." : step === "email" ? "Continue" : "Sign in"}
+           </Button>
         </form>
 
         {step === "email" && (
