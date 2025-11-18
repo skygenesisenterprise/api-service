@@ -368,8 +368,8 @@ jobs:
           ghcr.io/skygenesisenterprise/${{ steps.extract-info.outputs.image_name }}:latest
           ghcr.io/skygenesisenterprise/${{ steps.extract-info.outputs.image_name }}:${{ steps.extract-info.outputs.version }}
         labels: |
-          org.opencontainers.image.title=Sky Genesis ${{ steps.extract-info.outputs.type == 'web' && 'Web Client' || steps.extract-info.outputs.type == 'cli' && 'CLI' || steps.extract-info.outputs.type == 'service' && 'API Service' || 'All-in-One' }}
-          org.opencontainers.image.description=${{ steps.extract-info.outputs.type == 'web' && 'Next.js frontend application' || steps.extract-info.outputs.type == 'cli' && 'Rust-based CLI with SSH server' || steps.extract-info.outputs.type == 'service' && 'Rust-based API service with SSH server' || 'Complete Sky Genesis stack with API, frontend, and CLI in single container' }}
+          org.opencontainers.image.title=Sky Genesis Enterprise ${{ steps.extract-info.outputs.type == 'web' && 'Web Client' || steps.extract-info.outputs.type == 'cli' && 'CLI' || steps.extract-info.outputs.type == 'service' && 'API Service' || 'All-in-One' }}
+          org.opencontainers.image.description=${{ steps.extract-info.outputs.type == 'web' && 'Next.js frontend application' || steps.extract-info.outputs.type == 'cli' && 'Rust-based CLI with SSH server' || steps.extract-info.outputs.type == 'service' && 'Rust-based API service with SSH server' || 'Complete Sky Genesis Enterprise stack with API, frontend, and CLI in single container' }}
           org.opencontainers.image.version=${{ steps.extract-info.outputs.version }}
         platforms: linux/amd64,linux/arm64
         cache-from: type=gha
@@ -427,7 +427,7 @@ jobs:
 
     # Generate SLSA provenance for all images
     - name: Generate SLSA provenance
-      uses: slsa-framework/slsa-github-generator/.github/actions/container@v1.10.0
+      uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v1.10.0
       with:
         base64-subjects: ${{ steps.extract-info.outputs.type != 'all-in-one' && format('ghcr.io/skygenesisenterprise/{0}:{1}', steps.extract-info.outputs.image_name, steps.extract-info.outputs.version) || format('ghcr.io/skygenesisenterprise/api-service:{0}\nghcr.io/skygenesisenterprise/api-web:{0}\nghcr.io/skygenesisenterprise/api-cli:{0}\nghcr.io/skygenesisenterprise/api:{0}', steps.extract-info.outputs.version) }}
       env:
