@@ -40,6 +40,10 @@ app.use('/api/v1/api-keys', authenticateApiKey, require('./routes/api_keyRoutes'
 // Unified Account Management (Public endpoints for auth)
 app.use('/api/v1/accounts', require('./routes/unifiedAccountRoutes').default);
 
+// New Unified Auth System (JWT-based)
+app.use('/api/v1', require('./routes/unifiedAuthRoutes').default);
+app.use('/api/v1', require('./routes/unifiedUserRoutes').default);
+
 // New API routes (Protected)
 app.use('/api/v1/organizations', authenticateApiKey, require('./routes/organizationRoutes').default);
 app.use('/api/v1/projects', authenticateApiKey, require('./routes/projectRoutes').default);

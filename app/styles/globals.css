@@ -142,7 +142,7 @@
   }
 }
 
-/* Custom utility classes for Mistral-inspired design */
+/* Custom utility classes for Monochrome Grafana-inspired design */
 @layer utilities {
   .gradient-text {
     background: var(--primary);
@@ -209,5 +209,93 @@
   
   .quick-action-btn {
     @apply h-24 flex flex-col items-start justify-start p-4 rounded-xl border border-border bg-card hover:bg-accent hover:border-accent transition-all duration-200;
+  }
+
+  /* Inverted Monochrome Dashboard Utilities */
+  .mono-border {
+    @apply border-gray-200 hover:border-gray-400;
+  }
+  
+  .mono-bg {
+    @apply bg-white hover:bg-gray-50;
+  }
+  
+  .mono-text-primary {
+    @apply text-black;
+  }
+  
+  .mono-text-secondary {
+    @apply text-gray-700;
+  }
+  
+  .mono-text-muted {
+    @apply text-gray-500;
+  }
+  
+  .mono-accent {
+    @apply bg-gray-100 text-gray-700 border-gray-300;
+  }
+  
+  .mono-widget {
+    @apply bg-white border-gray-200 text-black;
+  }
+  
+  .mono-widget-header {
+    @apply bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200;
+  }
+  
+  .mono-live-indicator {
+    @apply bg-gray-700 animate-pulse;
+  }
+  
+  .mono-chart-line {
+    @apply stroke-gray-600;
+  }
+  
+  .mono-chart-area {
+    @apply fill-gray-600/20;
+  }
+  
+  .mono-progress {
+    @apply bg-gray-200;
+  }
+  
+  .mono-progress-fill {
+    @apply bg-gray-700;
+  }
+  
+  .mono-button {
+    @apply bg-gray-50 text-gray-500 border-gray-200 hover:text-gray-700 hover:bg-gray-100;
+  }
+  
+  .mono-button-active {
+    @apply bg-gray-200 text-gray-700 border-gray-300;
+  }
+  
+  .mono-shadow {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+  
+  .mono-shadow-lg {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+  
+  /* Custom scrollbar for inverted monochrome theme */
+  .mono-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .mono-scrollbar::-webkit-scrollbar-track {
+    background: #f9fafb;
+  }
+  
+  .mono-scrollbar::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+  }
+  
+  .mono-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
   }
 }
