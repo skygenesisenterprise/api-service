@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
   // Enable React strict mode for better development experience
@@ -21,6 +22,17 @@ const nextConfig: NextConfig = {
   // Turbopack configuration
   turbopack: {
     root: process.cwd(),
+  },
+
+  // Path aliases for clean imports
+  webpack: (config, { dev, isServer }) => {
+    // Add any custom webpack config here if needed
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@": path.resolve(__dirname, "./app"),
+      "@api": path.resolve(__dirname, "./api"),
+    };
+    return config;
   },
 
   // Security headers
@@ -46,11 +58,7 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // Webpack configuration for custom builds
-  webpack: (config, { dev, isServer }) => {
-    // Add any custom webpack config here if needed
-    return config;
-  },
+
 };
 
 export default nextConfig;

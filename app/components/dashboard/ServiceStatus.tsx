@@ -1,7 +1,7 @@
 "use client";
 
 import { LucideIcon, CheckCircle, AlertTriangle, XCircle, Clock } from "lucide-react";
-import { cn } from "@/app/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface ServiceStatusProps {
   name: string;

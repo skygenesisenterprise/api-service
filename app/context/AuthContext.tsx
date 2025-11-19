@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useMemo, useEffect, useState } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
-import { authService, LoginCredentials, AuthResult, User } from "@/app/lib/services/backend-auth-service";
-import { authEnvironmentService } from "@/app/lib/services/auth-environment-service";
+import { authService, LoginCredentials, AuthResult, User } from "@/lib/services/backend-auth-service";
+import { authEnvironmentService } from "@/lib/services/auth-environment-service";
 
 interface IAuthContext {
   token: string | null;

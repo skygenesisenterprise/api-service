@@ -24,12 +24,26 @@ app.get('/health', (req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: config.nodeEnv,
+    version: '1.0.0',
+    services: {
+      database: 'connected',
+      api: 'running',
+      monitoring: 'active'
+    }
   });
 });
 
 // API routes
 app.use('/api/v1/auth', require('./routes/authRoutes').default);
 app.use('/api/v1/api-keys', authenticateApiKey, require('./routes/api_keyRoutes').default);
+
+// Unified Account Management (Public endpoints for auth)
+app.use('/api/v1/accounts', require('./routes/unifiedAccountRoutes').default);
+
+// New API routes (Protected)
+app.use('/api/v1/organizations', authenticateApiKey, require('./routes/organizationRoutes').default);
+app.use('/api/v1/projects', authenticateApiKey, require('./routes/projectRoutes').default);
+app.use('/api/v1/endpoints', authenticateApiKey, require('./routes/endpointRoutes').default);
 
 // 404 handler
 app.use('*', (req: Request, res: Response) => {

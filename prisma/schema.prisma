@@ -23,8 +23,9 @@ model Organization {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  apiKeys ApiKey[]
-  users   User[]
+  apiKeys     ApiKey[]
+  users       User[]
+  memberships OrganizationMembership[]
 
   @@map("organizations")
 }
@@ -41,7 +42,8 @@ model ApiKey {
   status       String   @default("development") // development, production
   permissions  String   // JSON string of permissions array
   organizationId String  @map("organization_id")
-  userId       String?  @map("user_id")
+  userId       String?  @map("user_id") // Legacy user ID
+  accountId    String?  @map("account_id") // New unified account ID
   isActive     Boolean  @default(true) @map("is_active")
   expiresAt    DateTime? @map("expires_at")
   lastUsedAt   DateTime? @map("last_used_at")
@@ -50,12 +52,91 @@ model ApiKey {
 
   // Relations
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  account      UnifiedAccount? @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@map("api_keys")
 }
 
 // ======================================
-// USER MANAGEMENT (Basic)
+// UNIFIED ACCOUNT MANAGEMENT
+// ======================================
+
+model UnifiedAccount {
+  id           String   @id @default(cuid())
+  globalId     String   @unique @map("global_id")
+  primaryEmail String   @unique @map("primary_email")
+  username     String?  @unique
+  phoneNumber  String?  @unique @map("phone_number")
+  profile      Json     @default("{}")
+  preferences  Json     @default("{}")
+  status       String   @default("active") // active, suspended, deleted
+  isVerified   Boolean  @default(false) @map("is_verified")
+  passwordHash String?  @map("password_hash")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  identifiers     AccountIdentifier[]
+  memberships     OrganizationMembership[]
+  sessions        Session[]
+  apiKeys         ApiKey[]
+
+  @@map("unified_accounts")
+}
+
+model AccountIdentifier {
+  id          String   @id @default(cuid())
+  accountId   String   @map("account_id")
+  type        String   // email, phone, username, oauth
+  value       String   @unique
+  provider    String?  // For OAuth: google, microsoft, github, etc.
+  providerId  String?  @map("provider_id") // External provider user ID
+  isPrimary   Boolean  @default(false) @map("is_primary")
+  isVerified  Boolean  @default(false) @map("is_verified")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  account UnifiedAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("account_identifiers")
+}
+
+model OrganizationMembership {
+  id             String   @id @default(cuid())
+  accountId      String   @map("account_id")
+  organizationId String   @map("organization_id")
+  role           String   // owner, admin, member, viewer
+  permissions    Json     @default("[]")
+  isActive       Boolean  @default(true) @map("is_active")
+  joinedAt       DateTime @default(now()) @map("joined_at")
+
+  // Relations
+  account      UnifiedAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, organizationId])
+  @@map("organization_memberships")
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  accountId  String   @map("account_id")
+  tokenHash  String   @unique @map("token_hash")
+  deviceInfo Json?   @map("device_info")
+  isActive   Boolean  @default(true) @map("is_active")
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  lastAccessAt DateTime @default(now()) @map("last_access_at")
+
+  // Relations
+  account UnifiedAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ======================================
+// LEGACY USER MANAGEMENT (Deprecated)
 // ======================================
 
 model User {

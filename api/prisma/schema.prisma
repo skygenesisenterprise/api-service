@@ -17,16 +17,166 @@ datasource db {
 // ======================================
 
 model Organization {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(cuid())
+  name        String   @unique
+  logo        String?
+  description String?
+  website     String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  apiKeys ApiKey[]
-  users   User[]
+  apiKeys   ApiKey[]
+  users      User[]
+  workspaces Workspace[]
+  projects  Project[]
 
   @@map("organizations")
+}
+
+// ======================================
+// WORKSPACE MANAGEMENT
+// ======================================
+
+model Workspace {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  description   String?
+  environment   String   @default("development") // development, staging, production
+  organizationId String   @map("organization_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projects    Project[]
+
+  @@map("workspaces")
+}
+
+// ======================================
+// PROJECT MANAGEMENT
+// ======================================
+
+model Project {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  description   String?
+  status        String   @default("active") // active, inactive, archived
+  repository    String?
+  website       String?
+  organizationId String   @map("organization_id")
+  workspaceId   String   @map("workspace_id")
+  createdBy     String   @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  creator     User?       @relation("ProjectCreator", fields: [createdBy], references: [id])
+  endpoints   Endpoint[]
+  services    ProjectService[]
+
+  @@map("projects")
+}
+
+// ======================================
+// PROJECT SERVICES
+// ======================================
+
+model ProjectService {
+  id          String   @id @default(cuid())
+  projectId   String   @map("project_id")
+  name        String
+  type        String   // grafana, prometheus, minio, vault, loki, etc.
+  status      String   @default("connected") // connected, disconnected, error
+  endpoint    String?
+  version     String?
+  config      String?  // JSON configuration
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_services")
+}
+
+// ======================================
+// ENDPOINT MANAGEMENT
+// ======================================
+
+model Endpoint {
+  id            String   @id @default(cuid())
+  name          String
+  method        String   // GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
+  route         String
+  description   String?
+  version       String   @default("v1")
+  status        String   @default("active") // active, deprecated, disabled
+  projectId     String   @map("project_id")
+  service       String   // Service name (Project Service, User Service, etc.)
+  tags          String?  // JSON array of tags
+  deprecated    Boolean  @default(false)
+  scopes        String?  // JSON array of required scopes
+  rateLimit     Int?     @default(1000) @map("rate_limit") // requests per hour
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  metrics EndpointMetric[]
+  calls   EndpointCall[]
+
+  @@map("endpoints")
+}
+
+// ======================================
+// ENDPOINT METRICS
+// ======================================
+
+model EndpointMetric {
+  id          String   @id @default(cuid())
+  endpointId  String   @map("endpoint_id")
+  timestamp   DateTime @default(now())
+  requests    Int      @default(0)
+  errors      Int      @default(0)
+  avgLatency  Float    @default(0) @map("avg_latency") // in milliseconds
+  p95Latency  Float?   @map("p95_latency") // 95th percentile latency
+  p99Latency  Float?   @map("p99_latency") // 99th percentile latency
+  statusCodes  String?  // JSON object of status code counts
+
+  // Relations
+  endpoint Endpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@map("endpoint_metrics")
+}
+
+// ======================================
+// ENDPOINT CALLS
+// ======================================
+
+model EndpointCall {
+  id          String    @id @default(cuid())
+  endpointId  String    @map("endpoint_id")
+  application String    // Web Dashboard, Mobile App, CLI Tool, etc.
+  userId      String?   @map("user_id")
+  statusCode  Int       @map("status_code")
+  latency     Int       // in milliseconds
+  payload     String?   // JSON request payload
+  response    String?   // JSON response data
+  errorMessage String?  @map("error_message")
+  userAgent   String?   @map("user_agent")
+  ipAddress   String?   @map("ip_address")
+  timestamp   DateTime  @default(now())
+
+  // Relations
+  endpoint Endpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@map("endpoint_calls")
 }
 
 // ======================================
@@ -55,21 +205,46 @@ model ApiKey {
 }
 
 // ======================================
-// USER MANAGEMENT (Basic)
+// USER MANAGEMENT (Enhanced)
 // ======================================
 
 model User {
-  id           String   @id @default(cuid())
-  organizationId String? @map("organization_id")
-  email        String   @unique
-  fullName     String?  @map("full_name")
-  passwordHash String   @map("password_hash")
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id             String    @id @default(cuid())
+  organizationId String?   @map("organization_id")
+  email          String    @unique
+  fullName       String?   @map("full_name")
+  avatar         String?
+  role           String    @default("user") // admin, user, viewer
+  passwordHash   String    @map("password_hash")
+  isActive       Boolean   @default(true) @map("is_active")
+  lastLoginAt    DateTime? @map("last_login_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   // Relations
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdProjects Project[] @relation("ProjectCreator")
 
   @@map("users")
+}
+
+// ======================================
+// DASHBOARD STATISTICS
+// ======================================
+
+model DashboardStats {
+  id            String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  workspaceId   String?  @map("workspace_id")
+  date          DateTime @default(now()) @db.Date
+  totalProjects Int      @default(0) @map("total_projects")
+  totalEndpoints Int      @default(0) @map("total_endpoints")
+  totalRequests  Int      @default(0) @map("total_requests")
+  totalErrors    Int      @default(0) @map("total_errors")
+  avgLatency     Float    @default(0) @map("avg_latency")
+  uptime         Float    @default(100) // percentage
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("dashboard_stats")
 }

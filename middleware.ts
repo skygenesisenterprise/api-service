@@ -5,17 +5,24 @@ import { requiresAuthentication } from './app/lib/navigation-config';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Check if the route requires authentication
-  if (requiresAuthentication(pathname)) {
-    // For protected routes in production mode, check for authentication
-    const token = request.cookies.get('access_token')?.value;
-    
-    if (!token) {
-      // Redirect to login page with return URL
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('returnUrl', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
+  // Pages publiques (layout avec fond animé, sans sidebar/header)
+  const publicPaths = ['/login', '/register', '/forgot-password'];
+  const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
+
+  // Vérifier l'authentification via localStorage (cookies ou headers)
+  const token = request.cookies.get('authToken')?.value || 
+                request.headers.get('authorization')?.replace('Bearer ', '');
+
+  // Redirection si non authentifié et page protégée
+  if (!isPublicPath && requiresAuthentication(pathname) && !token) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('returnUrl', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Redirection si authentifié et page publique
+  if (isPublicPath && token) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   // Continue with the request
