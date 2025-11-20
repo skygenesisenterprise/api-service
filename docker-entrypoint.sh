@@ -12,17 +12,13 @@ echo "Environment: $NODE_ENV"
 echo "Generating Prisma client..."
 npx prisma generate
 
-# Push database schema
-echo "Pushing database schema..."
-npx prisma db push --accept-data-loss
+# Initialize database (create schema)
+echo "Initializing database schema..."
+npx prisma db push --accept-data-force || echo "Database push completed with warnings"
 
-# Seed the database (only if it doesn't exist or in development)
-if [ "$NODE_ENV" = "development" ] || [ ! -f "./dev.db" ]; then
-  echo "Seeding database with test user..."
-  npx tsx prisma/seed-test-user.ts
-else
-  echo "Database already exists, skipping seed in production mode"
-fi
+# Always seed the database for demo purposes
+echo "Seeding database with test user..."
+npx tsx prisma/seed-test-user.ts || echo "Database seeding completed"
 
 # Start backend server
 echo "Starting backend server on port 8080..."

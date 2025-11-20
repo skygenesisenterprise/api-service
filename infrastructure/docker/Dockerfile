@@ -24,27 +24,7 @@ RUN npx prisma generate
 # Build the API backend
 RUN npm run build:backend
 
-# Database setup and seeding stage
-FROM base AS db-setup
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=api-builder /app/prisma ./prisma
-COPY --from=api-builder /app/api/prisma ./api/prisma
-COPY prisma/seed-test-user.ts ./
-COPY .env.example .env
-
-# Set environment variables for database
-ENV DATABASE_URL="file:./dev.db"
-ENV NODE_ENV=development
-
-# Generate Prisma client
-RUN npx prisma generate
-
-# Create database and run migrations
-RUN npx prisma db push --accept-data-loss
-
-# Seed the database with test user
-RUN npx tsx prisma/seed-test-user.ts
+# Skip database setup during build - will be done at runtime
 
 # Build Web Frontend
 FROM base AS web-builder
@@ -75,7 +55,7 @@ RUN addgroup --system --gid 1001 nodejs && \
 # Copy built applications
 COPY --from=api-builder /app/api/dist ./api/dist
 COPY --from=api-builder /app/api/prisma ./api/prisma
-COPY --from=db-setup /app/prisma ./prisma
+COPY --from=api-builder /app/prisma ./prisma
 COPY --from=web-builder --chown=nodejs:nodejs /app/.next/standalone ./
 COPY --from=web-builder --chown=nodejs:nodejs /app/.next/static ./.next/static
 COPY --from=web-builder /app/public ./public
@@ -83,6 +63,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./package.json
 COPY --from=deps /app/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
+COPY prisma/seed-test-user.ts ./prisma/seed-test-user.ts
+COPY .env.example .env
 
 # Create necessary directories
 RUN mkdir -p /app/logs && \
