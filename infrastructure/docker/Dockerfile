@@ -4,7 +4,7 @@ FROM node:20-alpine AS base
 # Base dependencies
 RUN apk add --no-cache libc6-compat curl bash
 WORKDIR /app
-RUN corepack enable pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Install dependencies
 FROM base AS deps
@@ -57,11 +57,8 @@ USER nodejs
 
 EXPOSE 4000 8085
 
-# Entrypoint inline : backend + frontend
+# CMD final pour container stable
 CMD sh -c "\
-  echo 'Generating Prisma client...' && npx prisma generate && \
-  echo 'Initializing database...' && npx prisma db push --accept-data-force || echo 'DB push warnings' && \
-  echo 'Seeding database...' && npx tsx prisma/seed-test-user.ts || echo 'DB seeding completed' && \
   echo 'Starting backend on port $API_PORT...' && API_PORT=$API_PORT pnpm run start:backend & \
   echo 'Starting frontend on port $PORT...' && PORT=$PORT pnpm run start & \
   wait"
