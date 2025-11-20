@@ -33,8 +33,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV DATABASE_URL="file:./dev.db"
-ENV API_PORT=8085
-ENV PORT=4000
+ENV API_PORT=8080
+ENV PORT=3000
 
 RUN apk add --no-cache dumb-init curl bash && rm -rf /var/cache/apk/*
 
@@ -55,7 +55,7 @@ COPY --from=deps /app/pnpm-lock.yaml ./pnpm-lock.yaml
 RUN mkdir -p /app/logs && chown -R nodejs:nodejs /app
 USER nodejs
 
-EXPOSE 4000 8085
+EXPOSE 3000 8080
 
 # CMD final pour container stable
 CMD sh -c "\
