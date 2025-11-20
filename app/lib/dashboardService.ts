@@ -147,9 +147,9 @@ export class DashboardService {
 
   async getApiKeysByType() {
     const [clientKeys, serverKeys, databaseKeys] = await Promise.all([
-      prisma.apiKey.count({ where: { category: 'client' } }),
-      prisma.apiKey.count({ where: { category: 'server' } }),
-      prisma.apiKey.count({ where: { category: 'database' } })
+      prisma.apiKey.count({ where: { type: 'client' } }),
+      prisma.apiKey.count({ where: { type: 'server' } }),
+      prisma.apiKey.count({ where: { type: 'database' } })
     ]);
 
     return [

@@ -4,6 +4,7 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis
 import { WidgetCard } from "./WidgetCard";
 
 interface ProjectUsage {
+  [key: string]: any;
   name: string;
   requests: number;
   percentage: number;

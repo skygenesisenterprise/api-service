@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,7 +91,7 @@ export default function ProjectSettingsDialog({
   const removeDomain = (domainToRemove: string) => {
     setFormData(prev => ({
       ...prev,
-      domains: prev.domains.filter(domain => domain !== domainToRemove)
+      domains: prev.domains.filter((domain: string) => domain !== domainToRemove)
     }));
   };
 
@@ -107,7 +108,7 @@ export default function ProjectSettingsDialog({
   const removeTag = (tagToRemove: string) => {
     setFormData(prev => ({
       ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove)
+      tags: prev.tags.filter((tag: string) => tag !== tagToRemove)
     }));
   };
 
@@ -222,7 +223,7 @@ export default function ProjectSettingsDialog({
                   </div>
                   {formData.tags.length > 0 && (
                     <div className="flex flex-wrap gap-2">
-                      {formData.tags.map((tag) => (
+                      {formData.tags.map((tag: string) => (
                         <Badge
                           key={tag}
                           variant="default"
@@ -276,7 +277,7 @@ export default function ProjectSettingsDialog({
                   </div>
                   {formData.domains.length > 0 && (
                     <div className="space-y-2">
-                      {formData.domains.map((domain) => (
+                      {formData.domains.map((domain: string) => (
                         <div
                           key={domain}
                           className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"

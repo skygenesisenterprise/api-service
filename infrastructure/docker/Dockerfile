@@ -24,6 +24,23 @@ RUN npx prisma generate
 # Build the API backend
 RUN npm run build:backend
 
+# Database setup and seeding stage
+FROM base AS db-setup
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=api-builder /app/prisma ./prisma
+COPY --from=api-builder /app/api/prisma ./api/prisma
+COPY prisma/seed-test-user.ts ./
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Create database and run migrations
+RUN npx prisma db push --accept-data-loss
+
+# Seed the database with test user
+RUN npx tsx prisma/seed-test-user.ts
+
 # Build Web Frontend
 FROM base AS web-builder
 WORKDIR /app
@@ -52,13 +69,14 @@ RUN addgroup --system --gid 1001 nodejs && \
 # Copy built applications
 COPY --from=api-builder /app/api/dist ./api/dist
 COPY --from=api-builder /app/api/prisma ./api/prisma
-COPY --from=api-builder /app/prisma ./prisma
+COPY --from=db-setup /app/prisma ./prisma
 COPY --from=web-builder --chown=nodejs:nodejs /app/.next/standalone ./
 COPY --from=web-builder --chown=nodejs:nodejs /app/.next/static ./.next/static
 COPY --from=web-builder /app/public ./public
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./package.json
 COPY --from=deps /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
 # Create necessary directories
 RUN mkdir -p /app/logs && \
@@ -77,5 +95,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start both services using a process manager
-CMD ["sh", "-c", "npm run start:backend & npm run start"]
+# Use custom entrypoint script
+ENTRYPOINT ["./docker-entrypoint.sh"]

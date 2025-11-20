@@ -40,6 +40,9 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "api",
+    "app/lib/services/project-service.ts",
+    "prisma/seed-*.ts"
   ]
 }
