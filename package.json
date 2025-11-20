@@ -9,7 +9,7 @@
     "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build": "next build",
     "build:backend": "mkdir -p api/dist && cp -r api/src/* api/dist/ && echo 'Backend files copied for runtime'",
-    "start": "next start",
+    "start": "next start -H 0.0.0.0",
     "start:backend": "tsx api/dist/server.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
