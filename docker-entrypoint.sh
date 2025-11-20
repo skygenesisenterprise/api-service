@@ -1,11 +1,12 @@
 #!/bin/sh
 
-# Wait for database to be ready (if using external database)
-# echo "Waiting for database..."
-# while ! nc -z $DB_HOST $DB_PORT; do
-#   sleep 0.1
-# done
-# echo "Database is ready!"
+# Set default environment variables if not set
+export DATABASE_URL=${DATABASE_URL:-"file:./dev.db"}
+export NODE_ENV=${NODE_ENV:-"development"}
+
+echo "Starting Sky Genesis Enterprise API Service..."
+echo "Database URL: $DATABASE_URL"
+echo "Environment: $NODE_ENV"
 
 # Generate Prisma client
 echo "Generating Prisma client..."
@@ -15,14 +16,18 @@ npx prisma generate
 echo "Pushing database schema..."
 npx prisma db push --accept-data-loss
 
-# Seed the database
-echo "Seeding database with test user..."
-npx tsx prisma/seed-test-user.ts
+# Seed the database (only if it doesn't exist or in development)
+if [ "$NODE_ENV" = "development" ] || [ ! -f "./dev.db" ]; then
+  echo "Seeding database with test user..."
+  npx tsx prisma/seed-test-user.ts
+else
+  echo "Database already exists, skipping seed in production mode"
+fi
 
-# Start the backend server
-echo "Starting backend server..."
+# Start backend server
+echo "Starting backend server on port 8080..."
 npm run start:backend &
 
-# Start the frontend server
-echo "Starting frontend server..."
+# Start frontend server
+echo "Starting frontend server on port 3000..."
 npm run start

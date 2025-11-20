@@ -31,6 +31,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=api-builder /app/prisma ./prisma
 COPY --from=api-builder /app/api/prisma ./api/prisma
 COPY prisma/seed-test-user.ts ./
+COPY .env.example .env
+
+# Set environment variables for database
+ENV DATABASE_URL="file:./dev.db"
+ENV NODE_ENV=development
 
 # Generate Prisma client
 RUN npx prisma generate
@@ -55,6 +60,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV DATABASE_URL="file:./dev.db"
 
 # Install runtime dependencies
 RUN apk add --no-cache \
