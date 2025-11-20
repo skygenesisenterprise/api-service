@@ -77,11 +77,11 @@ RUN mkdir -p /app/logs && \
 USER nodejs
 
 # Expose ports
-EXPOSE 3000 8080
+EXPOSE 4000 8085
 
 # Health checks
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8080/health && curl -f http://localhost:3000/api/health || exit 1
+    CMD curl -f http://localhost:4000/ && curl -f http://localhost:8085/api/v1/health || exit 1
 
 # Use custom entrypoint script with dumb-init
 ENTRYPOINT ["dumb-init", "--", "./docker-entrypoint.sh"]

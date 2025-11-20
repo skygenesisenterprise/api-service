@@ -8,8 +8,8 @@ services:
     container_name: sky-genesis-api
     restart: unless-stopped
     ports:
-      - "3000:3000"  # Next.js frontend
-      - "8080:8080" # API backend
+      - "4000:4000"  # Next.js frontend
+      - "8085:8085" # API backend
     environment:
       - NODE_ENV=production
       - DATABASE_URL=file:./dev.db
@@ -18,7 +18,7 @@ services:
     volumes:
       - ./data:/app/data  # Pour la persistance de la base de données
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:4000/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3

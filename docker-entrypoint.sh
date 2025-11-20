@@ -3,6 +3,8 @@
 # Set default environment variables if not set
 export DATABASE_URL=${DATABASE_URL:-"file:./dev.db"}
 export NODE_ENV=${NODE_ENV:-"development"}
+export API_PORT=${API_PORT:-8085}    # backend
+export PORT=${PORT:-4000}            # frontend (Next.js)
 
 echo "Starting Sky Genesis Enterprise API Service..."
 echo "Database URL: $DATABASE_URL"
@@ -16,14 +18,17 @@ npx prisma generate
 echo "Initializing database schema..."
 npx prisma db push --accept-data-force || echo "Database push completed with warnings"
 
-# Always seed the database for demo purposes
+# Seed the database
 echo "Seeding database with test user..."
 npx tsx prisma/seed-test-user.ts || echo "Database seeding completed"
 
 # Start backend server
-echo "Starting backend server on port 8080..."
-npm run start:backend &
+echo "Starting backend server on port $API_PORT..."
+API_PORT=$API_PORT npm run start:backend &
 
 # Start frontend server
-echo "Starting frontend server on port 3000..."
-npm run start
+echo "Starting frontend server on port $PORT..."
+PORT=$PORT npm run start
+
+# Wait for any process to exit
+wait -n
