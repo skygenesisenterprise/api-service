@@ -32,6 +32,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Generate Prisma client first
+RUN npx prisma generate
+
 # Build the web frontend
 RUN npm run build
 
