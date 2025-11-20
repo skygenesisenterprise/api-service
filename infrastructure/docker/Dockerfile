@@ -83,8 +83,5 @@ EXPOSE 3000 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8080/health && curl -f http://localhost:3000/api/health || exit 1
 
-# Use dumb-init to handle signals properly
-ENTRYPOINT ["dumb-init", "--"]
-
-# Use custom entrypoint script
-ENTRYPOINT ["./docker-entrypoint.sh"]
+# Use custom entrypoint script with dumb-init
+ENTRYPOINT ["dumb-init", "--", "./docker-entrypoint.sh"]
