@@ -1,42 +1,35 @@
-# Multi-stage Dockerfile for Enterprise API Service
-# This file builds both the API backend and web frontend in a single optimized image
+# Multi-stage Dockerfile for Enterprise API Service (pnpm version)
+# Builds backend and frontend in a single image
 
 FROM node:20-alpine AS base
 
-# Install dependencies only when needed
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
+# Base dependencies
+RUN apk add --no-cache libc6-compat curl bash
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
+# Install pnpm
+RUN corepack enable pnpm
+
+# Install dependencies
+FROM base AS deps
 COPY package.json pnpm-lock.yaml* ./
-RUN corepack enable pnpm && pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # Build API Backend
 FROM base AS api-builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
-# Generate Prisma client for API
 RUN npx prisma generate
-
-# Build the API backend
-RUN npm run build:backend
-
-# Skip database setup during build - will be done at runtime
+RUN pnpm run build:backend
 
 # Build Web Frontend
 FROM base AS web-builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
-# Generate Prisma client first
 RUN npx prisma generate
-
-# Build the web frontend
-RUN npm run build
+RUN pnpm run build
 
 # Production image
 FROM node:20-alpine AS runner
@@ -44,18 +37,17 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV DATABASE_URL="file:./dev.db"
+ENV API_PORT=8085       
+ENV PORT=4000           
 
-# Install runtime dependencies
-RUN apk add --no-cache \
-    dumb-init \
-    curl \
-    && rm -rf /var/cache/apk/*
+# Runtime dependencies
+RUN apk add --no-cache dumb-init curl bash && rm -rf /var/cache/apk/*
 
-# Create a non-root user
+# Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nodejs
 
-# Copy built applications
+# Copy built apps
 COPY --from=api-builder /app/api/dist ./api/dist
 COPY --from=api-builder /app/api/prisma ./api/prisma
 COPY --from=api-builder /app/prisma ./prisma
@@ -69,11 +61,8 @@ COPY docker-entrypoint.sh ./docker-entrypoint.sh
 COPY prisma/seed-test-user.ts ./prisma/seed-test-user.ts
 COPY .env.example .env
 
-# Create necessary directories
-RUN mkdir -p /app/logs && \
-    chown -R nodejs:nodejs /app
-
-# Switch to non-root user
+# Permissions & logs
+RUN mkdir -p /app/logs && chown -R nodejs:nodejs /app
 USER nodejs
 
 # Expose ports
@@ -81,7 +70,7 @@ EXPOSE 4000 8085
 
 # Health checks
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:4000/ && curl -f http://localhost:8085/api/v1/health || exit 1
+    CMD curl -f http://localhost:4000/ || exit 1; curl -f http://localhost:8085/api/v1/health || exit 1
 
-# Use custom entrypoint script with dumb-init
+# Entrypoint using dumb-init
 ENTRYPOINT ["dumb-init", "--", "./docker-entrypoint.sh"]
