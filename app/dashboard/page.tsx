@@ -2,57 +2,65 @@
 
 import { useState, useEffect } from "react";
 import { 
-  Activity, 
-  Database, 
-  Server, 
-  Wifi, 
-  MessageSquare, 
-  Shield,
   Zap,
   Clock,
-  TrendingUp,
-  Cpu,
-  HardDrive,
-  Settings,
-  Maximize2,
-  Grid3X3,
   AlertTriangle,
-  Layers,
-  Eye,
-  EyeOff,
-  BarChart3,
+  Cpu,
+  Activity,
+  HardDrive,
+  Monitor,
+  Search,
+  LayoutGrid,
+  List,
+  Filter,
+  Bell,
+  ChevronDown,
+  MoreHorizontal,
+  Pause,
+  Play,
   Download,
-  RefreshCw
+  Maximize2,
+  TrendingUp,
+  TrendingDown,
+  BarChart3,
+  Users,
+  Shield,
+  Globe,
+  Server,
+  Wifi,
+  MessageSquare,
+  Database,
+  Settings,
+  RefreshCw,
+  Eye,
+  Sparkles,
+  ArrowUpRight,
+  ArrowDownRight,
+  Grid3X3,
+  Layers,
+  EyeOff
 } from "lucide-react";
 
-import { GrafanaMetricCard } from "../components/dashboard/GrafanaMetricCard";
-import { GrafanaWidget } from "../components/dashboard/GrafanaWidget";
-import { GrafanaChart } from "../components/dashboard/GrafanaChart";
-import { ServiceStatus } from "../components/dashboard/ServiceStatus";
-import { TopEndpoints } from "../components/dashboard/TopEndpoints";
-import { RecentLogs } from "../components/dashboard/RecentLogs";
-import { SecurityAlerts } from "../components/dashboard/SecurityAlerts";
-import { ProjectUsage } from "../components/dashboard/ProjectUsage";
+import { ModernMetricCard } from "../components/dashboard/ModernMetricCard";
+import { ModernWidget } from "../components/dashboard/ModernWidget";
+import { ModernChart } from "../components/dashboard/ModernChart";
 import { realTimeDataService } from "../lib/realTimeDataService";
 
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState<"24h" | "7d" | "30d">("24h");
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [refreshInterval, setRefreshInterval] = useState(5000);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isPaused, setIsPaused] = useState(false);
   
   const [metrics, setMetrics] = useState(realTimeDataService.getMetrics());
   const [endpoints, setEndpoints] = useState(realTimeDataService.getEndpoints());
-  const [logs, setLogs] = useState(realTimeDataService.getLogs());
-  const [securityAlerts, setSecurityAlerts] = useState(realTimeDataService.getSecurityAlerts());
 
   useEffect(() => {
     const unsubscribe = realTimeDataService.subscribe(() => {
       setMetrics(realTimeDataService.getMetrics());
       setEndpoints(realTimeDataService.getEndpoints());
-      setLogs(realTimeDataService.getLogs());
-      setSecurityAlerts(realTimeDataService.getSecurityAlerts());
     });
 
     return () => {
@@ -78,13 +86,10 @@ export default function DashboardPage() {
       timestamp: new Date().toISOString(),
       metrics: metrics,
       endpoints: endpoints,
-      logs: logs,
-      securityAlerts: securityAlerts,
       timeRange: timeRange,
       dashboardConfig: {
-        darkMode: isDarkMode,
         autoRefresh: autoRefresh,
-        refreshInterval: refreshInterval
+        viewMode: viewMode
       }
     };
     
@@ -92,115 +97,155 @@ export default function DashboardPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `grafana-dashboard-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `enterprise-dashboard-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
 
-  const refreshData = () => {
-    realTimeDataService.destroy();
-    setTimeout(() => window.location.reload(), 100);
-  };
-
   return (
-    <div className={`min-h-screen bg-white transition-colors duration-300`}>
-      {/* Header - Fixed Inverted Monochrome Style */}
-      <div className="fixed top-16 left-18 right-0 z-40 bg-white border-b border-gray-200 backdrop-blur-lg transition-all duration-200 group-hover:left-72">
-        <div className="flex items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="w-6 h-6 text-gray-700" />
-              <div>
-                <h1 className="text-xl font-bold text-black">Enterprise Dashboard</h1>
-                <p className="text-xs text-gray-600">Real-time monitoring & analytics</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50">
+      {/* Modern Minimalist Header */}
+      <div className="relative mt-6 mb-6 mx-auto max-w-7xl bg-white/60 backdrop-blur-md border-b border-white/10 rounded-t-2xl transition-all duration-300">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* Left Section - Title and Status */}
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg blur-md opacity-25 animate-pulse" />
+                  <div className="relative bg-gradient-to-r from-blue-500 to-purple-600 p-2 rounded-lg shadow-md">
+                    <Monitor className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900">
+                    Enterprise Dashboard
+                  </h1>
+                  <p className="text-sm text-slate-600">Real-time monitoring platform</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${
+                  isPaused 
+                    ? "bg-orange-50 border-orange-200" 
+                    : "bg-emerald-50 border-emerald-200"
+                }`}>
+                  <div className={`w-2 h-2 rounded-full ${
+                    isPaused ? "bg-orange-500" : "bg-emerald-500 animate-pulse"
+                  }`} />
+                  <span className={`text-xs font-semibold font-mono ${
+                    isPaused ? "text-orange-700" : "text-emerald-700"
+                  }`}>
+                    {isPaused ? "PAUSED" : "LIVE"}
+                  </span>
+                </div>
+                <span className="text-xs text-slate-600 font-mono bg-white/60 px-2 py-1 rounded border border-slate-200">
+                  {new Date().toLocaleTimeString()}
+                </span>
               </div>
             </div>
-            
-            <div className="flex items-center gap-2 ml-8">
-              <div className="flex items-center gap-1 px-3 py-1 bg-gray-50 rounded-md border border-gray-200">
-                <div className="w-2 h-2 bg-gray-700 rounded-full animate-pulse" />
-                <span className="text-xs text-gray-700 font-mono">LIVE</span>
-              </div>
-              <span className="text-xs text-gray-500">
-                Last updated: {new Date().toLocaleTimeString()}
-              </span>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            {/* Time Range Selector */}
-            <div className="flex items-center gap-1 bg-gray-50 rounded-md border border-gray-200 p-1">
-              {(["24h", "7d", "30d"] as const).map((range) => (
+            {/* Center Section - Time Range */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center bg-white/60 rounded-lg p-1 border border-slate-200">
+                {(["24h", "7d", "30d"] as const).map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => setTimeRange(range)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                      timeRange === range
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    {range}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Section - Actions */}
+            <div className="flex items-center gap-2">
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-3 py-2 bg-white/60 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all w-48"
+                />
+              </div>
+
+              {/* View Mode Toggle */}
+              <div className="flex items-center bg-white/60 rounded-lg p-1 border border-slate-200">
                 <button
-                  key={range}
-                  onClick={() => setTimeRange(range)}
-                  className={`px-3 py-1 text-xs rounded transition-all font-mono ${
-                    timeRange === range
-                      ? "bg-gray-200 text-gray-700 border border-gray-300"
-                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                  onClick={() => setViewMode("grid")}
+                  className={`p-1.5 rounded-md transition-all ${
+                    viewMode === "grid" 
+                      ? "bg-white shadow-sm text-slate-900" 
+                      : "text-slate-500 hover:text-slate-700"
                   }`}
                 >
-                  {range}
+                  <LayoutGrid className="w-4 h-4" />
                 </button>
-              ))}
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={`p-1.5 rounded-md transition-all ${
+                    viewMode === "list" 
+                      ? "bg-white shadow-sm text-slate-900" 
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Action Buttons */}
+              <button
+                onClick={() => setIsPaused(!isPaused)}
+                className={`p-2 rounded-lg transition-all ${
+                  isPaused 
+                    ? "bg-orange-100 text-orange-600 hover:bg-orange-200" 
+                    : "bg-emerald-100 text-emerald-600 hover:bg-emerald-200"
+                }`}
+                title={isPaused ? "Resume" : "Pause"}
+              >
+                {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+              </button>
+
+              <button
+                onClick={exportReport}
+                className="p-2 bg-white/60 text-slate-600 rounded-lg hover:bg-slate-100 transition-all border border-slate-200"
+                title="Export Report"
+              >
+                <Download className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={() => setIsFullscreen(!isFullscreen)}
+                className="p-2 bg-white/60 text-slate-600 rounded-lg hover:bg-slate-100 transition-all border border-slate-200"
+                title="Fullscreen"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
             </div>
-
-            {/* Action Buttons */}
-            <button
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              className={`p-2 rounded transition-colors ${
-                autoRefresh ? "bg-gray-200 text-gray-700" : "bg-gray-50 text-gray-500 hover:text-gray-700"
-              }`}
-              title="Auto Refresh"
-            >
-              <RefreshCw className={`w-4 h-4 ${autoRefresh ? 'animate-spin' : ''}`} />
-            </button>
-
-            <button
-              onClick={() => setIsFullscreen(!isFullscreen)}
-              className="p-2 bg-gray-50 text-gray-500 rounded hover:text-gray-700 transition-colors"
-              title="Fullscreen"
-            >
-              <Maximize2 className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={exportReport}
-              className="p-2 bg-gray-50 text-gray-500 rounded hover:text-gray-700 transition-colors"
-              title="Export Report"
-            >
-              <Download className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={refreshData}
-              className="p-2 bg-gray-50 text-gray-500 rounded hover:text-gray-700 transition-colors"
-              title="Refresh Data"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2 bg-gray-50 text-gray-500 rounded hover:text-gray-700 transition-colors"
-              title="Toggle Theme"
-            >
-              <Eye className="w-4 h-4" />
-            </button>
           </div>
         </div>
       </div>
 
       {/* Main Dashboard Grid */}
-      <div className="pt-32 pl-24 pr-6 pb-20 group-hover:pl-80 transition-all duration-200">
-        <div className="grid grid-cols-12 gap-4 auto-rows-min">
+      <div className="mx-auto max-w-7xl pb-8 transition-all duration-300">
+        <div className="grid grid-cols-12 gap-6 auto-rows-min">
           
-          {/* Top Metrics Row */}
-          <div className="col-span-12 grid grid-cols-12 gap-4">
+          {/* Top Metrics Row - Modern Cards */}
+          <div className="col-span-12 grid grid-cols-12 gap-6 mb-6">
             <div className="col-span-3">
-              <GrafanaMetricCard
+              <ModernMetricCard
                 title="REQUESTS/MIN"
                 value={metrics.requests?.value || 0}
                 change={metrics.requests?.change}
@@ -213,11 +258,12 @@ export default function DashboardPage() {
                 maxValue={2000}
                 unit=""
                 variant="default"
+                trend="up"
               />
             </div>
             
             <div className="col-span-3">
-              <GrafanaMetricCard
+              <ModernMetricCard
                 title="AVG LATENCY"
                 value={metrics.latency?.value || 0}
                 change={metrics.latency?.change}
@@ -230,11 +276,12 @@ export default function DashboardPage() {
                 maxValue={100}
                 unit="ms"
                 variant="default"
+                trend="down"
               />
             </div>
             
             <div className="col-span-3">
-              <GrafanaMetricCard
+              <ModernMetricCard
                 title="ERROR RATE"
                 value={metrics.errorRate?.value || 0}
                 change={metrics.errorRate?.change}
@@ -247,11 +294,12 @@ export default function DashboardPage() {
                 maxValue={5}
                 unit="%"
                 variant="default"
+                trend="stable"
               />
             </div>
             
             <div className="col-span-3">
-              <GrafanaMetricCard
+              <ModernMetricCard
                 title="CPU USAGE"
                 value={metrics.cpuUsage?.value || 0}
                 change={metrics.cpuUsage?.change}
@@ -264,66 +312,58 @@ export default function DashboardPage() {
                 maxValue={100}
                 unit="%"
                 variant="default"
+                trend="up"
               />
             </div>
           </div>
 
-          {/* Main Performance Chart */}
+          {/* Main Performance Chart - Modern */}
           <div className="col-span-8">
-            <GrafanaWidget 
-              title="Performance Overview" 
-              size="large"
-              actions={
-                <div className="flex gap-1">
-                  <button className="p-1 hover:bg-[#2a2a2a] rounded text-xs text-gray-400">
-                    Area
-                  </button>
-                  <button className="p-1 hover:bg-[#2a2a2a] rounded text-xs text-gray-400">
-                    Line
-                  </button>
-                  <button className="p-1 hover:bg-[#2a2a2a] rounded text-xs text-gray-400">
-                    Bar
-                  </button>
-                </div>
-              }
+            <ModernWidget 
+              title="Performance Analytics" 
+              variant="gradient"
+              onExport={exportReport}
             >
-              <GrafanaChart
+              <ModernChart
                 data={chartData}
                 type="area"
-                height={350}
-                colors={["#374151", "#4b5563", "#6b7280", "#9ca3af"]}
+                height={400}
+                colors={["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b"]}
                 grid={true}
                 timeRange={timeRange}
                 onTimeRangeChange={setTimeRange}
                 yAxisLabel="Count"
                 xAxisLabel="Time"
                 animated={true}
+                variant="gradient"
+                gradient={true}
+                curved={true}
               />
-            </GrafanaWidget>
+            </ModernWidget>
           </div>
 
-          {/* Service Health Panel */}
+          {/* Service Health Panel - Modern */}
           <div className="col-span-4">
-            <GrafanaWidget title="Service Health" size="medium">
-              <div className="space-y-3">
-                {endpoints.slice(0, 6).map((endpoint, index) => {
+            <ModernWidget title="Service Health" variant="default">
+              <div className="space-y-4">
+                {endpoints.slice(0, 6).map((endpoint) => {
                   const status = endpoint.status === 'critical' ? 'error' : endpoint.status;
                   return (
-                    <div key={`${endpoint.method}-${endpoint.path}`} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          status === 'healthy' ? 'bg-gray-600' : 
-                          status === 'warning' ? 'bg-gray-500' : 'bg-gray-400'
+                    <div key={`${endpoint.method}-${endpoint.path}`} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-slate-300 transition-all">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${
+                          status === 'healthy' ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 
+                          status === 'warning' ? 'bg-amber-500 shadow-sm shadow-amber-500/50' : 'bg-red-500 shadow-sm shadow-red-500/50'
                         }`} />
-                        <span className="text-xs text-gray-700 font-mono">
+                        <span className="text-sm font-semibold text-slate-700 font-mono">
                           {endpoint.path.replace('/api/v1/', '').toUpperCase()}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-gray-600">
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-slate-600 font-mono">
                           {endpoint.avgLatency}ms
                         </span>
-                        <span className="text-xs text-gray-600">
+                        <span className="text-sm font-semibold text-slate-700">
                           {endpoint.requests}
                         </span>
                       </div>
@@ -331,14 +371,14 @@ export default function DashboardPage() {
                   );
                 })}
               </div>
-            </GrafanaWidget>
+            </ModernWidget>
           </div>
 
-          {/* System Resources */}
+          {/* System Resources - Modern Cards */}
           <div className="col-span-4">
-            <GrafanaWidget title="System Resources" size="medium">
-              <div className="space-y-4">
-                <GrafanaMetricCard
+            <ModernWidget title="System Resources" variant="default">
+              <div className="space-y-5">
+                <ModernMetricCard
                   title="MEMORY"
                   value={65}
                   change={2.3}
@@ -351,10 +391,10 @@ export default function DashboardPage() {
                   maxValue={100}
                   unit="%"
                   variant="compact"
-                  sparkline={true}
+                  trend="up"
                 />
                 
-                <GrafanaMetricCard
+                <ModernMetricCard
                   title="DISK"
                   value={78}
                   change={-1.2}
@@ -367,10 +407,10 @@ export default function DashboardPage() {
                   maxValue={100}
                   unit="%"
                   variant="compact"
-                  sparkline={true}
+                  trend="down"
                 />
                 
-                <GrafanaMetricCard
+                <ModernMetricCard
                   title="UPTIME"
                   value={99.9}
                   change={0.1}
@@ -380,78 +420,36 @@ export default function DashboardPage() {
                   status="success"
                   isRealTime={false}
                   variant="compact"
-                  sparkline={false}
+                  trend="up"
                 />
               </div>
-            </GrafanaWidget>
+            </ModernWidget>
           </div>
 
-          {/* Top Endpoints */}
-          <div className="col-span-4">
-            <GrafanaWidget title="Top Endpoints" size="medium">
-              <TopEndpoints endpoints={endpoints.map(ep => ({
-                ...ep,
-                percentage: Math.round((ep.requests / endpoints.reduce((sum, e) => sum + e.requests, 0)) * 100) || 0
-              }))} />
-            </GrafanaWidget>
-          </div>
-
-          {/* Project Usage */}
-          <div className="col-span-4">
-            <GrafanaWidget title="Project Usage" size="medium">
-              <ProjectUsage 
-                data={endpoints.map(ep => ({
-                  name: ep.path.replace('/api/v1/', '').replace('/', ' ').toUpperCase(),
-                  requests: ep.requests,
-                  percentage: Math.round((ep.requests / endpoints.reduce((sum, e) => sum + e.requests, 0)) * 100) || 0,
-                  color: ep.status === 'healthy' ? '#10b981' : ep.status === 'warning' ? '#f59e0b' : '#ef4444'
-                }))} 
+          {/* Additional Analytics Section */}
+          <div className="col-span-8">
+            <ModernWidget title="Network Traffic Analysis" variant="gradient">
+              <ModernChart
+                data={chartData}
+                type="line"
+                height={300}
+                colors={["#3b82f6", "#8b5cf6"]}
+                grid={true}
+                yAxisLabel="MB/s"
+                xAxisLabel="Time"
+                animated={true}
+                variant="gradient"
+                curved={true}
+                showDots={true}
+                strokeWidth={3}
               />
-            </GrafanaWidget>
-          </div>
-
-          {/* Recent Logs */}
-          <div className="col-span-6">
-            <GrafanaWidget title="Recent Logs" size="medium">
-              <RecentLogs logs={logs.map(log => ({
-                ...log,
-                timestamp: log.timestamp instanceof Date ? log.timestamp.toLocaleTimeString() : log.timestamp
-              }))} />
-            </GrafanaWidget>
-          </div>
-
-          {/* Security Alerts */}
-          <div className="col-span-6">
-            <GrafanaWidget title="Security Alerts" size="medium">
-              <SecurityAlerts alerts={securityAlerts.map(alert => ({
-                ...alert,
-                timestamp: alert.timestamp instanceof Date ? alert.timestamp.toLocaleTimeString() : alert.timestamp
-              }))} />
-            </GrafanaWidget>
+            </ModernWidget>
           </div>
 
         </div>
       </div>
 
-      {/* Status Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-50 border-t border-gray-200 px-6 py-2">
-        <div className="flex items-center justify-between text-xs text-gray-600">
-          <div className="flex items-center gap-4">
-            <span>Dashboard v2.0</span>
-            <span>•</span>
-            <span>Auto-refresh: {autoRefresh ? 'ON' : 'OFF'}</span>
-            <span>•</span>
-            <span>Theme: Light</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span>Endpoints: {endpoints.length}</span>
-            <span>•</span>
-            <span>Alerts: {securityAlerts.length}</span>
-            <span>•</span>
-            <span>CPU: {metrics.cpuUsage?.value || 0}%</span>
-          </div>
-        </div>
-      </div>
+
     </div>
   );
 }
