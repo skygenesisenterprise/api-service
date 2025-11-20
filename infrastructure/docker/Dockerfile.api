@@ -1,178 +1,55 @@
-# ================================
-# Sky Genesis Enterprise API - Production Build
-# ================================
-#
-# This Dockerfile builds a production-ready API container with:
-# - Multi-stage build for optimized image size
-# - Security hardening (non-root user, minimal dependencies)
-# - Pre-flight checks for operational readiness
-# - Dependency waiting and validation
-# - SSH server for secure access
-# - Health checks for monitoring
-# ================================
+# API Backend Dockerfile
+FROM node:20-alpine AS base
 
-# ------------------------------
-# Builder Stage
-# ------------------------------
-FROM rust:1.91-slim AS builder
+# Install dependencies only when needed
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
 
-# Install build dependencies with security updates
-RUN apt-get update && apt-get upgrade -y && apt-get install -y \
-    pkg-config \
-    libssl-dev \
-    ca-certificates \
-    build-essential \
-    curl \
-    netcat-openbsd \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+# Install dependencies based on the preferred package manager
+COPY package.json pnpm-lock.yaml* ./
+RUN corepack enable pnpm && pnpm install --frozen-lockfile
 
-# Create non-root user for build
-RUN useradd --create-home --shell /bin/bash builduser
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
 
-# Set working directory
-WORKDIR /build
+# Generate Prisma client
+RUN npx prisma generate
 
-# Copy dependency files for better caching
-COPY api/Cargo.toml api/Cargo.lock ./
+# Build the application
+RUN npm run build:backend
 
-# Create dummy src to cache dependencies
-RUN mkdir src && echo "fn main() {}" > src/main.rs
-RUN cargo fetch
+# Production image, copy all the files and run the app
+FROM base AS runner
+WORKDIR /app
 
-# Change ownership to builduser
-RUN chown -R builduser:builduser /build
-USER builduser
+ENV NODE_ENV production
 
-# Build dependencies only
-RUN cargo build --release --locked && rm -rf src target/release/deps/api*
+# Create a non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nodejs
 
-# Copy source code
-COPY api/src ./src
+# Copy the built application
+COPY --from=builder /app/api/dist ./api/dist
+COPY --from=builder /app/api/prisma ./api/prisma
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
 
-# Build optimized release binary
-RUN cargo build --release --locked
+# Set permissions
+RUN chown -R nodejs:nodejs /app
+USER nodejs
 
-# ------------------------------
-# Runtime Stage
-# ------------------------------
-FROM debian:testing-slim AS runtime
+# Expose port
+EXPOSE 8080
 
-# Install minimal runtime dependencies with security updates
-RUN apt-get update && apt-get upgrade -y && apt-get install -y \
-    ca-certificates \
-    libssl3 \
-    curl \
-    openssh-server \
-    postgresql-client \
-    netcat-openbsd \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:8080/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
-# Create non-root user for API with minimal privileges
-RUN groupadd -r -g 1000 apiuser && \
-    useradd -r -u 1000 -g apiuser -m -d /home/apiuser -s /bin/bash apiuser && \
-    mkdir -p /home/apiuser/.ssh && \
-    chown -R apiuser:apiuser /home/apiuser
-
-# Configure SSH with security hardening
-RUN mkdir -p /var/run/sshd && \
-    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config && \
-    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config && \
-    sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config && \
-    sed -i 's/#AuthorizedKeysFile/AuthorizedKeysFile/' /etc/ssh/sshd_config && \
-    sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords no/' /etc/ssh/sshd_config && \
-    sed -i 's/#Protocol 2/Protocol 2/' /etc/ssh/sshd_config && \
-    sed -i 's/#StrictModes yes/StrictModes yes/' /etc/ssh/sshd_config
-
-# Copy binary from builder with correct ownership
-COPY --from=builder --chown=apiuser:apiuser /build/target/release/api /usr/local/bin/api
-
-# Copy utility scripts
-COPY --chown=apiuser:apiuser infrastructure/docker/wait-for-dependencies.sh /usr/local/bin/wait-for-dependencies.sh
-COPY --chown=apiuser:apiuser infrastructure/docker/validate-env.sh /usr/local/bin/validate-env.sh
-COPY --chown=apiuser:apiuser infrastructure/docker/validate-db-schema.sh /usr/local/bin/validate-db-schema.sh
-COPY --chown=apiuser:apiuser infrastructure/docker/preflight-check.sh /usr/local/bin/preflight-check.sh
-
-# Ensure scripts have correct permissions
-RUN chmod 755 /usr/local/bin/api \
-    && chmod 755 /usr/local/bin/wait-for-dependencies.sh \
-    && chmod 755 /usr/local/bin/validate-env.sh \
-    && chmod 755 /usr/local/bin/validate-db-schema.sh \
-    && chmod 755 /usr/local/bin/preflight-check.sh
-
-# Create secure startup script
-RUN echo '#!/bin/bash\n\
-set -e\n\
-\n\
-echo "========================================"\n\
-echo "Starting Sky Genesis Enterprise API Server"\n\
-echo "========================================"\n\
-\n\
-# Generate SSH host keys if they do not exist\n\
-echo "Setting up SSH..."\n\
-if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then\n\
-    ssh-keygen -f /etc/ssh/ssh_host_rsa_key -N "" -t rsa -b 4096 >/dev/null 2>&1\n\
-fi\n\
-if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then\n\
-    ssh-keygen -f /etc/ssh/ssh_host_ed25519_key -N "" -t ed25519 >/dev/null 2>&1\n\
-fi\n\
-\n\
-# Ensure proper permissions\n\
-chmod 600 /etc/ssh/ssh_host_*_key 2>/dev/null || true\n\
-chmod 644 /etc/ssh/ssh_host_*.pub 2>/dev/null || true\n\
-\n\
-# Start SSH daemon in background\n\
-echo "Starting SSH daemon..."\n\
-/usr/sbin/sshd -D &\n\
-SSH_PID=$!\n\
-\n\
-# Function to cleanup on exit\n\
-cleanup() {\n\
-    echo "Shutting down services..."\n\
-    kill $SSH_PID 2>/dev/null || true\n\
-    exit 0\n\
-}\n\
-\n\
-# Trap signals for graceful shutdown\n\
-trap cleanup SIGTERM SIGINT\n\
-\n\
-# Run pre-flight checks\n\
-echo "Running pre-flight checks..."\n\
-if ! /usr/local/bin/preflight-check.sh; then\n\
-    echo "ERROR: Pre-flight checks failed! Aborting startup."\n\
-    cleanup\n\
-    exit 1\n\
-fi\n\
-\n\
-echo "========================================"\n\
-echo "Starting API server..."\n\
-echo "========================================"\n\
-\n\
-# Start API server\n\
-exec /usr/local/bin/api\n\
-' > /usr/local/bin/start.sh
-
-RUN chmod 755 /usr/local/bin/start.sh && \
-    chown apiuser:apiuser /usr/local/bin/start.sh
-
-# Switch to non-root user
-USER apiuser
-
-# Expose ports
-EXPOSE 8080 2222
-
-# Health check with improved configuration
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f --max-time 10 http://localhost:8080/api/v1/health || exit 1
-
-# Default environment with security settings
-ENV RUST_LOG=info \
-    APP_ENV=production \
-    SSH_PORT=2222 \
-    RUST_BACKTRACE=0 \
-    RUST_LOG_STYLE=never
-
-# Start application with SSH
-CMD ["/usr/local/bin/start.sh"]
+# Start the application
+CMD ["npm", "run", "start:backend"]

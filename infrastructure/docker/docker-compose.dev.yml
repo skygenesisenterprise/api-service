@@ -1,0 +1,107 @@
+# Development Docker Compose Configuration
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: api_service_db_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: api_service_dev
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ../../data/schema-pgsql.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - dev_network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: api_service_redis_dev
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_dev_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - dev_network
+
+  # API Backend Service (Development)
+  api:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.api
+      target: deps  # Stop at dependencies for development
+    container_name: api_service_backend_dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 8080
+      DATABASE_URL: postgresql://dev_user:dev_password@postgres:5432/api_service_dev
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: api_service_dev
+      DB_USER: dev_user
+      DB_PASSWORD: dev_password
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev_jwt_secret_change_in_production
+      API_KEY_SECRET: dev_api_key_secret_change_in_production
+      CORS_ORIGIN: http://localhost:3000
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - dev_network
+    volumes:
+      - ../../api:/app/api
+      - ../../prisma:/app/prisma
+      - /app/node_modules
+    command: sh -c "npx prisma generate && npm run dev:backend"
+
+  # Web Frontend Service (Development)
+  web:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.web
+      target: deps  # Stop at dependencies for development
+    container_name: api_service_frontend_dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      NEXTAUTH_SECRET: dev_nextauth_secret_change_in_production
+      NEXTAUTH_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks:
+      - dev_network
+    volumes:
+      - ../../app:/app/app
+      - ../../components:/app/components
+      - ../../lib:/app/lib
+      - ../../styles:/app/styles
+      - ../../types:/app/types
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev:frontend
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+
+networks:
+  dev_network:
+    driver: bridge
