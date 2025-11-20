@@ -15,7 +15,7 @@ export default function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
   const [user, setUser] = useState<any>(null);
   const [activities, setActivities] = useState([
     {
-      id: '1',
+      id: 'activity-1',
       type: 'login',
       description: 'Successfully logged in from Chrome on Windows',
       details: 'IP: 192.168.1.1, Location: Paris, France',
@@ -23,7 +23,7 @@ export default function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
       status: 'success'
     },
     {
-      id: '2', 
+      id: 'activity-2', 
       type: 'api_key_created',
       description: 'Created new API key',
       details: 'Key: sk_test_...xyz, Permissions: read, write',
@@ -31,7 +31,7 @@ export default function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
       status: 'success'
     },
     {
-      id: '3',
+      id: 'activity-3',
       type: 'security_alert',
       description: 'Failed login attempt detected',
       details: 'IP: 185.220.101.182, Location: Unknown, Multiple attempts',
@@ -39,7 +39,7 @@ export default function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
       status: 'warning'
     },
     {
-      id: '4',
+      id: 'activity-4',
       type: 'profile_updated',
       description: 'Profile information updated',
       details: 'Changed: First name, Language',
@@ -47,7 +47,7 @@ export default function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
       status: 'success'
     },
     {
-      id: '5',
+      id: 'activity-5',
       type: 'password_changed',
       description: 'Password successfully changed',
       details: 'Method: Email verification, IP: 192.168.1.1',
@@ -236,7 +236,6 @@ export default function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
                       <option value="password_changed">Password Changes</option>
                     </select>
                   </div>
-                </div>
                 </div>
 
                 {/* Activity List */}

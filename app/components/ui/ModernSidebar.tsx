@@ -58,13 +58,6 @@ const sidebarSections: SidebarSection[] = [
     name: "Services",
     href: "/services",
     icon: Puzzle,
-    subItems: [
-      { name: "Grafana", href: "/services/grafana" },
-      { name: "Prometheus", href: "/services/prometheus" },
-      { name: "MinIO", href: "/services/minio" },
-      { name: "Vault", href: "/services/vault" },
-      { name: "Loki", href: "/services/loki" },
-    ],
   },
   {
     name: "Security",
@@ -80,16 +73,9 @@ const sidebarSections: SidebarSection[] = [
     ],
   },
   {
-    name: "Administration",
-    href: "/administration",
+    name: "Settings",
+    href: "/settings",
     icon: Settings,
-    subItems: [
-      { name: "Billing", href: "/administration/billing" },
-      { name: "Organization", href: "/administration/organization" },
-      { name: "Quotas", href: "/administration/quotas" },
-      { name: "Webhooks", href: "/administration/webhooks" },
-      { name: "Internal Management", href: "/administration/internal" },
-    ],
   },
 ];
 
