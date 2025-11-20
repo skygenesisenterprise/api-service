@@ -58,7 +58,21 @@ USER nodejs
 EXPOSE 3000 8080
 
 # CMD final pour container stable
-CMD sh -c "\
-  echo 'Starting backend on port $API_PORT...' && API_PORT=$API_PORT pnpm run start:backend & \
-  echo 'Starting frontend on port $PORT...' && PORT=$PORT pnpm run start & \
-  wait"
+CMD ["dumb-init", "--", "sh", "-c", "\
+  echo 'Starting Sky Genesis Enterprise API Service...'; \
+  echo 'Frontend will start on port $PORT'; \
+  echo 'Backend will start on port $API_PORT'; \
+  \
+  # Démarrer le backend en arrière-plan \
+  echo 'Starting backend on port $API_PORT...' && \
+  API_PORT=$API_PORT pnpm run start:backend & \
+  \
+  # Attendre un peu que le backend démarre \
+  sleep 5; \
+  \
+  # Démarrer le frontend \
+  echo 'Starting frontend on port $PORT...' && \
+  PORT=$PORT pnpm run start; \
+  \
+  # Le script attendra que le frontend se termine (jamais) \
+  wait"]
