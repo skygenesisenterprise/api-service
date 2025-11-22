@@ -236,7 +236,7 @@ model DashboardStats {
   id            String   @id @default(cuid())
   organizationId String   @map("organization_id")
   workspaceId   String?  @map("workspace_id")
-  date          DateTime @default(now()) @db.Date
+  date          DateTime @default(now())
   totalProjects Int      @default(0) @map("total_projects")
   totalEndpoints Int      @default(0) @map("total_endpoints")
   totalRequests  Int      @default(0) @map("total_requests")
