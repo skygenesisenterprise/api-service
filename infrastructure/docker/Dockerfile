@@ -46,6 +46,12 @@ RUN pnpm install --frozen-lockfile --prod
 # Install tsx for backend runtime
 RUN npm install -g tsx
 
+# Copy Prisma schema
+COPY --from=base /app/prisma ./prisma
+
+# Generate Prisma client in production
+RUN pnpm run db:generate
+
 # Copy built application from base stage
 COPY --from=base /app/.next ./.next
 COPY --from=base /app/public ./public
@@ -53,8 +59,6 @@ COPY --from=base /app/next.config.ts ./
 COPY --from=base /app/api ./api
 COPY --from=base /app/api/dist ./api/dist
 COPY --from=base /app/tsconfig.json ./
-COPY --from=base /app/prisma ./prisma
-COPY --from=base /app/node_modules/.prisma ./node_modules/.prisma
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
