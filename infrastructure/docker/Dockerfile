@@ -1,78 +1,77 @@
-# Multi-stage Dockerfile - frontend + backend
-FROM node:20-alpine AS base
+# Use Node.js 18 LTS as base image
+FROM node:18-alpine AS base
 
-# Base dependencies
-RUN apk add --no-cache libc6-compat curl bash
+# Install pnpm
+RUN npm install -g pnpm
+
+# Set working directory
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy package files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Install dependencies
-FROM base AS deps
-COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
-# Build backend
-FROM base AS api-builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copy source code
 COPY . .
-RUN npx prisma generate
-RUN pnpm run build:backend
 
-# Build frontend
-FROM base AS web-builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-RUN npx prisma generate
+# Copy Prisma schema for client generation
+COPY prisma ./prisma
+
+# Generate Prisma client
+RUN pnpm run db:generate
+
+# Build the application with optimizations
 RUN pnpm run build
 
-# Production image
-FROM node:20-alpine AS runner
+# Production stage
+FROM node:18-alpine AS production
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Set working directory
 WORKDIR /app
 
+# Copy package files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Install only production dependencies
+RUN pnpm install --no-frozen-lockfile --prod
+
+# Copy built application from base stage
+COPY --from=base /app/.next ./.next
+COPY --from=base /app/public ./public
+COPY --from=base /app/next.config.ts ./
+COPY --from=base /app/api ./api
+COPY --from=base /app/tsconfig.json ./
+COPY --from=base /app/prisma ./prisma
+COPY --from=base /app/node_modules/.prisma ./node_modules/.prisma
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nextjs -u 1001
+
+# Change ownership of the app directory
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
+# Expose port 3000
+EXPOSE 3000
+
+# Set environment variables
 ENV NODE_ENV=production
-ENV DATABASE_URL="file:./dev.db"
-ENV API_PORT=8080
 ENV PORT=3000
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV ENVIRONMENT=production
+ENV HEALTH_PATH=/home
+ENV DATABASE_URL="file:./dev.db"
+ENV PRISMA_GENERATE_DATAPROXY=false
 
-RUN apk add --no-cache dumb-init curl bash && rm -rf /var/cache/apk/*
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "const http = require('http'); const checkPath = process.env.HEALTH_PATH || '/home'; http.get('http://localhost:3000' + checkPath, (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"
 
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nodejs
-
-# Copy built apps
-COPY --from=api-builder /app/api/dist ./api/dist
-COPY --from=api-builder /app/api/prisma ./api/prisma
-COPY --from=api-builder /app/prisma ./prisma
-COPY --from=web-builder --chown=nodejs:nodejs /app/.next/standalone ./
-COPY --from=web-builder --chown=nodejs:nodejs /app/.next/static ./.next/static
-COPY --from=web-builder /app/public ./public
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/package.json ./package.json
-COPY --from=deps /app/pnpm-lock.yaml ./pnpm-lock.yaml
-
-RUN mkdir -p /app/logs && chown -R nodejs:nodejs /app
-USER nodejs
-
-EXPOSE 3000 8080
-
-# CMD final pour container stable
-CMD ["dumb-init", "--", "sh", "-c", "\
-  echo 'Starting Sky Genesis Enterprise API Service...'; \
-  echo 'Frontend will start on port $PORT'; \
-  echo 'Backend will start on port $API_PORT'; \
-  \
-  # Démarrer le backend en arrière-plan \
-  echo 'Starting backend on port $API_PORT...' && \
-  API_PORT=$API_PORT pnpm run start:backend & \
-  \
-  # Attendre un peu que le backend démarre \
-  sleep 5; \
-  \
-  # Démarrer le frontend \
-  echo 'Starting frontend on port $PORT...' && \
-  PORT=$PORT pnpm run start; \
-  \
-  # Le script attendra que le frontend se termine (jamais) \
-  wait"]
+# Start the application
+CMD ["pnpm", "start"]

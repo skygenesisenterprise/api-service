@@ -1,5 +1,7 @@
-import SettingsPageContent from "./page-content";
+"use client";
+
+import { DualSidebarLayout } from "./components/DualSidebarLayout";
 
 export default function SettingsPage() {
-  return <SettingsPageContent />;
+  return <DualSidebarLayout />;
 }
