@@ -1,5 +1,5 @@
-# Use Node.js 18 LTS as base image
-FROM node:18-alpine AS base
+# Use Node.js 20 LTS as base image
+FROM node:20-alpine AS base
 
 # Install pnpm
 RUN npm install -g pnpm
@@ -29,7 +29,7 @@ RUN pnpm run build
 RUN pnpm run build:backend
 
 # Production stage
-FROM node:18-alpine AS production
+FROM node:20-alpine AS production
 
 # Install pnpm
 RUN npm install -g pnpm
