@@ -53,12 +53,11 @@ COPY --from=base /app/prisma ./prisma
 RUN pnpm run db:generate
 
 # Copy built application from base stage
-COPY --from=base /app/.next ./.next
+COPY --from=base /app/.next/standalone ./
+COPY --from=base /app/.next/static ./.next/static
 COPY --from=base /app/public ./public
-COPY --from=base /app/next.config.ts ./
 COPY --from=base /app/api ./api
 COPY --from=base /app/api/dist ./api/dist
-COPY --from=base /app/tsconfig.json ./
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
@@ -86,4 +85,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "const http = require('http'); const checkPath = process.env.HEALTH_PATH || '/home'; http.get('http://localhost:3000' + checkPath, (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"
 
 # Start the application
-CMD ["pnpm", "start"]
+CMD ["node", "server.js"]
