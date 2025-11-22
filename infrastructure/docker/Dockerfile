@@ -85,4 +85,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "const http = require('http'); const checkPath = process.env.HEALTH_PATH || '/home'; http.get('http://localhost:3000' + checkPath, (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"
 
 # Start the application
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "HOSTNAME=0.0.0.0 node server.js"]
