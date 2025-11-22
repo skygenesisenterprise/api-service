@@ -39,6 +39,8 @@ export function SettingsLayout() {
             setIsMobileMenuOpen(false); // Close mobile menu after selection
           }}
           onToggleCategory={settingsState.toggleCategory}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
         />
       </div>
 

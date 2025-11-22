@@ -22,8 +22,11 @@ COPY prisma ./prisma
 # Generate Prisma client
 RUN pnpm run db:generate
 
-# Build the application with optimizations
+# Build the frontend application with optimizations
 RUN pnpm run build
+
+# Build the backend application
+RUN pnpm run build:backend
 
 # Production stage
 FROM node:18-alpine AS production
@@ -40,11 +43,15 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # Install only production dependencies
 RUN pnpm install --frozen-lockfile --prod
 
+# Install tsx for backend runtime
+RUN npm install -g tsx
+
 # Copy built application from base stage
 COPY --from=base /app/.next ./.next
 COPY --from=base /app/public ./public
 COPY --from=base /app/next.config.ts ./
 COPY --from=base /app/api ./api
+COPY --from=base /app/api/dist ./api/dist
 COPY --from=base /app/tsconfig.json ./
 COPY --from=base /app/prisma ./prisma
 COPY --from=base /app/node_modules/.prisma ./node_modules/.prisma
@@ -57,12 +64,13 @@ RUN adduser -S nextjs -u 1001
 RUN chown -R nextjs:nodejs /app
 USER nextjs
 
-# Expose port 3000
-EXPOSE 3000
+# Expose ports
+EXPOSE 3000 8080
 
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV BACKEND_PORT=8080
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV ENVIRONMENT=production
 ENV HEALTH_PATH=/home
