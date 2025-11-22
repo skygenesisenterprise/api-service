@@ -8,8 +8,8 @@ services:
     container_name: sky-genesis-api
     restart: unless-stopped
     ports:
-      - "4000:3000"  # Next.js frontend (port hôte 4000 vers conteneur 3000)
-      - "8085:8080" # API backend (port hôte 8085 vers conteneur 8080)
+      - "3000:3000"  # Next.js frontend (port hôte 4000 vers conteneur 3000)
+      - "8080:8080" # API backend (port hôte 8085 vers conteneur 8080)
     environment:
       - NODE_ENV=production
       - PORT=3000
