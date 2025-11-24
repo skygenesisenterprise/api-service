@@ -49,7 +49,7 @@ jobs:
     # Dependency review for PRs
     - name: Dependency Review
       if: github.event_name == 'pull_request'
-      uses: actions/dependency-review-action@v3
+      uses: actions/dependency-review-action@v4
 
     # Secret scanning
     - name: Secret Scanning
